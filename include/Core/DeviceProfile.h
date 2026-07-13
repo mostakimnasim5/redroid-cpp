@@ -1,10 +1,22 @@
 /**
  * @file DeviceProfile.h
- * @brief Complete Android Device Profile
- * @version 2.0.0
+ * @brief Complete Android Device Profile for Virtual Device Emulation
+ * @version 3.0.0
  * 
- * Contains all device properties required for realistic Android device emulation.
- * This is used for anti-detection and device spoofing purposes.
+ * Professional-grade device profile generation for Android devices.
+ * Includes all device properties required for realistic device spoofing.
+ * 
+ * Categories:
+ * - Device IDs: IMEI, IMEI2, Serial, Android ID, GSF ID, Advertising ID
+ * - MAC Addresses: WiFi, Bluetooth, Ethernet
+ * - SIM: ICCID, IMSI
+ * - Hardware: CPU, GPU, RAM, Battery
+ * - Build: Fingerprint, Bootloader, Build ID, Security Patch
+ * - Verified Boot: State (green), VBMeta digest
+ * - Network: Hostname, TCP buffers, DNS
+ * - GPS: Latitude, Longitude, Altitude, Accuracy
+ * - Sensors: Accelerometer, Gyro, Mag, Baro, Light, Proximity
+ * - Security: KNOX ID, SELinux, Hardware attestation
  * 
  * Copyright (c) 2024. Licensed for authorized testing purposes only.
  */
@@ -16,60 +28,97 @@
 #include <optional>
 #include <array>
 #include <cstdint>
+#include <chrono>
 
 namespace RedroidCPP {
 
 // ============================================================================
-// Forward Declarations
-// ============================================================================
-
-class IMEIValidator;
-class SerialGenerator;
-class MACGenerator;
-
-// ============================================================================
-// Version Information
+// Device Identity
 // ============================================================================
 
 /**
- * @brief Android version information
+ * @brief Device Identity - IMEI, Serial, Android ID, GSF ID, Advertising ID
  */
-struct AndroidVersionInfo {
-    std::string codename;           // "UpsideDownCake", "Tiramisu", etc.
-    std::string versionNumber;      // "15", "14", "13", etc.
-    std::string apiLevel;           // "35", "34", "33", etc.
-    std::string releaseDate;       // "2024-08"
-    std::string securityPatch;      // "2024-06-01"
-    std::string buildType;          // "userdebug", "user", "eng"
-    std::string buildTags;         // "release-keys", "dev-keys"
+struct DeviceIdentity {
+    // IMEI (International Mobile Equipment Identity)
+    std::string imei;                      // 15 digits, Luhn validated
+    std::string imei2;                     // For dual SIM devices
     
-    static AndroidVersionInfo getLatest();
-    static std::vector<AndroidVersionInfo> getAllSupported();
+    // Serial Number
+    std::string serialNumber;               // Manufacturer-specific format
+    
+    // Android System Identifiers
+    std::string androidId;                 // 16 hex characters
+    std::string gsfId;                     // Google Services Framework ID
+    std::string advertisingId;             // Google Advertising ID (AAID)
+    
+    // Generate all identifiers
+    void generate(const std::string& tac, const std::string& manufacturer);
+    
+    // Validate all identifiers
+    bool validate() const;
+    
+    // Get as map
+    std::map<std::string, std::string> toMap() const;
 };
 
 // ============================================================================
-// Display Configuration
+// MAC Addresses
 // ============================================================================
 
 /**
- * @brief Display/Hardware configuration
+ * @brief MAC Addresses - WiFi, Bluetooth, Ethernet
  */
-struct DisplayConfig {
-    uint32_t widthPixels;           // e.g., 1440
-    uint32_t heightPixels;         // e.g., 3120
-    uint32_t densityDPI;           // e.g., 560
-    uint32_t densityValue;         // e.g., 3.5
-    uint32_t fps;                  // e.g., 120
-    uint32_t vsync;               // e.g., 120
-    std::string hdrCapabilities;   // "HDR10, DolbyVision"
-    std::string wideColorGamut;     // "sRGB, Display P3"
+struct MACAddresses {
+    std::string wifiMac;                   // WiFi MAC address (xx:xx:xx:xx:xx:xx)
+    std::string bluetoothMac;              // Bluetooth MAC address
+    std::string ethernetMac;               // Ethernet MAC address
     
-    // Calculated values
-    uint32_t densityBucket() const;
-    uint32_t smallestWidth() const;
+    std::string wifiInterface;             // e.g., "wlan0"
+    std::string ethernetInterface;         // e.g., "eth0"
     
-    static DisplayConfig getDefault();
-    static DisplayConfig getForDeviceClass(const std::string& deviceClass);
+    // Generate MAC addresses with valid OUI
+    void generate(const std::string& manufacturer);
+    
+    // Validate MAC format
+    bool isValid() const;
+    
+    std::map<std::string, std::string> toMap() const;
+};
+
+// ============================================================================
+// SIM Configuration
+// ============================================================================
+
+/**
+ * @brief SIM Card Information
+ */
+struct SIMConfiguration {
+    // ICCID (Integrated Circuit Card Identifier)
+    std::string iccid1;                   // 20 digits, SIM slot 1
+    std::string iccid2;                   // 20 digits, SIM slot 2 (dual SIM)
+    
+    // IMSI (International Mobile Subscriber Identity)
+    std::string imsi1;                    // 15 digits, SIM slot 1
+    std::string imsi2;                    // 15 digits, SIM slot 2
+    
+    // Carrier Information
+    std::string carrierName;              // e.g., "T-Mobile", "AT&T"
+    std::string carrierCountry;           // ISO country code, e.g., "US"
+    std::string mcc;                      // Mobile Country Code (3 digits)
+    std::string mnc;                      // Mobile Network Code (2-3 digits)
+    
+    // SIM State
+    bool isMultiSIM;                      // true if dual SIM
+    int32_t simCount;                     // 1 or 2
+    std::string simState;                 // "READY", "ABSENT"
+    
+    // Network Type
+    std::string networkType;              // "LTE", "5G", "NR"
+    std::string phoneType;                // "GSM", "CDMA", "LTE"
+    
+    void generate();
+    std::map<std::string, std::string> toMap() const;
 };
 
 // ============================================================================
@@ -77,82 +126,112 @@ struct DisplayConfig {
 // ============================================================================
 
 /**
- * @brief CPU/Processor information
+ * @brief CPU/Processor Information
  */
-struct CPUInfo {
-    std::string architecture;      // "arm64-v8a", "armeabi-v7a"
-    std::string cpuAbiList;         // "arm64-v8a, armeabi-v7a"
-    std::string cpuAbi2List;       // ""
-    std::string processor;          // "ARM Implementer 88 -> Qualcomm"
-    std::string hardware;           // "qcom"
-    std::string board;             // "taro", "kalama", "lito"
-    std::string modelName;          // "Snapdragon 8 Gen 3"
+struct CPUInformation {
+    std::string architecture;              // "arm64-v8a"
+    std::string cpuAbiList;               // "arm64-v8a, armeabi-v7a"
+    std::string cpuAbi2List;             // empty
     
-    // Physical properties
-    uint32_t coreCount;            // 8
-    uint32_t coreCountBig;         // 1
-    uint32_t coreCountMid;         // 3
-    uint32_t coreCountLittle;       // 4
+    std::string processor;                 // "ARM Implementer 88 -> Qualcomm"
+    std::string hardware;                  // "qcom"
+    std::string board;                    // "taro", "kalama", "lito"
     
-    // Frequencies (in Hz)
-    uint64_t cpuMaxFreq;           // 3050000000
-    uint64_t cpuMinFreq;           // 300000000
+    std::string modelName;               // "Snapdragon 8 Gen 3"
+    std::string modelShort;               // "SM8650"
     
-    // BogoMIPS
-    uint32_t bogoMips;             // 192.0
+    uint32_t coreCount;                  // Total cores
+    uint32_t coreCountBig;               // Performance cores
+    uint32_t coreCountMid;               // Medium cores
+    uint32_t coreCountLittle;            // Efficiency cores
     
-    // Features
-    bool hasAES() const;
-    bool hasNEON() const;
-    bool hasVFP() const;
+    uint64_t cpuMaxFreq;                 // Max frequency in Hz
+    uint64_t cpuMinFreq;                 // Min frequency in Hz
+    
+    double bogoMips;                      // BogoMIPS value
+    
+    // CPU Features
+    bool hasAES;                         // AES-NI support
+    bool hasNEON;                        // NEON SIMD support
+    bool hasVFP;                         // VFP support
+    bool hasARMv8;                       // ARMv8 support
+    
+    void generate(const std::string& deviceClass);
+    std::map<std::string, std::string> toMap() const;
 };
 
 /**
- * @brief GPU/Graphics information
+ * @brief GPU/Graphics Information
  */
-struct GPUInfo {
-    std::string renderer;           // "Adreno (TM) 750"
-    std::string vendor;            // "Qualcomm"
-    std::string version;           // "OpenGL ES 3.2 V@0533.0"
-    std::string extensions;        // List of OpenGL extensions
+struct GPUInformation {
+    std::string renderer;                  // "Adreno (TM) 750"
+    std::string vendor;                   // "Qualcomm"
+    std::string version;                 // "OpenGL ES 3.2 V@0533.0"
     
     // Vulkan
-    std::string vulkanVersion;     // "1.1.279"
-    std::string vulkanConformance;  // "1.3.2"
+    std::string vulkanVersion;           // "1.1.279"
+    std::string vulkanConformance;       // "1.3.2"
+    
+    // OpenGL ES
+    std::string glEsVersion;             // "3.2"
+    std::string glEsRenderer;             // Full renderer string
+    
+    // Supported Extensions
+    std::vector<std::string> extensions; // List of GL extensions
+    
+    void generate(const std::string& gpuModel);
+    std::map<std::string, std::string> toMap() const;
 };
 
 /**
- * @brief Memory configuration
+ * @brief Memory Configuration
  */
-struct MemoryConfig {
-    uint64_t totalRAM;              // in bytes, e.g., 12884901888 (12GB)
-    uint64_t totalRAMMB;           // in MB
-    uint64_t availableRAM;          // in bytes
-    uint64_t lowMemoryThreshold;    // in bytes
-    uint64_t threshold;             // in bytes
+struct MemoryInformation {
+    uint64_t totalRAM;                   // Total RAM in bytes
+    uint64_t totalRAMMB;                 // Total RAM in MB
+    uint64_t totalRAMGB;                // Total RAM in GB
+    uint64_t availableRAM;               // Available RAM in bytes
     
-    bool isLowRamDevice;           // false
-    uint32_t hardwarePageSize;     // 4096
+    uint64_t lowMemoryThreshold;         // Low memory threshold
+    uint64_t threshold;                  // Memory threshold
     
-    // Memory features
-    bool largeHeapEnabled;        // true
-    bool lowRamDevice(); const;
+    bool isLowRamDevice;                // false for flagship
+    uint32_t hardwarePageSize;           // Page size (4096)
+    
+    // Large Heap
+    bool largeHeapEnabled;              // true
+    int64_t largeHeapSize;             // Max heap size
+    
+    void generate();
+    std::map<std::string, std::string> toMap() const;
 };
 
 /**
- * @brief Battery configuration
+ * @brief Battery Configuration
  */
-struct BatteryConfig {
-    std::string status;            // "good"
-    std::string health;            // "health" -> "good"
-    std::string plugType;          // "usb", "ac", "wireless"
-    int32_t level;                 // 100
-    int32_t temperature;           // in deciCelsius, e.g., 250 (25.0°C)
-    int32_t voltage;               // in mV, e.g., 4200
-    int32_t currentNow;             // in mA
-    bool present;                  // true
-    std::string technology;         // "Li-ion"
-    int32_t capacity;              // in mAh, e.g., 4500
+struct BatteryInformation {
+    std::string status;                  // "good", "charging", "discharging"
+    std::string health;                  // "health", "good"
+    std::string plugType;               // "usb", "ac", "wireless"
+    
+    int32_t level;                     // Battery level (0-100)
+    int32_t temperature;                // Temperature in deciCelsius (250 = 25.0°C)
+    int32_t voltage;                    // Voltage in mV
+    int32_t currentNow;                 // Current in mA
+    int32_t currentAvg;                 // Average current
+    
+    bool present;                       // Battery present
+    std::string technology;             // "Li-ion", "Li-poly"
+    
+    int32_t capacity;                  // Capacity in mAh
+    int32_t batteryScale;              // Scale (100)
+    
+    // Battery Stats
+    int32_t chargeCounter;             // Charge counter in uAh
+    int32_t energyCounter;             // Energy counter in nWh
+    
+    void generate();
+    std::map<std::string, std::string> toMap() const;
 };
 
 // ============================================================================
@@ -160,40 +239,76 @@ struct BatteryConfig {
 // ============================================================================
 
 /**
- * @brief Android Build information
+ * @brief Build Information - Fingerprint, Bootloader, Build ID, Security Patch
  */
-struct BuildInfo {
-    std::string fingerprint;
-    std::string bootloader;
-    std::string radioVersion;       // Baseband version
-    std::string buildId;            // Build ID like "UP1A.231005.007"
-    std::string buildDisplay;       // "UP1A.231005.007"
-    std::string buildType;          // "user"
-    std::string buildTags;          // "release-keys"
-    std::string buildVersion;       // "14"
-    std::string buildVersionRelease; // "14"
-    std::string buildVersionSDK;     // "34"
-    std::string buildSecurityPatch;  // "2024-06-01"
-    std::string buildBoard;         // Platform/board name
-    std::string buildDevice;        // Device codename
-    std::string buildProduct;       // Product name
-    std::string buildHardware;      // Hardware name
-    std::string buildBrand;         // Brand
-    std::string buildManufacturer;  // Manufacturer
-    std::string buildModel;        // Model
-    std::string buildName;         // Build name
+struct BuildInformation {
+    // Core Build Properties
+    std::string fingerprint;              // Full build fingerprint
+    std::string bootloader;              // Bootloader version
+    std::string radioVersion;            // Baseband/Radio version
     
-    // Time information
-    long buildTime;                // Unix timestamp
-    std::string buildDate;         // "Wed Jan 10 00:00:00 UTC 2024"
+    std::string buildId;                 // Build ID (e.g., "UP1A.231005.007")
+    std::string buildDisplay;           // Display ID
+    std::string buildType;              // "user", "userdebug", "eng"
+    std::string buildTags;              // "release-keys", "dev-keys"
     
-    // Generate complete fingerprint
-    std::string generateFingerprint(const std::string& manufacturer,
-                                      const std::string& brand,
-                                      const std::string& device,
-                                      const std::string& model,
-                                      const std::string& version,
-                                      const std::string& buildId) const;
+    // Version Information
+    std::string buildVersionRelease;     // Android version (e.g., "14")
+    std::string buildVersionCodename;   // Codename (e.g., "REL")
+    std::string buildVersionSDK;        // API Level (e.g., "34")
+    std::string buildVersionSecurityPatch; // Security patch level
+    
+    // Device Properties
+    std::string buildBrand;             // Brand (e.g., "samsung")
+    std::string buildManufacturer;      // Manufacturer (e.g., "samsung")
+    std::string buildDevice;            // Device codename (e.g., "z3s")
+    std::string buildProduct;           // Product name
+    std::string buildHardware;          // Hardware name
+    
+    // Build Metadata
+    std::string buildModel;            // Model (e.g., "SM-S928B")
+    std::string buildName;              // Build name
+    
+    // Time
+    std::string buildDate;              // Build date string
+    std::string buildDateUTC;           // UTC build date
+    int64_t buildTime;                 // Unix timestamp
+    
+    void generate(const std::string& manufacturer,
+                 const std::string& model,
+                 const std::string& codename,
+                 const std::string& androidVersion);
+    
+    std::map<std::string, std::string> toMap() const;
+};
+
+// ============================================================================
+// Verified Boot
+// ============================================================================
+
+/**
+ * @brief Verified Boot State
+ */
+struct VerifiedBootInformation {
+    // Boot State
+    std::string verifiedBootState;      // "green", "yellow", "orange", "red"
+    std::string verifiedBootLocked;      // "true", "false"
+    std::string verifiedBootHardlocked; // "true", "false"
+    
+    // Verification
+    std::string verificationBootEnabled; // "true"
+    std::string verificationBoot;       // "true"
+    
+    // VBMeta Digest
+    std::string vbmetaDigest;           // VBMeta digest (64 char hex)
+    std::string vbmetaVersion;          // VBMeta version
+    
+    // Device Lock Status
+    std::string oemLockState;          // "locked", "unlocked"
+    std::string oemUnlockAllowed;       // "true", "false"
+    
+    void generate();
+    std::map<std::string, std::string> toMap() const;
 };
 
 // ============================================================================
@@ -201,279 +316,304 @@ struct BuildInfo {
 // ============================================================================
 
 /**
- * @brief Network/MAC address information
+ * @brief Network Configuration - Hostname, TCP buffers, DNS
  */
-struct NetworkConfig {
-    // WiFi MAC Address
-    std::string wifiMAC;           // "8C:71:F8:AB:CD:EF"
-    std::string wifiInterface;     // "wlan0"
-    std::string wifiAddress;       // IP address
+struct NetworkConfiguration {
+    // Hostname
+    std::string hostname;               // Device hostname
+    std::string dhcpHostname;          // DHCP hostname
     
-    // Bluetooth MAC Address
-    std::string bluetoothMAC;      // "8C:71:F8:AB:CD:EF"
+    // IP Addresses
+    std::string ipAddress;             // Device IP
+    std::string netmask;               // Netmask
+    std::string gateway;               // Gateway
+    std::string dns1;                  // Primary DNS
+    std::string dns2;                  // Secondary DNS
     
-    // Ethernet
-    std::string ethernetMAC;      // "00:00:00:00:00:00"
-    std::string ethernetInterface; // "eth0"
+    // TCP Buffers
+    std::string tcpRmemMin;            // TCP receive buffer min
+    std::string tcpRmemDefault;        // TCP receive buffer default
+    std::string tcpRmemMax;             // TCP receive buffer max
+    std::string tcpWmemMin;            // TCP send buffer min
+    std::string tcpWmemDefault;         // TCP send buffer default
+    std::string tcpWmemMax;            // TCP send buffer max
+    std::string tcpCongestion;         // TCP congestion algorithm
+    std::string tcpCongestionDefault;  // Default congestion type
     
-    // Generate MAC with valid OUI
-    static std::string generateMAC(const std::string& oui);
-    static bool isValidOUI(const std::string& oui);
+    // DNS Configuration
+    std::string dnsSearchDomains;      // Search domains
+    std::vector<std::string> dnsServers; // DNS server list
     
-    // Get OUI database
-    static std::string getOUIForManufacturer(const std::string& manufacturer);
+    // Network Interface
+    std::string networkInterface;       // Primary network interface
+    std::string macAddress;           // MAC for this interface
+    
+    // Domain
+    std::string domain;               // Domain name
+    std::string domainLookup;          // Domain lookup setting
+    
+    void generate(const std::string& deviceName);
+    std::map<std::string, std::string> toMap() const;
 };
 
 // ============================================================================
-// SIM/Operator Information
+// GPS Configuration
 // ============================================================================
 
 /**
- * @brief SIM card information
+ * @brief GPS/Location Configuration
  */
-struct SIMInfo {
-    std::string iccid;             // ICCID
-    std::string imsi;              // IMSI
-    std::string carrierName;       // "T-Mobile", "AT&T"
-    std::string carrierCountry;     // "US", "BD"
-    std::string mcc;               // Mobile Country Code
-    std::string mnc;              // Mobile Network Code
-    bool isMultiSIM;              // true/false
-    int32_t simCount;             // 1 or 2
-    std::string simState;          // "READY", "ABSENT"
-    std::string networkType;       // "LTE", "5G", "NR"
-    std::string phoneType;         // "GSM", "CDMA"
+struct GPSConfiguration {
+    // Location
+    double latitude;                    // GPS latitude
+    double longitude;                   // GPS longitude
+    double altitude;                    // Altitude in meters
+    double accuracy;                    // Accuracy in meters
+    double altitudeAccuracy;            // Altitude accuracy
+    double speed;                      // Speed in m/s
+    double bearing;                    // Bearing in degrees
     
-    // SIM slots
-    std::string simSlot1ICCID;
-    std::string simSlot2ICCID;
+    // GPS Info
+    std::string gpsVersion;            // "1.0"
+    std::string gpsSize;               // GPS data size
+    std::string gpsFlags;              // GPS flags
     
-    static std::vector<SIMInfo> generateSimInfo(int count = 1);
+    // Supported Constellations
+    bool supportsGPS;                  // GPS (USA)
+    bool supportsGLONASS;              // GLONASS (Russia)
+    bool supportsBEIDOU;              // BeiDou (China)
+    bool supportsGALILEO;              // Galileo (Europe)
+    bool supportsQZSS;                 // QZSS (Japan)
+    
+    // GPS Properties
+    std::string gpsAccuracy;           // Accuracy setting
+    std::string gpsSensitivity;       // GPS sensitivity
+    std::string gpsVendor;             // GPS vendor
+    std::string gpsModel;             // GPS model
+    
+    // Geofencing
+    std::string lastLocation;         // Last known location
+    std::string locationMode;         // "high_accuracy", "battery_saving", "device_only"
+    
+    void generate();
+    std::map<std::string, std::string> toMap() const;
 };
 
 // ============================================================================
-// Telephony Information
+// Sensors Configuration
 // ============================================================================
 
 /**
- * @brief Telephony/Radio information
+ * @brief Sensor Configuration
  */
-struct TelephonyInfo {
-    std::string deviceId;          // IMEI
-    std::string deviceId2;         // IMEI2 (for dual SIM)
-    std::string subscriberId;      // IMSI
-    std::string subscriberId2;     // IMSI2
-    std::string serialNumber;      // Serial number
-    std::string androidId;        // Android ID
-    std::string gsfId;           // Google Services Framework ID
-    
-    // Voice
-    std::string voiceMailNumber;
-    std::string voiceMailTag;
-    
-    // Phone number (if available)
-    std::string line1Number;
-    std::string line1NumberTag;
-};
-
-// ============================================================================
-// Sensor Configuration
-// ============================================================================
-
-/**
- * @brief Sensor information
- */
-struct SensorInfo {
-    std::vector<std::string> sensors;
+struct SensorsConfiguration {
+    // Sensor List
+    std::vector<std::string> availableSensors;
     
     // Accelerometer
-    std::string accelerometerName;    // "STMicro accelerometer"
-    std::string accelerometerVendor;   // "STMicroelectronics"
-    std::string accelerometerVersion; // "1"
-    std::string accelerometerType;     // "1" (TYPE_ACCELEROMETER)
-    float accelerometerMaxRange;        // "19.613300"
-    float accelerometerResolution;      // "0.001907"
-    float accelerometerPower;          // "0.130000"
+    struct Accelerometer {
+        std::string name;               // "STMicro Accelerometer"
+        std::string vendor;             // "STMicroelectronics"
+        std::string version;           // "1"
+        std::string type;              // "1" (TYPE_ACCELEROMETER)
+        std::string maxRange;           // "19.613300"
+        std::string resolution;         // "0.001907"
+        std::string power;             // "0.130000"
+        std::string maxDelay;          // "200000"
+        std::string minDelay;          // "5000"
+        
+        // Current values
+        float x, y, z;                  // Current acceleration
+    } accelerometer;
     
     // Gyroscope
-    std::string gyroscopeName;
-    std::string gyroscopeVendor;
+    struct Gyroscope {
+        std::string name;
+        std::string vendor;
+        std::string version;
+        std::string type;              // "4"
+        std::string maxRange;          // "4000.000000"
+        std::string resolution;       // "0.001220"
+        std::string power;             // "0.260000"
+        
+        float x, y, z;                  // Current rotation
+    } gyroscope;
     
     // Magnetic Field
-    std::string magneticName;
-    std::string magneticVendor;
+    struct MagneticField {
+        std::string name;
+        std::string vendor;
+        std::string version;
+        std::string type;              // "2"
+        std::string maxRange;          // "49.999992"
+        std::string resolution;        // "0.001500"
+        std::string power;             // "0.250000"
+        
+        float x, y, z;                  // Current magnetic field
+    } magneticField;
     
-    // Proximity
-    std::string proximityName;
-    std::string proximityVendor;
+    // Barometer (Pressure)
+    struct Barometer {
+        std::string name;
+        std::string vendor;
+        std::string version;
+        std::string type;              // "6"
+        std::string maxRange;          // "1100.000000"
+        std::string resolution;        // "0.001000"
+        std::string power;             // "0.001400"
+        
+        float pressure;                  // Current pressure in hPa
+    } barometer;
     
-    // Light
-    std::string lightName;
-    std::string lightVendor;
+    // Light Sensor
+    struct LightSensor {
+        std::string name;
+        std::string vendor;
+        std::string version;
+        std::string type;              // "5"
+        std::string maxRange;          // "4300.000000"
+        std::string resolution;        // "1.000000"
+        std::string power;             // "0.150000"
+        
+        float lux;                      // Current illuminance
+    } light;
     
-    // Pressure
-    std::string pressureName;
-    std::string pressureVendor;
+    // Proximity Sensor
+    struct ProximitySensor {
+        std::string name;
+        std::string vendor;
+        std::string version;
+        std::string type;              // "3"
+        std::string maxRange;          // "5.000000"
+        std::string resolution;        // "1.000000"
+        std::string power;             // "0.180000"
+        
+        float distance;                  // Current distance in cm
+    } proximity;
     
-    // Steps
-    std::string stepCounterName;
-    std::string stepDetectorName;
+    // Step Counter/Detector
+    struct StepSensor {
+        std::string name;
+        std::string vendor;
+        std::string version;
+        std::string type;              // "19" (STEP_COUNTER), "18" (STEP_DETECTOR)
+        
+        int64_t steps;                  // Total step count
+        bool stepDetected;              // Step detected
+    } stepCounter;
     
-    // Haptic
-    std::string hapticName;
-    int32_t hapticMaxAmplitude;
+    // Haptic Feedback
+    struct Haptic {
+        std::string name;
+        int32_t maxAmplitude;          // 255
+        int32_t defaultAmplitude;      // 128
+    } haptic;
     
-    static SensorInfo getDefault();
-    static SensorInfo getForDeviceClass(const std::string& deviceClass);
+    void generate(const std::string& deviceClass);
+    std::map<std::string, std::string> toMap() const;
 };
 
 // ============================================================================
-// Camera Configuration
+// Security Configuration
 // ============================================================================
 
 /**
- * @brief Camera information
+ * @brief Security Configuration - KNOX, SELinux, Hardware Attestation
  */
-struct CameraInfo {
-    // Back Camera
-    std::string backCameraMake;     // "Samsung"
-    std::string backCameraModel;     // "S5KHP2"
-    std::string backCameraLensMake;  // "Samsung"
-    std::string backCameraLensModel; // "Samsung S5KHP2"
-    std::string backCameraLensFocalLength; // "5.67mm"
-    float backCameraAperture;       // 1.75
-    int32_t backCameraOrientation;   // 90
-    int32_t backCameraSupportedModes;
-    std::string backCameraCapabilities; // "auto-exposure-modes, auto-whitebalance"
+struct SecurityConfiguration {
+    // KNOX (Samsung)
+    std::string knoxVersion;           // KNOX version (e.g., "3.9")
+    std::string knoxId;               // Samsung KNOX ID (32 char hex)
+    std::string knoxGuardVersion;      // KNOX Guard version
     
-    // Front Camera
-    std::string frontCameraMake;
-    std::string frontCameraModel;
-    std::string frontCameraLensMake;
-    std::string frontCameraLensModel;
-    float frontCameraAperture;
-    int32_t frontCameraOrientation;
+    // Samsung-specific
+    std::string odeMode;              // ODE mode
+    std::string secureStorageEnabled; // Secure storage status
+    std::string teeVersion;           // Trusted Execution Environment version
     
-    // Flash
-    bool hasFlash;                 // true
-    std::string flashTemperature;   // "5500K"
+    // SELinux (Security-Enhanced Linux)
+    std::string selinuxStatus;        // "Enforcing", "Permissive"
+    std::string selinuxEnforcing;     // "Enforcing", "Permissive"
+    std::string selinuxMode;          // "Enforcing", "Permissive"
     
-    // Supported sizes
-    std::vector<std::string> backCameraSizes;
-    std::vector<std::string> frontCameraSizes;
-    
-    static CameraInfo getDefault();
-};
-
-// ============================================================================
-// Audio Configuration
-// ============================================================================
-
-/**
- * @brief Audio/Sound configuration
- */
-struct AudioInfo {
-    std::string audioDevice;         // "audio primary boot"
-    std::string audioEffect;          // "audio offload"
-    std::string audioOffloadBitWidth; // "24"
-    std::string audioOffloadChannels;  // "2"
-    std::string audioOffloadSampleRate; // "48000"
-    
-    // Speaker
-    std::string speakerImpedance;    // "4 Ohm"
-    std::vector<std::string> supportedAudioFormats;
-    std::vector<std::string> supportedAudioSources;
-    
-    // Microphones
-    int32_t microphoneCount;
-    std::string microphoneNames;
-    
-    static AudioInfo getDefault();
-};
-
-// ============================================================================
-// Location/GPS Configuration
-// ============================================================================
-
-/**
- * @brief GPS/Location configuration
- */
-struct GPSInfo {
-    std::string gpsVersion;         // "1.0"
-    std::string gpsSize;            // "1040384"
-    std::string gpsFlags;           // "1"
-    
-    // Supported protocols
-    bool supportsGPS;
-    bool supportsGLONASS;
-    bool supportsBEIDOU;
-    bool supportsGALILEO;
-    bool supportsQZSS;
-    
-    std::string gpsAccuracy;        // "2.0"
-    std::string gpsSensitivity;     // "0.0"
-    std::string gpsVendor;          // "Qualcomm"
-    
-    static GPSInfo getDefault();
-};
-
-// ============================================================================
-// Biometric Configuration
-// ============================================================================
-
-/**
- * @brief Biometric/Fingerprint configuration
- */
-struct BiometricInfo {
-    bool hasFingerprint;           // true
-    std::string fingerprintVendor;  // "Qualcomm"
-    std::string fingerprintModel;   // "QTI Fingerprint Sensor"
-    std::string fingerprintVersion; // "1.0"
-    
-    bool hasFaceUnlock;            // true/false
-    std::string faceUnlockVendor;
-    
-    bool hasIrisScanner;           // false
-    std::string irisScannerVendor;
-    
-    static BiometricInfo getDefault();
-};
-
-// ============================================================================
-// Security/Boot Configuration
-// ============================================================================
-
-/**
- * @brief Boot and security configuration
- */
-struct SecurityInfo {
-    std::string verifiedBootState;   // "green"
-    std::string verifiedBootLocked; // "true"
-    std::string verifiedBootHardlocked; // "true"
-    std::string verificationBootEnabled; // "true"
-    std::string verificationBoot;    // "true"
-    
-    // SELinux
-    std::string selinuxEnforcing;  // "Enforcing"
-    std::string selinuxStatus;     // "Enforcing"
-    
-    // Trusty
-    std::string trustyVersion;     // "1.0"
-    
-    // Keymaster
-    std::string keymasterVersion;  // "4.1"
+    // Hardware Attestation
+    std::string attestationEnabled;   // "true"
+    std::string attestationStatus;    // "true"
+    std::string keymasterVersion;    // Keymaster version (e.g., "4.1")
+    std::string keymasterSecurityLevel; // "SOFTWARE"
     
     // Gatekeeper
-    std::string gatekeeperVersion; // "1.0"
+    std::string gatekeeperVersion;   // Gatekeeper version
+    std::string gatekeeperSecurityLevel; // "SOFTWARE"
     
     // Strongbox
-    bool hasStrongbox;             // true
+    bool hasStrongbox;               // Strongbox available
+    std::string strongboxVersion;     // Strongbox version
+    std::string strongboxSecurityLevel; // "STRONGBOX"
     
-    // RKP (Samsung Knox, etc.)
-    bool hasRKP;                  // true/false
-    std::string rkpVersion;
+    // Trusty (Trusted OS)
+    std::string trustyVersion;       // Trusty TEE version
     
-    static SecurityInfo getDefault();
+    // Verified Boot Key
+    std::string verifiedBootKeyHash;  // Hash of verified boot key
+    std::string roBootloader;        // Read-only bootloader state
+    
+    // Hardware-backed keys
+    std::string hardwareBackedKeys;   // "true"
+    std::string cryptoSupported;      // "true"
+    
+    // SafetyNet/Play Integrity
+    std::string safetyNetEnabled;    // SafetyNet enabled
+    std::string playIntegrityToken;   // Play Integrity token
+    
+    void generate(const std::string& manufacturer);
+    std::map<std::string, std::string> toMap() const;
+};
+
+// ============================================================================
+// Android Version
+// ============================================================================
+
+/**
+ * @brief Android Version Information
+ */
+struct AndroidVersion {
+    std::string codename;              // "UpsideDownCake"
+    std::string versionNumber;         // "15"
+    std::string apiLevel;             // "35"
+    std::string releaseDate;          // "2024-10"
+    std::string securityPatch;         // "2024-11-01"
+    std::string buildType;            // "user"
+    std::string buildTags;            // "release-keys"
+    
+    static AndroidVersion getLatest();
+    static AndroidVersion fromString(const std::string& version);
+};
+
+// ============================================================================
+// Display Configuration
+// ============================================================================
+
+/**
+ * @brief Display Configuration
+ */
+struct DisplayConfiguration {
+    uint32_t widthPixels;
+    uint32_t heightPixels;
+    uint32_t densityDPI;
+    float densityValue;
+    uint32_t fps;
+    uint32_t vsync;
+    
+    std::string hdrCapabilities;      // "HDR10, HDR10+, DolbyVision"
+    std::string wideColorGamut;      // "sRGB, Display P3"
+    
+    // Calculated
+    uint32_t densityBucket;
+    uint32_t smallestWidth;
+    
+    void generate(const std::string& deviceClass);
+    std::map<std::string, std::string> toMap() const;
 };
 
 // ============================================================================
@@ -481,167 +621,163 @@ struct SecurityInfo {
 // ============================================================================
 
 /**
- * @brief Complete device profile containing all properties
+ * @brief Complete Device Profile containing all device properties
  */
 class DeviceProfile {
 public:
-    // ========================================================================
     // Metadata
-    // ========================================================================
-    std::string profileId;              // Unique profile ID
-    std::string profileName;            // Human-readable name
-    std::string createdAt;             // Creation timestamp
-    std::string modifiedAt;             // Last modified timestamp
-    std::string manufacturer;           // Manufacturer name
+    std::string profileId;
+    std::string profileName;
+    std::string createdAt;
+    std::string modifiedAt;
+    std::string manufacturer;
+    std::string model;
+    std::string codename;
+    std::string deviceClass;
     
-    // ========================================================================
-    // Identity Components
-    // ========================================================================
-    TelephonyInfo telephony;
-    SIMInfo sim;
-    NetworkConfig network;
+    // All Components
+    DeviceIdentity identity;
+    MACAddresses macAddresses;
+    SIMConfiguration sim;
+    CPUInformation cpu;
+    GPUInformation gpu;
+    MemoryInformation memory;
+    BatteryInformation battery;
+    DisplayConfiguration display;
+    BuildInformation build;
+    VerifiedBootInformation verifiedBoot;
+    NetworkConfiguration network;
+    GPSConfiguration gps;
+    SensorsConfiguration sensors;
+    SecurityConfiguration security;
+    AndroidVersion androidVersion;
     
-    // ========================================================================
-    // Hardware Components
-    // ========================================================================
-    CPUInfo cpu;
-    GPUInfo gpu;
-    MemoryConfig memory;
-    BatteryConfig battery;
-    DisplayConfig display;
+    // TAC Information
+    std::string tac;
+    std::string tacModel;
+    std::string tacInternalName;
     
-    // ========================================================================
-    // Build Components
-    // ========================================================================
-    BuildInfo build;
-    AndroidVersionInfo androidVersion;
-    
-    // ========================================================================
-    // Peripherals
-    // ========================================================================
-    SensorInfo sensors;
-    CameraInfo camera;
-    AudioInfo audio;
-    GPSInfo gps;
-    BiometricInfo biometric;
-    SecurityInfo security;
-    
-    // ========================================================================
-    // Methods
-    // ========================================================================
-    
-    /**
-     * @brief Default constructor
-     */
+    // Constructors
     DeviceProfile();
-    
-    /**
-     * @brief Create profile for specific manufacturer
-     * @param manufacturer Manufacturer name
-     */
     explicit DeviceProfile(const std::string& manufacturer);
-    
-    /**
-     * @brief Copy constructor
-     */
     DeviceProfile(const DeviceProfile& other);
     
-    /**
-     * @brief Assignment operator
-     */
+    // Assignment
     DeviceProfile& operator=(const DeviceProfile& other);
     
-    /**
-     * @brief Generate all required identifiers
-     */
-    void generateIdentifiers();
+    // Generate complete profile
+    void generate(const std::string& manufacturer,
+                 const std::string& model = "",
+                 const std::string& androidVersion = "");
     
-    /**
-     * @brief Get all properties as map for ADB commands
-     * @return Map of property name to value
-     */
-    std::map<std::string, std::string> getAllProperties() const;
-    
-    /**
-     * @brief Get properties grouped by category
-     * @return Map of category to property map
-     */
-    std::map<std::string, std::map<std::string, std::string>> getPropertiesByCategory() const;
-    
-    /**
-     * @brief Serialize to JSON string
-     * @return JSON representation
-     */
+    // Serialization
     std::string toJSON() const;
-    
-    /**
-     * @brief Deserialize from JSON string
-     * @param json JSON string
-     * @return true if successful
-     */
     bool fromJSON(const std::string& json);
-    
-    /**
-     * @brief Save profile to file
-     * @param filepath File path
-     * @return true if successful
-     */
     bool save(const std::string& filepath) const;
-    
-    /**
-     * @brief Load profile from file
-     * @param filepath File path
-     * @return true if successful
-     */
     bool load(const std::string& filepath);
     
-    /**
-     * @brief Print profile to stdout
-     */
+    // Export
+    std::map<std::string, std::string> getAllProperties() const;
+    std::map<std::string, std::map<std::string, std::string>> getPropertiesByCategory() const;
+    
+    // Display
     void print() const;
-    
-    /**
-     * @brief Validate profile consistency
-     * @return true if valid
-     */
-    bool validate() const;
-    
-    /**
-     * @brief Get profile summary
-     * @return Summary string
-     */
     std::string summary() const;
+    bool validate() const;
 
 private:
-    /**
-     * @brief Initialize with manufacturer defaults
-     */
-    void initializeForManufacturer(const std::string& manufacturer);
+    void initialize();
+    std::string generateUniqueId();
+    std::string getCurrentTimestamp();
+};
+
+// ============================================================================
+// TAC Database
+// ============================================================================
+
+/**
+ * @brief TAC Entry
+ */
+struct TACEntry {
+    std::string tac;                   // 8-digit TAC
+    std::string brand;                 // Brand name
+    std::string modelName;             // Marketing model name
+    std::string internalName;          // Internal codename
+    std::string deviceType;           // "Smartphone", "Tablet"
+    std::string deviceClass;          // "High-End", "Mid-Range"
+    std::string launchYear;           // "2024"
+    std::string launchMonth;          // "01"
+};
+
+/**
+ * @brief TAC Database for IMEI generation
+ */
+class TACDatabase {
+public:
+    static TACDatabase& getInstance();
     
-    /**
-     * @brief Generate TAC entry based on manufacturer
-     */
-    void generateTACEntry();
+    std::optional<TACEntry> getByTAC(const std::string& tac) const;
+    std::optional<TACEntry> getRandomForManufacturer(const std::string& manufacturer);
+    std::vector<TACEntry> getByManufacturer(const std::string& manufacturer);
+    std::vector<std::string> getManufacturers() const;
+    std::optional<TACEntry> getRandom();
     
-    /**
-     * @brief Generate build fingerprint
-     */
-    void generateFingerprint();
+private:
+    TACDatabase();
+    void initializeDatabase();
+    void addTAC(const std::string& tac, const std::string& brand,
+                const std::string& model, const std::string& internal,
+                const std::string& type, const std::string& cls,
+                const std::string& year, const std::string& month);
     
-    /**
-     * @brief Generate serial number
-     */
-    void generateSerialNumber();
+    std::map<std::string, TACEntry> m_tacMap;
+    std::map<std::string, std::vector<std::string>> m_manufacturerTACs;
+};
+
+// ============================================================================
+// IMEI Generator Utility
+// ============================================================================
+
+class IMEIGenerator {
+public:
+    static std::string generate(const std::string& tac);
+    static bool validate(const std::string& imei);
+    static int calculateLuhnCheckDigit(const std::string& base);
+};
+
+// ============================================================================
+// MAC Generator Utility
+// ============================================================================
+
+class MACGenerator {
+public:
+    static std::string generate(const std::string& oui);
+    static std::string getOUIForManufacturer(const std::string& manufacturer);
+};
+
+// ============================================================================
+// Operator/Carrier Database
+// ============================================================================
+
+struct CarrierInfo {
+    std::string name;
+    std::string country;
+    std::string mcc;
+    std::string mnc;
+};
+
+class CarrierDatabase {
+public:
+    static CarrierDatabase& getInstance();
     
-    /**
-     * @brief Generate MAC addresses
-     */
-    void generateMACAddresses();
+    CarrierInfo getRandom();
+    std::vector<CarrierInfo> getByCountry(const std::string& country);
     
-    /**
-     * @brief Generate SIM information
-     */
-    void generateSIMInfo();
+private:
+    CarrierDatabase();
+    void initialize();
+    
+    std::vector<CarrierInfo> m_carriers;
 };
 
 } // namespace RedroidCPP

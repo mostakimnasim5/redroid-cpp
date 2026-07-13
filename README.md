@@ -1,13 +1,12 @@
-# RedroidCPP - Professional Android Emulator Manager
+# RedroidCPP - Professional Android Emulator Manager v3.0.0
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+![Version](https://img.shields.io/badge/Version-3.0.0-blue)
 ![C++](https://img.shields.io/badge/C%2B%2B-17-green)
 ![License](https://img.shields.io/badge/License-Apache--2.0-orange)
-![Platform](https://img.shields.io/badge/Platform-Linux-yellow)
 
-**Professional-grade C++ application for managing virtual Android devices with realistic device spoofing capabilities.**
+**Professional-grade C++ application for managing virtual Android devices with complete device profile generation.**
 
 *Built for Banking App Testing, Security Testing, and Anti-Detection Verification*
 
@@ -15,229 +14,191 @@
 
 ---
 
-## 🎯 Features
+## 🎯 Complete Device Profile Features
 
-### Device Profile Generation
-- **IMEI Generation** with valid Luhn check digits
-- **Serial Number Generation** based on manufacturer-specific formats
-- **MAC Address Generation** with valid OUI prefixes
-- **Android ID & GSF ID Generation**
-- **Complete Build Fingerprint Generation**
+### 📱 Device IDs
+| Property | Description | Format |
+|----------|-------------|--------|
+| IMEI | International Mobile Equipment Identity | 15 digits (Luhn validated) |
+| IMEI2 | Secondary IMEI (Dual SIM) | 15 digits |
+| Serial | Device Serial Number | Manufacturer-specific |
+| Android ID | Android System Identifier | 16 hex chars |
+| GSF ID | Google Services Framework ID | 10 digits |
+| AAID | Google Advertising ID | UUID format |
 
-### Supported Manufacturers
-| Manufacturer | Models | TAC Codes |
-|-------------|--------|-----------|
-| Samsung | Galaxy S24/S23/Z Fold/Flip, A-series | 35875109, 35776608 |
-| Google | Pixel 8/7/6/5/Fold | 35746608, 35441008 |
-| Xiaomi | Xiaomi 14/13, Redmi, POCO | 86917102, 86100208 |
-| OnePlus | OnePlus 12/11/10T, Nord | 45890508 |
-| OPPO | Find X7/X6, Reno | 86536703 |
-| Vivo | X100/X90, V30 | 86538903 |
-| Huawei | Mate 60, P60, Mate X5 | 86799304 |
-| Motorola | Edge 50/40/30 | 35899405 |
-| Sony | Xperia 1/5/10 | 35885607 |
-| ASUS | ROG Phone, Zenfone | 35892008 |
-| Realme | GT 5 Pro, C67 | 86936203 |
-| Nokia | G42, X30 | 35918108 |
+### 🔗 MAC Addresses
+| Property | Description |
+|---------|-------------|
+| WiFi MAC | WiFi interface MAC address |
+| Bluetooth MAC | Bluetooth interface MAC address |
+| Ethernet MAC | Ethernet interface MAC address |
 
-### Device Properties Generated
-- ✅ IMEI / IMEI2 (Dual SIM)
-- ✅ Serial Number
-- ✅ Android ID
-- ✅ GSF ID
-- ✅ WiFi MAC Address
-- ✅ Bluetooth MAC Address
-- ✅ Build Fingerprint
-- ✅ Bootloader Version
-- ✅ Radio/Baseband Version
-- ✅ Display Resolution/DPI/FPS
-- ✅ CPU/GPU Information
-- ✅ Memory Configuration
-- ✅ SIM/Operator Information
-- ✅ Security Patch Level
-- ✅ SELinux Status
+### 📋 SIM Configuration
+| Property | Description |
+|---------|-------------|
+| ICCID | Integrated Circuit Card Identifier (20 digits) |
+| IMSI | International Mobile Subscriber Identity (15 digits) |
+| Carrier | Network operator name |
+| MCC/MNC | Mobile Country/Network Codes |
 
-## 📋 Requirements
+### ⚙️ Hardware
+| Component | Properties |
+|----------|-----------|
+| **CPU** | Architecture, cores, frequency, BogoMIPS |
+| **GPU** | Renderer, vendor, OpenGL ES, Vulkan |
+| **Memory** | Total RAM, heap sizes |
+| **Battery** | Capacity, temperature, voltage |
 
-- **OS:** Linux (Ubuntu 20.04+, Debian 11+)
-- **Compiler:** GCC 9+ or Clang 10+
-- **CMake:** 3.16+
-- **Docker:** 20.10+ (for container management)
-- **ADB:** For device control
+### 🔨 Build Information
+| Property | Description |
+|---------|-------------|
+| Fingerprint | Full Android build fingerprint |
+| Bootloader | Bootloader version |
+| Build ID | Build identifier (UP1A.xxxxxxx) |
+| Security Patch | Security patch level date |
 
-## 🔧 Installation
+### 🔒 Verified Boot
+| Property | Description |
+|---------|-------------|
+| State | Boot state (green/yellow/orange/red) |
+| Locked | Device lock status |
+| VBMeta Digest | Verified boot metadata digest |
+
+### 🌐 Network Configuration
+| Property | Description |
+|---------|-------------|
+| Hostname | Device hostname |
+| IP Address | DHCP-assigned IP |
+| DNS | Primary and secondary DNS |
+| TCP Buffers | Network buffer configurations |
+
+### 📍 GPS/Location
+| Property | Description |
+|---------|-------------|
+| Latitude | GPS latitude coordinate |
+| Longitude | GPS longitude coordinate |
+| Altitude | Altitude in meters |
+| Accuracy | Location accuracy in meters |
+| Constellations | GPS, GLONASS, BeiDou, Galileo, QZSS |
+
+### 📊 Sensors
+| Sensor | Properties |
+|--------|-----------|
+| Accelerometer | Name, vendor, range, resolution |
+| Gyroscope | Name, vendor, range, resolution |
+| Magnetic Field | Name, vendor, range, resolution |
+| Barometer | Name, vendor, pressure range |
+| Light | Name, vendor, lux range |
+| Proximity | Name, vendor, distance range |
+
+### 🛡️ Security
+| Property | Description |
+|---------|-------------|
+| SELinux | SELinux status (Enforcing) |
+| Keymaster | Keymaster version |
+| Strongbox | Strongbox availability |
+| KNOX | Samsung KNOX ID and version |
+| Hardware Attestation | Attestation status |
+
+---
+
+## 📦 Supported Manufacturers
+
+| Manufacturer | Models |
+|-------------|--------|
+| Samsung | Galaxy S24/S23/Z Fold/A-series |
+| Google | Pixel 8/7/6/Fold |
+| Xiaomi | Xiaomi 14/13, Redmi, POCO |
+| OnePlus | OnePlus 12/11/10T |
+| OPPO | Find X7/X6, Reno |
+| Vivo | X100/X90, V30 |
+| Huawei | Mate 60, P60, Mate X5 |
+| Motorola | Edge 50/40/30 |
+| Sony | Xperia 1/5/10 |
+| ASUS | ROG Phone, Zenfone |
+| Realme | GT 5 Pro, C67 |
+| Nokia | G42, X30 |
+
+---
+
+## 🚀 Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/mostakimnasim5/redroid-cpp.git
 cd redroid-cpp
 
-# Build with CMake
-mkdir build && cd build
-cmake ..
-make
+# Compile
+g++ -std=c++17 -O2 -Wall -I include -o redroid-cli src/main.cpp src/Core/DeviceProfile.cpp
 
-# Or compile directly
-g++ -std=c++17 -O2 -Wall -o redroid-cli src/main.cpp
-
-# Install
-sudo make install
+# Run
+./redroid-cli help
 ```
 
-## 🚀 Usage
+---
 
-### Command Line Interface
+## 📖 Usage
 
 ```bash
-# Show help
-./redroid-cli help
+# Create device
+./redroid-cli create -m Samsung -a 14
 
-# Create a device
-./redroid-cli create -m Samsung
-./redroid-cli create -m Google --name "My Pixel"
-./redroid-cli create -m Xiaomi -a 14.0.0
+# Create Google device
+./redroid-cli create -m Google
 
-# Generate profile only (without saving)
-./redroid-cli profile -m OnePlus
-
-# List all devices
+# List devices
 ./redroid-cli list
 
-# Show device information
+# Show device info
 ./redroid-cli info <device-id>
 
-# Delete a device
-./redroid-cli delete <device-id>
+# Show all properties
+./redroid-cli profile -m Xiaomi
 
 # Validate IMEI
 ./redroid-cli validate 358751090123456
 
-# Show system status
+# System status
 ./redroid-cli status
 
-# List supported manufacturers
+# Supported manufacturers
 ./redroid-cli manufacturers
 ```
 
-### Output Example
-
-```
-═══════════════════════════════════════════════════════════
-                    DEVICE INFORMATION
-═══════════════════════════════════════════════════════════
-
-[ BASIC INFO ]
-  ID:           dev_95fd3485
-  Name:         Test-Samsung
-  Manufacturer: Samsung
-  Model:        Galaxy S23+
-  Status:       created
-  Port:         5555
-
-[ DEVICE IDENTITY ]
-  IMEI:         357766095455908
-  IMEI2:        357766097696426
-  Serial:       BMDQUD9FYVI7
-  Android ID:   d3e71ae65cfc3d12
-  GSF ID:       4323468124
-
-[ NETWORK ]
-  WiFi MAC:     8C:71:F8:AB:CD:EF
-  Bluetooth:    8C:71:F8:12:34:56
-
-[ BUILD ]
-  Fingerprint:   Samsung/Samsung/z3:14/UP1A.4289383/...
-  Bootloader:    Mz36995
-  Security Patch: 2024-11-01
-  Android:      14 (UpsideDownCake)
-
-[ DISPLAY ]
-  Resolution:   1440x3120
-  DPI:          560
-  FPS:          120
-```
+---
 
 ## 📁 Project Structure
 
 ```
 redroid-cpp/
 ├── include/
-│   ├── Data/
-│   │   └── TACDatabase.h        # TAC code database for IMEI generation
 │   └── Core/
-│       ├── DeviceProfile.h       # Complete device profile structures
-│       └── DeviceManager.h       # Singleton device manager
+│       ├── DeviceProfile.h        # Complete device profile header
+│       └── DeviceManager.h        # Device manager (optional)
 ├── src/
 │   ├── main.cpp                 # CLI application
-│   ├── Data/
-│   │   └── TACDatabase.cpp      # TAC database implementation
 │   └── Core/
-│       ├── DeviceProfile.cpp     # Device profile implementation
-│       └── DeviceManager.cpp     # Device manager implementation
-├── tests/                       # Unit tests
-├── docs/                        # Documentation
-├── CMakeLists.txt              # CMake build configuration
-└── README.md                   # This file
+│       └── DeviceProfile.cpp     # Full implementation
+├── CMakeLists.txt
+└── README.md
 ```
-
-## 🔒 Security & Compliance
-
-This software is designed for **legitimate testing purposes only**:
-
-- ✅ **Banking App Testing** - Test banking applications in isolated environments
-- ✅ **Security Research** - Verify app security measures
-- ✅ **Anti-Detection Testing** - Test if apps can detect emulated devices
-- ✅ **QA Testing** - Quality assurance for Android applications
-
-### ⚠️ Disclaimer
-
-> **This software is provided for authorized testing and development purposes only.** 
-> Users are responsible for ensuring compliance with applicable laws and terms of service.
-> The developers assume no liability for misuse of this software.
-
-## 📊 Technical Details
-
-### IMEI Generation Algorithm
-
-The IMEI is generated using the **Luhn algorithm** for check digit validation:
-
-```
-TAC (8 digits) + SNR (6 digits) + Check Digit (1 digit) = 15 digits
-```
-
-### TAC Database
-
-Type Allocation Codes (TAC) are validated codes assigned to device models by the GSMA.
-Our database includes real TAC codes for major manufacturers to ensure authenticity.
-
-### Device Fingerprint Structure
-
-```
-{manufacturer}/{brand}/{device}:{version}/{build_id}/{build_id}:
-{type}/{tags}
-```
-
-Example:
-```
-Samsung/Samsung/z3:14/UP1A.231005.007/UP1A.231005.007:user/release-keys
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
-
-## 📄 License
-
-Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
-
-## 👨‍💻 Author
-
-**RedroidCPP Development Team**
 
 ---
 
-<div align="center">
+## ⚖️ Disclaimer
 
-**Made with ❤️ for the Android testing community**
+> **This software is for authorized testing purposes only.**
+> - Banking App Testing
+> - Security Research
+> - Anti-Detection Verification
+> - QA Testing
 
-</div>
+---
+
+## 📄 License
+
+Licensed under the Apache License 2.0.
+
+---
+
+**Version 3.0.0** - Complete Device Profile Implementation
