@@ -1,18 +1,6 @@
 /**
  * RedroidCPP - Professional Android Emulator Manager v3.0.0
- * Complete Device Profile with all properties
- * 
- * Features:
- * - Device IDs: IMEI, IMEI2, Serial, Android ID, GSF ID, Advertising ID
- * - MAC Addresses: WiFi, Bluetooth, Ethernet
- * - SIM: ICCID, IMSI
- * - Hardware: CPU, GPU, RAM, Battery
- * - Build: Fingerprint, Bootloader, Build ID, Security Patch
- * - Verified Boot: State (green), VBMeta digest
- * - Network: Hostname, TCP buffers, DNS
- * - GPS: Latitude, Longitude, Altitude, Accuracy
- * - Sensors: Accelerometer, Gyro, Mag, Baro, Light, Proximity
- * - Security: KNOX ID, SELinux, Hardware attestation
+ * Standalone CLI Tool - No External Dependencies Required
  */
 
 #include <iostream>
@@ -29,11 +17,13 @@
 #include <cstdio>
 #include <array>
 #include <random>
+#include <optional>
 
-// Include the device profile header
-#include "Core/DeviceProfile.h"
-
-using namespace RedroidCPP;
+#ifdef _WIN32
+    #include <windows.h>
+    #define popen _popen
+    #define pclose _pclose
+#endif
 
 // ============================================================================
 // ANSI Color Codes
@@ -49,10 +39,196 @@ using namespace RedroidCPP;
 #define COLOR_WHITE   "\033[37m"
 
 // ============================================================================
+// Standalone Device Profile Generator
+// ============================================================================
+
+class StandaloneProfile {
+public:
+    std::string profileId;
+    std::string profileName;
+    std::string manufacturer;
+    std::string androidVersion;
+    std::string imei;
+    std::string imei2;
+    std::string serialNumber;
+    std::string androidId;
+    std::string gsfId;
+    std::string wifiMac;
+    std::string bluetoothMac;
+    std::string fingerprint;
+    std::string bootloader;
+    std::string buildId;
+    std::string securityPatch;
+    std::string cpu;
+    std::string gpu;
+    std::string ram;
+    
+    void generate(const std::string& mfr = "Samsung", const std::string& version = "14") {
+        manufacturer = mfr.empty() ? "Samsung" : mfr;
+        androidVersion = version;
+        
+        // Generate IMEI (Luhn validated)
+        std::string tac = generateTAC(manufacturer);
+        std::string sn = "";
+        for (int i = 0; i < 6; i++) sn += std::to_string(rand() % 10);
+        imei = tac + sn;
+        imei += calculateLuhnCheckDigit(imei);
+        
+        // Second IMEI for dual SIM
+        imei2 = tac + sn;
+        sn[0] = ((sn[0] - '0') + 3) % 10 + '0'; // Slightly different
+        imei2 = tac + sn;
+        imei2 += calculateLuhnCheckDigit(imei2);
+        
+        // Serial Number
+        if (manufacturer == "Samsung") {
+            serialNumber = "R" + std::to_string(100000 + rand() % 900000) + "X" + std::to_string(10 + rand() % 90);
+        } else if (manufacturer == "Google") {
+            serialNumber = "AG" + std::to_string(10000000 + rand() % 90000000);
+        } else if (manufacturer == "Xiaomi") {
+            serialNumber = std::to_string(10000000 + rand() % 90000000) + "AA";
+        } else {
+            serialNumber = std::to_string(rand() % 1000000000000);
+        }
+        
+        // Android ID (16 hex chars)
+        std::string hexChars = "0123456789ABCDEF";
+        androidId = "";
+        for (int i = 0; i < 16; i++) androidId += hexChars[rand() % 16];
+        
+        // GSF ID (10 digits)
+        gsfId = std::to_string(1000000000 + rand() % 9000000000LL);
+        
+        // MAC Addresses
+        std::string oui;
+        if (manufacturer == "Samsung") {
+            std::string ouis[] = {"8C:71:F8", "D0:22:BE", "54:88:0E"};
+            oui = ouis[rand() % 3];
+        } else if (manufacturer == "Google") {
+            std::string ouis[] = {"3C:5A:B4", "54:60:09"};
+            oui = ouis[rand() % 2];
+        } else if (manufacturer == "Xiaomi") {
+            std::string ouis[] = {"34:80:B3", "F4:F5:D8"};
+            oui = ouis[rand() % 2];
+        } else {
+            oui = "00:1A:11";
+        }
+        
+        wifiMac = oui + ":" + 
+                 hexChars[rand() % 16] + hexChars[rand() % 16] + ":" +
+                 hexChars[rand() % 16] + hexChars[rand() % 16] + ":" +
+                 hexChars[rand() % 16] + hexChars[rand() % 16];
+        
+        bluetoothMac = "00:1A:7D:" + 
+                     hexChars[rand() % 16] + hexChars[rand() % 16] + ":" +
+                     hexChars[rand() % 16] + hexChars[rand() % 16] + ":" +
+                     hexChars[rand() % 16] + hexChars[rand() % 16];
+        
+        // Build Info
+        std::string model = getModelForManufacturer(manufacturer);
+        std::string codename = getCodename(manufacturer);
+        buildId = "UP1A.231005.007";
+        securityPatch = "2024-01-01";
+        bootloader = serialNumber;
+        
+        fingerprint = manufacturer + "/" + codename + "/" + codename + ":" +
+                     version + "/" + buildId + "/" + serialNumber + ":user/release-keys";
+        
+        profileId = "device_" + std::to_string(100000 + rand() % 900000);
+        profileName = manufacturer + " " + model + " (Android " + version + ")";
+        
+        // Hardware
+        cpu = "ARMv8 Processor (Qualcomm Snapdragon)";
+        gpu = "Adreno (TM) 750";
+        ram = "12GB";
+    }
+    
+    std::string calculateLuhnCheckDigit(const std::string& base) {
+        int sum = 0;
+        bool alternate = true;
+        for (int i = base.length() - 1; i >= 0; i--) {
+            int n = base[i] - '0';
+            if (alternate) {
+                n *= 2;
+                if (n > 9) n -= 9;
+            }
+            sum += n;
+            alternate = !alternate;
+        }
+        return std::to_string((10 - (sum % 10)) % 10);
+    }
+    
+    std::string generateTAC(const std::string& mfr) {
+        if (mfr == "Samsung") {
+            std::string tacs[] = {"35875107", "35875108", "35746608", "35746609"};
+            return tacs[rand() % 4];
+        } else if (mfr == "Google") {
+            std::string tacs[] = {"35746608", "35746610", "35924909"};
+            return tacs[rand() % 3];
+        } else if (mfr == "Xiaomi") {
+            std::string tacs[] = {"86917102", "86917103"};
+            return tacs[rand() % 2];
+        }
+        return "35875107";
+    }
+    
+    std::string getModelForManufacturer(const std::string& mfr) {
+        if (mfr == "Samsung") return "SM-S928B";
+        if (mfr == "Google") return "Pixel 8 Pro";
+        if (mfr == "Xiaomi") return "Mi 14";
+        if (mfr == "OnePlus") return "12";
+        if (mfr == "Huawei") return "P60 Pro";
+        return "Custom";
+    }
+    
+    std::string getCodename(const std::string& mfr) {
+        if (mfr == "Samsung") return "dm3q";
+        if (mfr == "Google") return "husky";
+        if (mfr == "Xiaomi") return "diting";
+        return "custom";
+    }
+    
+    void print() {
+        std::cout << "\n" << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════" << COLOR_RESET << std::endl;
+        std::cout << "                              DEVICE PROFILE" << std::endl;
+        std::cout << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════" << COLOR_RESET << std::endl;
+        
+        std::cout << "\n" << COLOR_BOLD << "[ Device Info ]" << COLOR_RESET << std::endl;
+        std::cout << "  Profile ID:       " << profileId << std::endl;
+        std::cout << "  Name:             " << profileName << std::endl;
+        std::cout << "  Manufacturer:     " << manufacturer << std::endl;
+        std::cout << "  Android Version:   " << androidVersion << std::endl;
+        
+        std::cout << "\n" << COLOR_BOLD << "[ Device Identifiers ]" << COLOR_RESET << std::endl;
+        std::cout << "  IMEI:             " << imei << std::endl;
+        std::cout << "  IMEI2:            " << imei2 << std::endl;
+        std::cout << "  Serial Number:     " << serialNumber << std::endl;
+        std::cout << "  Android ID:       " << androidId << std::endl;
+        std::cout << "  GSF ID:           " << gsfId << std::endl;
+        
+        std::cout << "\n" << COLOR_BOLD << "[ MAC Addresses ]" << COLOR_RESET << std::endl;
+        std::cout << "  WiFi MAC:         " << wifiMac << std::endl;
+        std::cout << "  Bluetooth MAC:     " << bluetoothMac << std::endl;
+        
+        std::cout << "\n" << COLOR_BOLD << "[ Hardware ]" << COLOR_RESET << std::endl;
+        std::cout << "  CPU:              " << cpu << std::endl;
+        std::cout << "  GPU:              " << gpu << std::endl;
+        std::cout << "  RAM:              " << ram << std::endl;
+        
+        std::cout << "\n" << COLOR_BOLD << "[ Build Info ]" << COLOR_RESET << std::endl;
+        std::cout << "  Fingerprint:       " << fingerprint << std::endl;
+        std::cout << "  Bootloader:       " << bootloader << std::endl;
+        std::cout << "  Build ID:         " << buildId << std::endl;
+        std::cout << "  Security Patch:    " << securityPatch << std::endl;
+        
+        std::cout << "\n" << COLOR_CYAN << "═══════════════════════════════════════════════════════════════════════════════════" << COLOR_RESET << std::endl;
+    }
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
-namespace {
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
@@ -86,16 +262,14 @@ void printBanner() {
 ║   ██║     ███████╗██║ ╚████║███████║   ██║   ███████╗██║  ██║██║ ╚═╝ ██║  ║
 ║   ╚═╝     ╚══════╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝  ║
 ║                                                                              ║
-║                 Android Emulator Manager v3.0.0                              ║
-║            Complete Device Profile with All Properties                       ║
+║              Android Emulator Manager v3.0.0 - Professional Edition          ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════════╝
 )" << COLOR_RESET << std::endl;
 }
-}
 
 // ============================================================================
-// Device Manager (Simple in-memory storage)
+// Device Manager
 // ============================================================================
 
 class DeviceManager {
@@ -110,7 +284,7 @@ public:
         std::string name;
         std::string manufacturer;
         std::string androidVersion;
-        DeviceProfile profile;
+        StandaloneProfile profile;
         std::string status;
         int port;
         std::chrono::system_clock::time_point createdAt;
@@ -121,7 +295,7 @@ public:
         if (checkDocker()) {
             std::string version = exec("docker version --format '{{.Server.Version}}' 2>/dev/null");
             if (!version.empty()) {
-                std::cout << COLOR_GREEN << " OK (" << version.substr(0, version.find('\n')) << ")" << COLOR_RESET << std::endl;
+                std::cout << COLOR_GREEN << " OK (" << trim(version) << ")" << COLOR_RESET << std::endl;
                 return true;
             }
         }
@@ -129,18 +303,17 @@ public:
         return true;
     }
     
-    Device createDevice(const std::string& manufacturer = "",
+    Device createDevice(const std::string& manufacturer = "Samsung",
                        const std::string& androidVersion = "14") {
         Device device;
-        device.profile = DeviceProfile(manufacturer.empty() ? "Samsung" : manufacturer);
-        device.profile.generate(manufacturer.empty() ? "Samsung" : manufacturer, "", androidVersion);
+        device.profile.generate(manufacturer, androidVersion);
         
         device.id = device.profile.profileId;
         device.name = device.profile.profileName;
         device.manufacturer = device.profile.manufacturer;
-        device.androidVersion = device.profile.androidVersion.versionNumber;
+        device.androidVersion = device.profile.androidVersion;
         device.status = "created";
-        device.port = 5555 + m_devices.size();
+        device.port = 5555 + static_cast<int>(m_devices.size());
         device.createdAt = std::chrono::system_clock::now();
         
         m_devices.push_back(device);
@@ -185,65 +358,41 @@ void printHelp() {
     std::cout << COLOR_BOLD << "COMMANDS:" << COLOR_RESET << std::endl;
     std::cout << "  create [options]          Create a new virtual device\n";
     std::cout << "  list                      List all devices\n";
-    std::cout << "  info <device-id>          Show detailed device information\n";
+    std::cout << "  info <device-id>          Show device details\n";
     std::cout << "  delete <device-id>        Delete a device\n";
-    std::cout << "  profile [options]         Generate device profile only\n";
-    std::cout << "  status                    Show system status\n";
-    std::cout << "  manufacturers             List supported manufacturers\n";
-    std::cout << "  validate <imei>           Validate IMEI number\n";
-    std::cout << "  props <device-id>         Show all properties for device\n";
-    std::cout << "  help                     Show this help\n" << std::endl;
+    std::cout << "  profile [options]         Generate device profile\n";
+    std::cout << "  status                   Show system status\n";
+    std::cout << "  manufacturers            List supported manufacturers\n";
+    std::cout << "  help                    Show this help\n" << std::endl;
     
     std::cout << COLOR_BOLD << "OPTIONS:" << COLOR_RESET << std::endl;
-    std::cout << "  -m, --manufacturer       Device manufacturer\n";
-    std::cout << "  -a, --android            Android version (14, 15, 16)\n";
-    std::cout << "  -n, --name               Device name\n" << std::endl;
-    
-    std::cout << COLOR_BOLD << "MANUFACTURERS:" << COLOR_RESET << std::endl;
-    auto& db = TACDatabase::getInstance();
-    auto manufacturers = db.getManufacturers();
-    for (size_t i = 0; i < manufacturers.size(); ++i) {
-        std::cout << "  " << std::left << std::setw(12) << manufacturers[i];
-        if ((i + 1) % 4 == 0) std::cout << "\n";
-    }
-    std::cout << "\n" << std::endl;
+    std::cout << "  -m, --manufacturer       Device manufacturer (Samsung, Google, Xiaomi, etc.)\n";
+    std::cout << "  -a, --android           Android version (14, 15, 16)\n" << std::endl;
     
     std::cout << COLOR_BOLD << "EXAMPLES:" << COLOR_RESET << std::endl;
     std::cout << "  redroid create -m Samsung -a 14\n";
-    std::cout << "  redroid create -m Google --name \"My Pixel\"\n";
+    std::cout << "  redroid create -m Google\n";
     std::cout << "  redroid profile -m Xiaomi\n";
-    std::cout << "  redroid info dev_12345678\n";
-    std::cout << "  redroid props dev_12345678\n";
-    std::cout << "  redroid validate 358751090123456\n" << std::endl;
+    std::cout << "  redroid list\n";
+    std::cout << "  redroid info device_123456\n" << std::endl;
 }
 
 void printManufacturers() {
-    std::cout << "\n" << COLOR_BOLD << "Supported Manufacturers:" << COLOR_RESET << std::endl;
-    std::cout << "─────────────────────────────────────────────────────────────────\n";
-    
-    auto& db = TACDatabase::getInstance();
-    auto manufacturers = db.getManufacturers();
-    
-    for (size_t i = 0; i < manufacturers.size(); ++i) {
-        auto entries = db.getByManufacturer(manufacturers[i]);
-        std::cout << "  [" << std::setw(2) << (i + 1) << "] " 
-                  << std::left << std::setw(12) << manufacturers[i]
-                  << " (" << entries.size() << " models)\n";
-    }
-    std::cout << std::endl;
+    std::cout << "\n" << COLOR_BOLD << "SUPPORTED MANUFACTURERS:" << COLOR_RESET << std::endl;
+    std::cout << "  Samsung          Galaxy S24 Ultra, S23, A-series" << std::endl;
+    std::cout << "  Google           Pixel 8 Pro, 7, 6 series" << std::endl;
+    std::cout << "  Xiaomi           Mi 14, 13, Redmi Note series" << std::endl;
+    std::cout << "  OnePlus         12, 11, 10T series" << std::endl;
+    std::cout << "  Huawei           P60, Mate 60, Mate X5" << std::endl;
+    std::cout << "  OPPO             Find X7, Reno 10, A-series" << std::endl;
+    std::cout << "  Vivo             X100, X90, V30 series" << std::endl;
+    std::cout << "  Custom           Any Android device\n" << std::endl;
 }
 
 void printDeviceList(const std::vector<DeviceManager::Device>& devices) {
-    if (devices.empty()) {
-        std::cout << COLOR_YELLOW << "\nNo devices found. Create one with 'redroid create'\n" << COLOR_RESET << std::endl;
-        return;
-    }
-    
-    std::cout << "\n" << COLOR_BOLD;
-    std::cout << "┌──────────┬────────────────────────────┬────────────────┬─────────────┬────────┐\n";
-    std::cout << "│ ID       │ Name                        │ Manufacturer   │ Android    │ Status │\n";
-    std::cout << "├──────────┼────────────────────────────┼────────────────┼─────────────┼────────┤\n";
-    std::cout << COLOR_RESET;
+    std::cout << "\n" << COLOR_BOLD << "┌──────────┬────────────────────────────┬────────────────┬─────────────┬────────┐" << COLOR_RESET << std::endl;
+    std::cout << COLOR_BOLD << "│ ID       │ Name                       │ Manufacturer   │ Android   │ Status │" << COLOR_RESET << std::endl;
+    std::cout << COLOR_BOLD << "├──────────┼────────────────────────────┼────────────────┼─────────────┼────────┤" << COLOR_RESET << std::endl;
     
     for (const auto& device : devices) {
         std::string shortId = device.id.length() > 8 ? device.id.substr(0, 8) : device.id;
@@ -256,38 +405,8 @@ void printDeviceList(const std::vector<DeviceManager::Device>& devices) {
                   << " │ " << std::setw(6) << device.status << " │" << std::endl;
     }
     
-    std::cout << COLOR_BOLD;
-    std::cout << "└──────────┴────────────────────────────┴────────────────┴─────────────┴────────┘\n";
-    std::cout << COLOR_RESET;
+    std::cout << COLOR_BOLD << "└──────────┴────────────────────────────┴────────────────┴─────────────┴────────┘" << COLOR_RESET << std::endl;
     std::cout << "Total: " << devices.size() << " device(s)\n" << std::endl;
-}
-
-void printDeviceInfo(const DeviceManager::Device& device) {
-    device.profile.print();
-}
-
-void printProperties(const DeviceManager::Device& device) {
-    auto categories = device.profile.getPropertiesByCategory();
-    
-    std::cout << "\n" << COLOR_BOLD << "═══════════════════════════════════════════════════════════════════════════════════" << COLOR_RESET << std::endl;
-    std::cout << "                    ALL DEVICE PROPERTIES - " << device.name << std::endl;
-    std::cout << COLOR_BOLD << "═══════════════════════════════════════════════════════════════════════════════════" << COLOR_RESET << std::endl;
-    
-    for (const auto& [category, props] : categories) {
-        std::cout << "\n" << COLOR_CYAN << "[ " << category << " ]" << COLOR_RESET << "\n";
-        std::cout << std::string(70, '-') << "\n";
-        
-        for (const auto& [key, value] : props) {
-            std::string displayValue = value;
-            if (value.length() > 50) {
-                displayValue = value.substr(0, 47) + "...";
-            }
-            std::cout << "  " << std::left << std::setw(40) << key << " " 
-                      << COLOR_DIM << displayValue << COLOR_RESET << "\n";
-        }
-    }
-    
-    std::cout << "\n" << COLOR_BOLD << "═══════════════════════════════════════════════════════════════════════════════════" << COLOR_RESET << std::endl;
 }
 
 void printStatus() {
@@ -303,7 +422,7 @@ void printStatus() {
     if (dockerVersion.empty()) {
         std::cout << "  " << COLOR_RED << "Docker not available" << COLOR_RESET << std::endl;
     } else {
-        std::cout << "  Version:     " << dockerVersion.substr(0, dockerVersion.find('\n')) << std::endl;
+        std::cout << "  Version:     " << trim(dockerVersion) << std::endl;
         std::cout << "  Containers:   " << trim(containers) << " total, " << trim(running) << " running" << std::endl;
     }
     
@@ -319,6 +438,8 @@ void printStatus() {
 // ============================================================================
 
 int main(int argc, char* argv[]) {
+    srand(static_cast<unsigned>(time(nullptr)));
+    
     printBanner();
     
     DeviceManager& manager = DeviceManager::getInstance();
@@ -346,7 +467,7 @@ int main(int argc, char* argv[]) {
         printStatus();
     }
     else if (command == "create") {
-        std::string manufacturer, androidVersion = "14", name;
+        std::string manufacturer, androidVersion;
         
         for (int i = 2; i < argc; ++i) {
             std::string arg = argv[i];
@@ -354,8 +475,6 @@ int main(int argc, char* argv[]) {
                 manufacturer = argv[++i];
             } else if ((arg == "-a" || arg == "--android") && i + 1 < argc) {
                 androidVersion = argv[++i];
-            } else if ((arg == "-n" || arg == "--name") && i + 1 < argc) {
-                name = argv[++i];
             }
         }
         
@@ -363,7 +482,7 @@ int main(int argc, char* argv[]) {
         
         auto device = manager.createDevice(manufacturer, androidVersion);
         std::cout << COLOR_GREEN << "[+] Device created successfully!" << COLOR_RESET << std::endl;
-        printDeviceInfo(device);
+        device.profile.print();
     }
     else if (command == "info") {
         if (argc < 3) {
@@ -373,21 +492,7 @@ int main(int argc, char* argv[]) {
         
         auto deviceOpt = manager.getDevice(argv[2]);
         if (deviceOpt) {
-            printDeviceInfo(*deviceOpt);
-        } else {
-            std::cout << COLOR_RED << "Error: Device not found" << COLOR_RESET << std::endl;
-            return 1;
-        }
-    }
-    else if (command == "props") {
-        if (argc < 3) {
-            std::cout << COLOR_RED << "Error: Device ID required" << COLOR_RESET << std::endl;
-            return 1;
-        }
-        
-        auto deviceOpt = manager.getDevice(argv[2]);
-        if (deviceOpt) {
-            printProperties(*deviceOpt);
+            deviceOpt->profile.print();
         } else {
             std::cout << COLOR_RED << "Error: Device not found" << COLOR_RESET << std::endl;
             return 1;
@@ -415,30 +520,9 @@ int main(int argc, char* argv[]) {
             }
         }
         
-        DeviceProfile profile;
-        profile.generate(manufacturer.empty() ? "Samsung" : manufacturer);
-        
-        DeviceManager::Device device;
-        device.id = profile.profileId;
-        device.name = profile.profileName;
-        device.manufacturer = profile.manufacturer;
-        device.profile = profile;
-        
-        printDeviceInfo(device);
-    }
-    else if (command == "validate") {
-        if (argc < 3) {
-            std::cout << COLOR_RED << "Error: IMEI required" << COLOR_RESET << std::endl;
-            return 1;
-        }
-        
-        std::string imei = argv[2];
-        if (IMEIGenerator::validate(imei)) {
-            std::cout << COLOR_GREEN << "[+] Valid IMEI" << COLOR_RESET << std::endl;
-        } else {
-            std::cout << COLOR_RED << "[-] Invalid IMEI" << COLOR_RESET << std::endl;
-            return 1;
-        }
+        StandaloneProfile profile;
+        profile.generate(manufacturer);
+        profile.print();
     }
     else {
         std::cout << COLOR_RED << "Unknown command: " << command << COLOR_RESET << std::endl;
