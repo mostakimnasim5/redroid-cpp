@@ -74,10 +74,9 @@ enable_testing()
 find_program(DOCKER_EXECUTABLE docker)
 if(DOCKER_EXECUTABLE)
     add_custom_target(docker-build
-        COMMAND ${DOCKER_EXECUTABLE} build -t redroid-cpp/emulator:${PROJECT_VERSION} .
-        COMMAND ${DOCKER_EXECUTABLE} build -t redroid-cpp/cli:${PROJECT_VERSION} .
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Building Docker images for emulator and CLI"
+        COMMAND ${DOCKER_EXECUTABLE} build -t redroid-cpp/emulator:${PROJECT_VERSION} -f ${CMAKE_SOURCE_DIR}/docker/Dockerfile ${CMAKE_SOURCE_DIR}
+        COMMENT "Building Docker images for emulator"
+        VERBATIM
     )
     
     add_custom_target(docker-run
@@ -88,18 +87,21 @@ if(DOCKER_EXECUTABLE)
             redroid-cpp/emulator:${PROJECT_VERSION}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running emulator in Docker"
+        VERBATIM
     )
     
-    add_custom_target(docker-compose-up
-        COMMAND ${DOCKER_EXECUTABLE} compose up -d
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Starting emulator with docker-compose"
+    add_custom_target(docker-up
+        COMMAND ${DOCKER_EXECUTABLE} compose -f ${CMAKE_SOURCE_DIR}/docker/docker-compose.yml up -d
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/docker
+        COMMENT "Starting emulator with docker compose"
+        VERBATIM
     )
     
-    add_custom_target(docker-compose-down
-        COMMAND ${DOCKER_EXECUTABLE} compose down
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    add_custom_target(docker-down
+        COMMAND ${DOCKER_EXECUTABLE} compose -f ${CMAKE_SOURCE_DIR}/docker/docker-compose.yml down
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/docker
         COMMENT "Stopping emulator"
+        VERBATIM
     )
     
     message(STATUS "Docker support enabled")

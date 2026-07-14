@@ -123,14 +123,18 @@ Set via `REDROID_GPU_MODE` environment variable:
 ```
 redroid-cpp/
 ├── docker/
-│   ├── init.sh           # Device provisioning script
-│   └── entrypoint.sh     # Container startup script
-├── scripts/
-│   └── manage.sh         # Device management CLI
-├── profiles/             # Device profile storage
-├── data/                 # Persistent data (created at runtime)
-├── Dockerfile
-└── docker-compose.yml
+│   ├── Dockerfile         # Multi-stage Docker build
+│   ├── docker-compose.yml # Container orchestration
+│   └── bin/
+│       ├── init.sh        # Device provisioning script
+│       └── entrypoint.sh  # Container startup script
+├── tools/
+│   └── manage.sh          # Device management CLI
+├── profiles/              # Device profile storage
+├── data/                  # Persistent data
+├── src/                   # C++ source
+├── include/               # C++ headers
+└── CMakeLists.txt
 ```
 
 ---

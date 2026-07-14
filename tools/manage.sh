@@ -17,6 +17,7 @@ NC='\033[0m'
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+DOCKER_DIR="${PROJECT_ROOT}/docker"
 DATA_DIR="${PROJECT_ROOT}/data"
 PROFILES_DIR="${PROJECT_ROOT}/profiles"
 CONTAINER_NAME="redroid-emulator"
@@ -26,7 +27,6 @@ DEVICE_NAME=""
 DEVICE_MANUFACTURER="Samsung"
 DEVICE_MODEL="Galaxy S24 Ultra"
 DEVICE_ANDROID_VERSION="15"
-DEVICE_MEMORY="4096"
 
 # Logging
 log_info() {
@@ -83,12 +83,14 @@ init_dirs() {
 build_image() {
     log_info "Building Docker image..."
     
-    cd "$PROJECT_ROOT"
+    cd "$DOCKER_DIR"
     
-    if command -v docker-compose &> /dev/null; then
+    if docker compose version &> /dev/null; then
+        docker compose build redroid
+    elif command -v docker-compose &> /dev/null; then
         docker-compose build redroid
     else
-        docker build -t redroid-cpp/emulator:latest .
+        docker build -t redroid-cpp/emulator:latest -f Dockerfile ..
     fi
     
     log_success "Docker image built"
@@ -147,7 +149,7 @@ start_emulator() {
     fi
     
     # Start with docker-compose
-    cd "$PROJECT_ROOT"
+    cd "$DOCKER_DIR"
     
     # Create profile if needed
     if [ -z "$name" ]; then
@@ -158,7 +160,7 @@ start_emulator() {
     DEVICE_MANUFACTURER="$manufacturer" \
     DEVICE_MODEL="$model" \
     DEVICE_ANDROID_VERSION="$android_version" \
-    docker-compose up -d redroid
+    docker compose up -d redroid
     
     # Wait for startup
     log_info "Waiting for emulator to start..."

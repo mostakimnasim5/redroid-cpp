@@ -19,6 +19,7 @@ ANDROID_HOME="/system"
 REDROID_DATA="/data"
 PROFILE_DIR="/opt/profiles"
 ADB_PORT="${ADB_PORT:-15555}"
+BIN_DIR="/opt/bin"
 
 # Print banner
 print_banner() {
@@ -89,9 +90,9 @@ setup_device() {
         log_info "Generating new device profile..."
         
         # Check if init script exists
-        if [ -f /opt/redroid-init.sh ]; then
-            chmod +x /opt/redroid-init.sh
-            /opt/redroid-init.sh setup
+        if [ -f ${BIN_DIR}/init.sh ]; then
+            chmod +x ${BIN_DIR}/init.sh
+            ${BIN_DIR}/init.sh setup
         else
             log_warn "Init script not found, skipping device setup"
         fi

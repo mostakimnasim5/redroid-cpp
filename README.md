@@ -171,16 +171,30 @@ g++ -std=c++17 -O2 -Wall -I include -o redroid-cli src/main.cpp src/Core/DeviceP
 
 ```
 redroid-cpp/
-├── include/
-│   └── Core/
-│       ├── DeviceProfile.h        # Complete device profile header
-│       └── DeviceManager.h        # Device manager (optional)
 ├── src/
-│   ├── main.cpp                 # CLI application
+│   ├── main.cpp                 # CLI application entry point
 │   └── Core/
-│       └── DeviceProfile.cpp     # Full implementation
+│       └── DeviceProfile.cpp     # Device profile implementation
+├── include/
+│   ├── Core/
+│   │   ├── DeviceProfile.h       # Complete device profile header
+│   │   └── DeviceManager.h       # Device manager
+│   └── Data/
+│       └── TACDatabase.h         # TAC database for IMEI
+├── docker/
+│   ├── Dockerfile                # Multi-stage Docker build
+│   ├── docker-compose.yml        # Container orchestration
+│   └── bin/
+│       ├── entrypoint.sh         # Container startup script
+│       └── init.sh               # Device provisioning script
+├── tools/
+│   └── manage.sh                 # Device management CLI
+├── profiles/                     # Device profile storage
+├── data/                         # Runtime data
 ├── CMakeLists.txt
-└── README.md
+├── LICENSE
+├── README.md
+└── CONTRIBUTING.md
 ```
 
 ---
