@@ -75,15 +75,10 @@ RUN sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
 # Create AVD (Android Virtual Device)
 # =============================================================================
 RUN echo "no" | avdmanager create avd \
-    --sdk_root=${ANDROID_SDK_ROOT} \
     --name AndroidEmulator \
     --package "system-images;android-34;google_apis;x86_64" \
     --path ${ANDROID_AVD_HOME}/AndroidEmulator.avd \
     --force
-
-# Create config.ini for the AVD with proper paths
-RUN echo "avd.ini.displayname=AndroidEmulator" > ${ANDROID_AVD_HOME}/AndroidEmulator.avd/config.ini && \
-    echo "avd.ini.usesystempartitions=yes" >> ${ANDROID_AVD_HOME}/AndroidEmulator.avd/config.ini
 
 # =============================================================================
 # Download Android Emulator

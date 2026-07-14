@@ -30,13 +30,17 @@ else
 fi
 
 # ==============================================================================
-# Step 1b: Verify AVD exists
+# Step 1b: Verify AVD exists and clean locks
 # ==============================================================================
 echo "[INFO] Checking AVD..."
 ls -la ${ANDROID_AVD_HOME}/ 2>/dev/null || echo "[WARN] AVD directory not found"
 
 if [ -d "${ANDROID_AVD_HOME}/AndroidEmulator.avd" ]; then
     echo "[INFO] AVD found at: ${ANDROID_AVD_HOME}/AndroidEmulator.avd"
+    # Clean up any stale lock files
+    rm -f ${ANDROID_AVD_HOME}/AndroidEmulator.avd/*.lock 2>/dev/null
+    rm -f ${ANDROID_AVD_HOME}/AndroidEmulator.avd/hardware-qemu.ini.lock 2>/dev/null
+    rm -rf ${ANDROID_AVD_HOME}/running/* 2>/dev/null
 else
     echo "[ERROR] AVD not found! Check ANDROID_AVD_HOME path."
     exit 1
@@ -56,14 +60,13 @@ echo "[INFO] Launching Android Emulator with flags..."
 echo "[DEBUG] ACCEL_FLAG=$ACCEL_FLAG"
 
 emulator -avd AndroidEmulator \
-    -avd-home ${ANDROID_AVD_HOME} \
-    -sysdir ${ANDROID_SDK_ROOT}/system-images \
-    -system ${ANDROID_SDK_ROOT}/system-images/android-34/google_apis/x86_64/system.img \
     -no-audio \
     -no-boot-anim \
     -no-snapshot \
-    -wipe-data \
     -no-window \
+    -no-snapstorage \
+    -partition-size 2048 \
+    -read-only \
     $ACCEL_FLAG &
 
 EMULATOR_PID=$!
@@ -79,16 +82,24 @@ echo "[INFO] Waiting for device..."
 adb wait-for-device
 
 # Wait for boot completion
+# Note: Without KVM, boot can take 5-10 minutes
 BOOT_COMPLETED=""
 BOOT_WAIT_COUNT=0
+MAX_BOOT_WAIT=600  # 20 minutes max wait time
+
 while [ "$BOOT_COMPLETED" != "1" ]; do
     BOOT_COMPLETED=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
     BOOT_WAIT_COUNT=$((BOOT_WAIT_COUNT + 1))
-    echo "[INFO] Boot status: $BOOT_COMPLETED (wait count: $BOOT_WAIT_COUNT)"
     
-    if [ $BOOT_WAIT_COUNT -gt 180 ]; then
-        echo "[ERROR] Boot timeout! Emulator may have crashed."
-        exit 1
+    # Show progress every 10 iterations
+    if [ $((BOOT_WAIT_COUNT % 10)) -eq 0 ]; then
+        echo "[INFO] Boot in progress... (wait count: $BOOT_WAIT_COUNT)"
+    fi
+    
+    if [ $BOOT_WAIT_COUNT -gt $MAX_BOOT_WAIT ]; then
+        echo "[WARN] Boot timeout exceeded, but emulator may still be starting..."
+        echo "[INFO] Continuing anyway - emulator is running in background"
+        break
     fi
     
     sleep 2

@@ -27,8 +27,8 @@ services:
       - "5554:5554"  # ADB
       - "5555:5555"  # ADB
 
-    devices:
-      - /dev/kvm:/dev/kvm
+    # Note: /dev/kvm will be used automatically if available
+    # Fallback to software rendering (swiftshader_indirect) if not available
 
     volumes:
       - avd_data:/root/.android
