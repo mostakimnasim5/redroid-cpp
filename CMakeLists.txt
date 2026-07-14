@@ -114,6 +114,7 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/AdvancedAntiDetection.cpp
         src/ReDroidController/TLSFingerprint.cpp
         src/ReDroidController/HyperRealisticTouchEmulator.cpp
+        src/ReDroidController/RealisticDeviceProfile.cpp
         src/ReDroidController/EnhancedDeviceProfile.cpp
     )
     
@@ -130,6 +131,7 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/AdvancedAntiDetection.h
         include/VirtualPhonePro/TLSFingerprint.h
         include/VirtualPhonePro/HyperRealisticTouchEmulator.h
+        include/VirtualPhonePro/RealisticDeviceProfile.hpp
     )
     
     add_executable(virtualphonepro-qt WIN32 ${QT6_SOURCES} ${QT6_HEADERS})
