@@ -35,8 +35,12 @@ RUN apt-get update && apt-get install -y \
 # =============================================================================
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV ANDROID_AVD_HOME=/root/.android/avd
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator"
+
+# Create AVD home directory
+RUN mkdir -p ${ANDROID_AVD_HOME}
 
 # =============================================================================
 # Download and Install Android Command Line Tools
@@ -74,13 +78,24 @@ RUN echo "no" | avdmanager create avd \
     --sdk_root=${ANDROID_SDK_ROOT} \
     --name AndroidEmulator \
     --package "system-images;android-34;google_apis;x86_64" \
+    --path ${ANDROID_AVD_HOME}/AndroidEmulator.avd \
     --force
+
+# Create config.ini for the AVD with proper paths
+RUN echo "avd.ini.displayname=AndroidEmulator" > ${ANDROID_AVD_HOME}/AndroidEmulator.avd/config.ini && \
+    echo "avd.ini.usesystempartitions=yes" >> ${ANDROID_AVD_HOME}/AndroidEmulator.avd/config.ini
 
 # =============================================================================
 # Download Android Emulator
 # =============================================================================
 RUN sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
     "emulator"
+
+# =============================================================================
+# Copy entrypoint script
+# =============================================================================
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # =============================================================================
 # Cleanup - Remove apt cache to keep image small

@@ -9,6 +9,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: android-emulator
     image: redroid-cpp/android-emulator:latest
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
 
     # X11 Forwarding for Native Desktop Display
     extra_hosts:
@@ -18,6 +19,8 @@ services:
       - DISPLAY=host.docker.internal:0
       - ANDROID_EMULATOR_VERSION=34
       - ANDROID_SDK_ROOT=/opt/android-sdk
+      - ANDROID_HOME=/opt/android-sdk
+      - ANDROID_AVD_HOME=/root/.android/avd
       - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
     ports:
