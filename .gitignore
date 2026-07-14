@@ -46,3 +46,15 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 compile_commands.json
+
+# Docker
+.dockerignore
+
+# Data directory
+data/
+!data/.gitkeep
+
+# Environment files
+.env
+.env.local
+.env.*.local

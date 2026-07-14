@@ -1,0 +1,148 @@
+# ==============================================================================
+# RedroidCPP - Docker Compose Configuration
+# Android Emulator with Device Profile Integration
+# ==============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Redroid Android Emulator Container
+  # ---------------------------------------------------------------------------
+  redroid:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: redroid-emulator
+    hostname: android-emulator
+    image: redroid-cpp/emulator:latest
+    
+    # Privileged mode required for Android emulation
+    privileged: true
+    # cgroup management
+    cgroup: host
+    
+    # Device provisioning - apply device profile
+    environment:
+      # Device Configuration
+      - DEVICE_MANUFACTURER=Samsung
+      - DEVICE_MODEL=Galaxy S24 Ultra
+      - DEVICE_ANDROID_VERSION=15
+      - DEVICE_PROFILE_ID=
+      
+      # Network Configuration
+      - ADB_PORT=15555
+      - REDROID_CTS=0
+      - REDROID_GPU_MODE=host
+      
+      # Device Properties Override
+      -ro.product.brand=Samsung
+      -ro.product.device=dm3q
+      -ro.product.manufacturer=Samsung
+      -ro.product.model=Galaxy S24 Ultra
+      -ro.product.name=dm3q
+      
+      # Security (to be set via init.sh)
+      - SETUP_DEVICE=true
+      - GENERATE_IMEI=true
+      - GENERATE_SERIAL=true
+      
+    # GPU Passthrough - Host mode for best performance
+    devices:
+      - /dev/kvm:/dev/kvm
+      - /dev/mem:/dev/mem
+      - /dev/binderfs:/dev/binderfs
+      - /dev/binder:/dev/binder
+      - /dev/hwbinder:/dev/hwbinder
+      - /dev/vndbinder:/dev/vndbinder
+    
+    # Mount for persistent device data
+    volumes:
+      - ./profiles:/opt/profiles:ro
+      - redroid-data:/data
+      - ./scripts:/opt/scripts:ro
+    
+    # Network configuration
+    ports:
+      - "15555:5555"   # ADB
+      - "5900:5900"     # VNC (optional)
+    
+    # Network mode - host for direct network access
+    network_mode: host
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "getprop", "sys.boot_completed"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Runtime options
+    shm_size: 256mb
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  # ---------------------------------------------------------------------------
+  # VNC Server (Optional - for GUI access)
+  # ---------------------------------------------------------------------------
+  redroid-vnc:
+    image: consol/ubuntu-vnc:latest
+    container_name: redroid-vnc
+    hostname: redroid-vnc
+    depends_on:
+      - redroid
+    environment:
+      - DISPLAY=:0
+      - VNC_RESOLUTION=1440x2560x24
+      - VNC_VIEW_ONLY=true
+    volumes:
+      - ./vnc:/workspace:rw
+    ports:
+      - "6080:80"      # noVNC web interface
+      - "5901:5900"    # VNC
+    network_mode: service:redroid
+    profiles:
+      - vnc
+
+  # ---------------------------------------------------------------------------
+  # CLI Management Tool
+  # ---------------------------------------------------------------------------
+  redroid-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: redroid-cli
+    image: redroid-cpp/cli:latest
+    command: ["help"]
+    volumes:
+      - ./profiles:/opt/profiles:ro
+      - redroid-data:/data
+    network_mode: host
+    profiles:
+      - cli
+
+# ==============================================================================
+# Volumes
+# ==============================================================================
+volumes:
+  redroid-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  default:
+    name: redroid-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
