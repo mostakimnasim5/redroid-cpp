@@ -235,4 +235,91 @@ Licensed for authorized testing purposes only.
 
 ---
 
+## 🐳 Docker Android Emulator
+
+This project includes a Docker-based Android emulator setup.
+
+### Requirements
+
+| Platform | Requirements |
+|----------|-------------|
+| **Windows** | Docker Desktop, VcXsrv, WSL2 |
+| **Linux** | Docker, KVM (optional) |
+| **macOS** | Docker Desktop |
+
+### Quick Start (3 Steps)
+
+#### Step 1: Open VcXsrv (Windows only)
+```
+Launch XLaunch from Start Menu
+→ Select "Multiple windows"
+→ Select "Start no client"
+→ Check "Disable access control"
+→ Finish
+```
+
+#### Step 2: Run the Emulator
+```bash
+# Double-click start.bat OR run in terminal:
+cd docker
+docker compose up --build
+```
+
+#### Step 3: Connect ADB
+```bash
+# Double-click adb-connect.bat OR run:
+adb connect localhost:5555
+```
+
+### Common ADB Commands
+```bash
+# Connect to emulator
+adb connect localhost:5555
+
+# List devices
+adb devices
+
+# Open shell
+adb shell
+
+# Install APK
+adb install app.apk
+
+# Take screenshot
+adb exec-out screencap -p > screenshot.png
+
+# Reboot device
+adb reboot
+```
+
+### Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| "PANIC: Cannot find AVD system path" | Environment variables configured in docker-compose.yml |
+| "ADB server not running" | Run `adb start-server` or use `adb-connect.bat` |
+| Container exits immediately | Check logs with `docker compose logs` |
+| Black screen / not visible | Ensure VcXsrv is running (Windows) |
+| "DISPLAY not set" | Run `xhost +local:docker` (Linux) |
+
+### Performance
+
+| Feature | With HW Accel | Without |
+|---------|--------------|---------|
+| Boot Time | ~2-3 min | ~5-10 min |
+| Uses | KVM/WHPX | Software |
+
+### Project Structure
+```
+├── docker/
+│   ├── Dockerfile         # Container image
+│   ├── docker-compose.yml # Orchestration
+│   └── entrypoint.sh      # Startup script
+├── start.bat              # Windows launcher
+├── adb-connect.bat        # ADB connection
+└── README.md
+```
+
+---
+
 **Version 3.0.0** - Complete Professional Implementation

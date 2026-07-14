@@ -58,3 +58,17 @@ data/
 .env
 .env.local
 .env.*.local
+
+# Android SDK (downloaded during build)
+/root/.android/
+/opt/android-sdk/
+
+# Docker volumes
+docker_avd_data/
+
+# Qt generated files
+*.moc
+*.qrc*
+*.ui
+.moc/
+*.pch
