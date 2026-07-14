@@ -19,14 +19,20 @@ echo "[DEBUG] ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
 echo "[DEBUG] JAVA_HOME=$JAVA_HOME"
 
 # ==============================================================================
-# Step 1: Check /dev/kvm and set acceleration flag
+# Step 1: Set acceleration based on available hardware
 # ==============================================================================
 if [ -e /dev/kvm ]; then
-    echo "[INFO] /dev/kvm found - using hardware acceleration"
-    ACCEL_FLAG="-accel kvm"
+    # Linux with KVM - hardware acceleration
+    echo "[INFO] /dev/kvm found - using KVM acceleration"
+    ACCEL="-accel kvm -gpu host"
+elif grep -qi "microsoft" /proc/version 2>/dev/null || [ -d "/sys/module/hyperv" ]; then
+    # Windows (WSL2 or Hyper-V) - WHPX acceleration
+    echo "[INFO] Windows environment detected - checking for WHPX..."
+    ACCEL="-accel whpx -gpu host"
 else
-    echo "[WARN] /dev/kvm not found - using software rendering"
-    ACCEL_FLAG="-accel off -gpu swiftshader_indirect"
+    # No hardware acceleration available - use software rendering
+    echo "[WARN] No hardware acceleration - using software rendering (slower boot)"
+    ACCEL="-accel off -gpu swiftshader_indirect"
 fi
 
 # ==============================================================================
@@ -56,10 +62,12 @@ adb start-server
 # ==============================================================================
 # Step 3: Start emulator with flags
 # ==============================================================================
-echo "[INFO] Launching Android Emulator with flags..."
-echo "[DEBUG] ACCEL_FLAG=$ACCEL_FLAG"
+echo "[INFO] Launching Android Emulator..."
+echo "[DEBUG] ACCEL=$ACCEL"
 
 emulator -avd AndroidEmulator \
+    -memory 3072 \
+    -cores 4 \
     -no-audio \
     -no-boot-anim \
     -no-snapshot \
@@ -67,7 +75,7 @@ emulator -avd AndroidEmulator \
     -no-snapstorage \
     -partition-size 2048 \
     -read-only \
-    $ACCEL_FLAG &
+    $ACCEL &
 
 EMULATOR_PID=$!
 echo "[INFO] Emulator started with PID: $EMULATOR_PID"
