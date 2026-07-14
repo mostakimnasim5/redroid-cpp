@@ -1,0 +1,57 @@
+{
+    "id": "oneplus_12",
+    "name": "OnePlus 12",
+    "manufacturer": "OnePlus",
+    "brand": "OnePlus",
+    "model": "OnePlus 12",
+    "codename": "salmon",
+    "androidVersion": "14",
+    "sdkVersion": "34",
+    "securityPatch": "2024-01-01",
+    "buildId": "UP1A.231005.007",
+    "bootloader": "salmon-ucode-2024-01",
+    "fingerprint": "OnePlus/salmon/salmon:14/UP1A.231005.007/OPhone18.231215.001:user/release-keys",
+    "description": "salmon-user 14 UP1A.231005.007 OPhone18.231215.001 release-keys",
+    
+    "identity": {
+        "imei": "869171031234567",
+        "imei2": "869171039876543",
+        "serialNumber": "PN12345678",
+        "androidId": "d4e5f6g7h8i9j0k1",
+        "gsfId": "4567890123"
+    },
+    
+    "network": {
+        "wifiMac": "34:80:B3:EF:01:23",
+        "bluetoothMac": "00:1A:7D:45:67:89",
+        "hostname": "android-salmon"
+    },
+    
+    "sim": {
+        "iccid": "8968804567890123456",
+        "imsi": "880104567890123",
+        "carrier": "T-Mobile"
+    },
+    
+    "hardware": {
+        "cpu": "ARMv8 Processor (Qualcomm Snapdragon 8 Gen 3)",
+        "cores": 8,
+        "gpu": "Adreno (TM) 750",
+        "ram": "16GB",
+        "display": "6.82 inch AMOLED",
+        "resolution": "1440x3168"
+    },
+    
+    "location": {
+        "latitude": 32.0853,
+        "longitude": 34.7818,
+        "altitude": 30.0,
+        "accuracy": 8.0
+    },
+    
+    "sensors": {
+        "accelerometer": [0.0, 0.0, 9.8],
+        "gyroscope": [0.0, 0.0, 0.0],
+        "magneticField": [28.0, -8.0, 48.0]
+    }
+}

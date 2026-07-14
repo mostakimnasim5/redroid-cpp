@@ -1,0 +1,57 @@
+{
+    "id": "huawei_p60_pro",
+    "name": "Huawei P60 Pro",
+    "manufacturer": "Huawei",
+    "brand": "Huawei",
+    "model": "P60 Pro",
+    "codename": "mona",
+    "androidVersion": "14",
+    "sdkVersion": "34",
+    "securityPatch": "2024-01-01",
+    "buildId": "M101.231205.001",
+    "bootloader": "mona-ucode-2024-01",
+    "fingerprint": "HUAWEI/mona/mona:14/M101.231205.001/HOLO588:user/release-keys",
+    "description": "mona-user 14 M101.231205.001 HOLO588 release-keys",
+    
+    "identity": {
+        "imei": "861234561234567",
+        "imei2": "861234569876543",
+        "serialNumber": "SN123456789",
+        "androidId": "e5f6g7h8i9j0k1l2",
+        "gsfId": "5678901234"
+    },
+    
+    "network": {
+        "wifiMac": "50:A4:D8:01:23:45",
+        "bluetoothMac": "00:1A:7D:56:78:90",
+        "hostname": "android-mona"
+    },
+    
+    "sim": {
+        "iccid": "8968805678901234567",
+        "imsi": "880105678901234",
+        "carrier": "China Unicom"
+    },
+    
+    "hardware": {
+        "cpu": "ARMv8 Processor (Qualcomm Snapdragon 8+ Gen 1)",
+        "cores": 8,
+        "gpu": "Adreno 730",
+        "ram": "12GB",
+        "display": "6.67 inch OLED",
+        "resolution": "1220x2700"
+    },
+    
+    "location": {
+        "latitude": 31.2304,
+        "longitude": 121.4737,
+        "altitude": 20.0,
+        "accuracy": 10.0
+    },
+    
+    "sensors": {
+        "accelerometer": [0.0, 0.0, 9.8],
+        "gyroscope": [0.0, 0.0, 0.0],
+        "magneticField": [32.0, -10.0, 46.0]
+    }
+}

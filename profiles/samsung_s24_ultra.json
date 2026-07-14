@@ -1,0 +1,56 @@
+{
+    "id": "samsung_s24_ultra",
+    "name": "Samsung Galaxy S24 Ultra",
+    "manufacturer": "Samsung",
+    "brand": "Samsung",
+    "model": "SM-S928B",
+    "androidVersion": "14",
+    "sdkVersion": "34",
+    "securityPatch": "2024-01-01",
+    "buildId": "UP1A.231005.007",
+    "bootloader": "S928BXXU1AXXX",
+    "fingerprint": "samsung/dm3q/dm3q:14/UP1A.231005.007/S928BXXU1AXXX:user/release-keys",
+    "description": "dm3q-user 14 UP1A.231005.007 S928BXXU1AXXX release-keys",
+    
+    "identity": {
+        "imei": "358751071234567",
+        "imei2": "358751089876543",
+        "serialNumber": "R123456X78",
+        "androidId": "a1b2c3d4e5f6g7h8",
+        "gsfId": "1234567890"
+    },
+    
+    "network": {
+        "wifiMac": "8C:71:F8:12:34:56",
+        "bluetoothMac": "00:1A:7D:AB:CD:EF",
+        "hostname": "android-dm3q"
+    },
+    
+    "sim": {
+        "iccid": "8968801234567890123",
+        "imsi": "880101234567890",
+        "carrier": "Samsung Default"
+    },
+    
+    "hardware": {
+        "cpu": "ARMv8 Processor (Qualcomm Snapdragon 8 Gen 3)",
+        "cores": 8,
+        "gpu": "Adreno (TM) 750",
+        "ram": "12GB",
+        "display": "6.8 inch",
+        "resolution": "1440x3120"
+    },
+    
+    "location": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "altitude": 10.0,
+        "accuracy": 5.0
+    },
+    
+    "sensors": {
+        "accelerometer": [0.0, 0.0, 9.8],
+        "gyroscope": [0.0, 0.0, 0.0],
+        "magneticField": [25.0, -10.0, 45.0]
+    }
+}

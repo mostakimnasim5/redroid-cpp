@@ -34,8 +34,42 @@ BankingAppSpoofer& BankingAppSpoofer::instance() {
 // ========================================================================
 
 bool BankingAppSpoofer::executeCommand(const QString& instanceId, const QString& command) {
+    if (instanceId.isEmpty()) {
+        qWarning() << "[BankingSpoofer] executeCommand: Empty instance ID";
+        return false;
+    }
+    
+    if (command.isEmpty()) {
+        qWarning() << "[BankingSpoofer] executeCommand: Empty command";
+        return false;
+    }
+    
     ReDroidController& ctrl = ReDroidController::instance();
-    ctrl.executeShell(instanceId, command);
+    
+    // Check if instance exists and is running
+    if (!ctrl.instanceExists(instanceId)) {
+        qWarning() << "[BankingSpoofer] executeCommand: Instance does not exist:" << instanceId;
+        return false;
+    }
+    
+    InstanceState state = ctrl.getInstanceState(instanceId);
+    if (state != InstanceState::Running) {
+        qWarning() << "[BankingSpoofer] executeCommand: Instance not running:" << instanceId;
+        return false;
+    }
+    
+    // Execute the command and capture result
+    QString result = ctrl.executeShell(instanceId, command, 5000); // 5 second timeout
+    
+    // Check for common error patterns
+    if (result.contains("error", Qt::CaseInsensitive) ||
+        result.contains("failed", Qt::CaseInsensitive) ||
+        result.contains("permission denied", Qt::CaseInsensitive)) {
+        qWarning() << "[BankingSpoofer] executeCommand failed:" << command << "->" << result;
+        return false;
+    }
+    
+    qDebug() << "[BankingSpoofer] executeCommand success:" << command;
     return true;
 }
 
@@ -66,12 +100,22 @@ bool BankingAppSpoofer::writeToFile(const QString& path, const QString& content)
 bool BankingAppSpoofer::bypassRootDetection(const QString& instanceId) {
     qDebug() << "[BankingSpoofer] Bypassing root detection for:" << instanceId;
     
-    hideSuBinary(instanceId);
-    hideMagisk(instanceId);
-    removeRootApps(instanceId);
-    setSelinuxContext(instanceId);
+    int successCount = 0;
+    int totalOperations = 4;
     
-    return true;
+    if (hideSuBinary(instanceId)) successCount++;
+    if (hideMagisk(instanceId)) successCount++;
+    if (removeRootApps(instanceId)) successCount++;
+    if (setSelinuxContext(instanceId)) successCount++;
+    
+    // Consider it successful if at least 2 of 4 operations succeeded
+    if (successCount >= 2) {
+        qDebug() << "[BankingSpoofer] Root bypass completed:" << successCount << "/" << totalOperations;
+        return true;
+    }
+    
+    qWarning() << "[BankingSpoofer] Root bypass partially failed:" << successCount << "/" << totalOperations;
+    return false;
 }
 
 bool BankingAppSpoofer::hideSuBinary(const QString& instanceId) {

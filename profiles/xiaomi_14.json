@@ -1,0 +1,57 @@
+{
+    "id": "xiaomi_14",
+    "name": "Xiaomi 14",
+    "manufacturer": "Xiaomi",
+    "brand": "Xiaomi",
+    "model": "Mi 14",
+    "codename": "diting",
+    "androidVersion": "14",
+    "sdkVersion": "34",
+    "securityPatch": "2024-01-01",
+    "buildId": "UP1A.231005.007",
+    "bootloader": "diting-ucode-2024-01",
+    "fingerprint": "xiaomi/diting/diting:14/UP1A.231005.007/V816.0.001.0:user/release-keys",
+    "description": "diting-user 14 UP1A.231005.007 V816.0.001.0 release-keys",
+    
+    "identity": {
+        "imei": "869171021234567",
+        "imei2": "869171029876543",
+        "serialNumber": "1234567890AA",
+        "androidId": "c3d4e5f6g7h8i9j0",
+        "gsfId": "3456789012"
+    },
+    
+    "network": {
+        "wifiMac": "34:80:B3:CD:EF:01",
+        "bluetoothMac": "00:1A:7D:34:56:78",
+        "hostname": "android-diting"
+    },
+    
+    "sim": {
+        "iccid": "8968803456789012345",
+        "imsi": "880103456789012",
+        "carrier": "China Mobile"
+    },
+    
+    "hardware": {
+        "cpu": "ARMv8 Processor (Qualcomm Snapdragon 8 Gen 3)",
+        "cores": 8,
+        "gpu": "Adreno (TM) 750",
+        "ram": "12GB",
+        "display": "6.36 inch AMOLED",
+        "resolution": "1200x2670"
+    },
+    
+    "location": {
+        "latitude": 39.9042,
+        "longitude": 116.4074,
+        "altitude": 50.0,
+        "accuracy": 10.0
+    },
+    
+    "sensors": {
+        "accelerometer": [0.0, 0.0, 9.8],
+        "gyroscope": [0.0, 0.0, 0.0],
+        "magneticField": [30.0, -15.0, 50.0]
+    }
+}

@@ -296,11 +296,14 @@ public:
             std::string version = exec("docker version --format '{{.Server.Version}}' 2>/dev/null");
             if (!version.empty()) {
                 std::cout << COLOR_GREEN << " OK (" << trim(version) << ")" << COLOR_RESET << std::endl;
+                m_dockerAvailable = true;
                 return true;
             }
         }
-        std::cout << COLOR_YELLOW << " Not running" << COLOR_RESET << std::endl;
-        return true;
+        std::cout << COLOR_YELLOW << " Not running (limited mode)" << COLOR_RESET << std::endl;
+        m_dockerAvailable = false;
+        std::cout << COLOR_YELLOW << "[!] Note: Device creation will be simulated without Docker" << COLOR_RESET << std::endl;
+        return true; // Return true to allow CLI to work in limited mode
     }
     
     Device createDevice(const std::string& manufacturer = "Samsung",
@@ -341,10 +344,12 @@ public:
     
     std::vector<Device> getAllDevices() const { return m_devices; }
     size_t getDeviceCount() const { return m_devices.size(); }
+    bool isDockerAvailable() const { return m_dockerAvailable; }
 
 private:
     DeviceManager() = default;
     std::vector<Device> m_devices;
+    bool m_dockerAvailable = false;
 };
 
 // ============================================================================

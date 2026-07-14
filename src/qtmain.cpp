@@ -15,6 +15,8 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QUuid>
+#include <QPixmap>
+#include <QIcon>
 
 #include "mainwindow.h"
 #include "VirtualPhonePro/ReDroidController.h"
@@ -235,7 +237,17 @@ int main(int argc, char *argv[]) {
     
     // Create and show main window
     MainWindow window;
-    window.setWindowIcon(QIcon(":/icons/app.png"));
+    
+    // Try to load icon, but don't fail if it's missing
+    QIcon appIcon(":/icons/app.png");
+    if (!appIcon.isNull()) {
+        window.setWindowIcon(appIcon);
+    } else {
+        // Use a simple colored icon as fallback
+        QPixmap pixmap(32, 32);
+        pixmap.fill(Qt::blue);
+        window.setWindowIcon(QIcon(pixmap));
+    }
     window.show();
     
     // Auto-start saved instances after window is shown

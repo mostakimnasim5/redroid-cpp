@@ -1,0 +1,57 @@
+{
+    "id": "google_pixel_8_pro",
+    "name": "Google Pixel 8 Pro",
+    "manufacturer": "Google",
+    "brand": "Google",
+    "model": "Pixel 8 Pro",
+    "codename": "husky",
+    "androidVersion": "14",
+    "sdkVersion": "34",
+    "securityPatch": "2024-01-05",
+    "buildId": "UQ1A.240105.002",
+    "bootloader": "husky-ucode-2024-01",
+    "fingerprint": "google/husky/husky:14/UQ1A.240105.002/TP1A.220624.014:user/release-keys",
+    "description": "husky-user 14 UQ1A.240105.002 TP1A.220624.014 release-keys",
+    
+    "identity": {
+        "imei": "357466081234567",
+        "imei2": "357466089876543",
+        "serialNumber": "AG12345678",
+        "androidId": "b2c3d4e5f6g7h8i9",
+        "gsfId": "2345678901"
+    },
+    
+    "network": {
+        "wifiMac": "3C:5A:B4:AB:CD:EF",
+        "bluetoothMac": "00:1A:7D:12:34:56",
+        "hostname": "android-husky"
+    },
+    
+    "sim": {
+        "iccid": "8968802345678901234",
+        "imsi": "880102345678901",
+        "carrier": "Google Fi"
+    },
+    
+    "hardware": {
+        "cpu": "ARMv8 Processor (Google Tensor G3)",
+        "cores": 8,
+        "gpu": "Immortalis-G715s MC10",
+        "ram": "12GB",
+        "display": "6.7 inch LTPO OLED",
+        "resolution": "1344x2992"
+    },
+    
+    "location": {
+        "latitude": 37.4220,
+        "longitude": -122.0841,
+        "altitude": 15.0,
+        "accuracy": 3.0
+    },
+    
+    "sensors": {
+        "accelerometer": [0.0, 0.0, 9.8],
+        "gyroscope": [0.0, 0.0, 0.0],
+        "magneticField": [24.0, -12.0, 43.0]
+    }
+}

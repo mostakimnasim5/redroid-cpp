@@ -50,24 +50,58 @@ elseif(UNIX)
 endif()
 
 # =============================================================================
-# Source Files
+# Source Files - Core
 # =============================================================================
 set(SOURCES
     src/main.cpp
     src/mainwindow.cpp
     src/qtmain.cpp
+    src/AutoStartDialog.cpp
+    src/Data/TACDatabase.cpp
+    
+    # ReDroidController modules
     src/ReDroidController/ReDroidController.cpp
     src/ReDroidController/MultiInstanceManager.cpp
-    src/ReDroidController/SafetyNetSpoofer.cpp
     src/ReDroidController/DeviceProfile.cpp
+    src/ReDroidController/EnhancedDeviceProfile.cpp
+    src/ReDroidController/RealisticDeviceProfile.cpp
+    src/ReDroidController/SafetyNetSpoofer.cpp
+    src/ReDroidController/BankingAppSpoofer.cpp
+    src/ReDroidController/GoogleFacebookSpoofer.cpp
+    src/ReDroidController/DeepDeviceSpoofer.cpp
+    src/ReDroidController/AdvancedAntiDetection.cpp
+    src/ReDroidController/TLSFingerprint.cpp
+    src/ReDroidController/HyperRealisticTouchEmulator.cpp
+    src/ReDroidController/UniqueDeviceGenerator.cpp
+    src/ReDroidController/APIServer.cpp
 )
 
 set(HEADERS
     src/mainwindow.h
+    src/AutoStartDialog.h
+    src/Data/TACDatabase.h
+    
+    # Public headers
     include/VirtualPhonePro/ReDroidController.h
     include/VirtualPhonePro/DeviceProfile.h
+    include/VirtualPhonePro/EnhancedDeviceProfile.h
+    include/VirtualPhonePro/RealisticDeviceProfile.hpp
     include/VirtualPhonePro/MultiInstanceManager.h
     include/VirtualPhonePro/SafetyNetSpoofer.h
+    include/VirtualPhonePro/BankingAppSpoofer.h
+    include/VirtualPhonePro/GoogleFacebookSpoofer.h
+    include/VirtualPhonePro/DeepDeviceSpoofer.h
+    include/VirtualPhonePro/AdvancedAntiDetection.hpp
+    include/VirtualPhonePro/TLSFingerprint.hpp
+    include/VirtualPhonePro/HyperRealisticTouchEmulator.hpp
+    include/VirtualPhonePro/UniqueDeviceGenerator.h
+    include/VirtualPhonePro/AppCloner.h
+    include/VirtualPhonePro/MagiskPatcher.h
+    include/VirtualPhonePro/NetworkConfig.h
+    include/VirtualPhonePro/SensorSimulator.h
+    include/VirtualPhonePro/TestingFramework.h
+    include/VirtualPhonePro/WebhookManager.h
+    include/VirtualPhonePro/APIServer.h
 )
 
 # =============================================================================

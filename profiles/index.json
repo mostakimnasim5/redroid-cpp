@@ -1,0 +1,36 @@
+{
+    "version": "1.0.0",
+    "lastUpdated": "2026-07-14",
+    "profiles": [
+        {
+            "id": "samsung_s24_ultra",
+            "name": "Samsung Galaxy S24 Ultra",
+            "manufacturer": "Samsung",
+            "file": "samsung_s24_ultra.json"
+        },
+        {
+            "id": "google_pixel_8_pro",
+            "name": "Google Pixel 8 Pro",
+            "manufacturer": "Google",
+            "file": "google_pixel_8_pro.json"
+        },
+        {
+            "id": "xiaomi_14",
+            "name": "Xiaomi 14",
+            "manufacturer": "Xiaomi",
+            "file": "xiaomi_14.json"
+        },
+        {
+            "id": "oneplus_12",
+            "name": "OnePlus 12",
+            "manufacturer": "OnePlus",
+            "file": "oneplus_12.json"
+        },
+        {
+            "id": "huawei_p60_pro",
+            "name": "Huawei P60 Pro",
+            "manufacturer": "Huawei",
+            "file": "huawei_p60_pro.json"
+        }
+    ]
+}

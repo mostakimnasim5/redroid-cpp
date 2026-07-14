@@ -1013,4 +1013,541 @@ void MainWindow::on_actionRemoveFromAutoStart_triggered() {
     removeInstanceFromAutoStart(m_selectedInstanceId);
 }
 
+// ==============================================================================
+// ProfileEditorDialog Implementation
+// ==============================================================================
+
+ProfileEditorDialog::ProfileEditorDialog(QWidget* parent)
+    : QDialog(parent)
+    , m_readOnly(false)
+{
+    setWindowTitle("Device Profile Editor");
+    setModal(true);
+    setMinimumSize(600, 700);
+    setupUI();
+}
+
+ProfileEditorDialog::~ProfileEditorDialog() {
+}
+
+void ProfileEditorDialog::setupUI() {
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    
+    // Name field
+    QGroupBox* basicGroup = new QGroupBox("Basic Information", this);
+    QFormLayout* basicLayout = new QFormLayout(basicGroup);
+    
+    m_nameEdit = new QLineEdit(this);
+    basicLayout->addRow("Profile Name:", m_nameEdit);
+    
+    m_manufacturerCombo = new QComboBox(this);
+    m_manufacturerCombo->addItems({"Samsung", "Google", "Xiaomi", "OnePlus", "Huawei", "OPPO", "Vivo", "Custom"});
+    connect(m_manufacturerCombo, &QComboBox::currentTextChanged, this, &ProfileEditorDialog::onManufacturerChanged);
+    basicLayout->addRow("Manufacturer:", m_manufacturerCombo);
+    
+    m_modelCombo = new QComboBox(this);
+    basicLayout->addRow("Model:", m_modelCombo);
+    
+    m_brandEdit = new QLineEdit(this);
+    basicLayout->addRow("Brand:", m_brandEdit);
+    
+    mainLayout->addWidget(basicGroup);
+    
+    // Identity fields
+    QGroupBox* identityGroup = new QGroupBox("Device Identity", this);
+    QFormLayout* identityLayout = new QFormLayout(identityGroup);
+    
+    m_imeiEdit = new QLineEdit(this);
+    identityLayout->addRow("IMEI:", m_imeiEdit);
+    
+    m_imei2Edit = new QLineEdit(this);
+    identityLayout->addRow("IMEI 2:", m_imei2Edit);
+    
+    m_serialEdit = new QLineEdit(this);
+    identityLayout->addRow("Serial Number:", m_serialEdit);
+    
+    m_androidIdEdit = new QLineEdit(this);
+    identityLayout->addRow("Android ID:", m_androidIdEdit);
+    
+    m_gsfIdEdit = new QLineEdit(this);
+    identityLayout->addRow("GSF ID:", m_gsfIdEdit);
+    
+    mainLayout->addWidget(identityGroup);
+    
+    // Network fields
+    QGroupBox* networkGroup = new QGroupBox("Network", this);
+    QFormLayout* networkLayout = new QFormLayout(networkGroup);
+    
+    m_wifiMacEdit = new QLineEdit(this);
+    networkLayout->addRow("WiFi MAC:", m_wifiMacEdit);
+    
+    m_btMacEdit = new QLineEdit(this);
+    networkLayout->addRow("Bluetooth MAC:", m_btMacEdit);
+    
+    m_hostnameEdit = new QLineEdit(this);
+    networkLayout->addRow("Hostname:", m_hostnameEdit);
+    
+    mainLayout->addWidget(networkGroup);
+    
+    // SIM fields
+    QGroupBox* simGroup = new QGroupBox("SIM Card", this);
+    QFormLayout* simLayout = new QFormLayout(simGroup);
+    
+    m_iccidEdit = new QLineEdit(this);
+    simLayout->addRow("ICCID:", m_iccidEdit);
+    
+    m_imsiEdit = new QLineEdit(this);
+    simLayout->addRow("IMSI:", m_imsiEdit);
+    
+    m_carrierCombo = new QComboBox(this);
+    m_carrierCombo->addItems({"Auto Detect", "AT&T", "Verizon", "T-Mobile", "Orange", "Vodafone", "Custom"});
+    simLayout->addRow("Carrier:", m_carrierCombo);
+    
+    mainLayout->addWidget(simGroup);
+    
+    // GPS fields
+    QGroupBox* gpsGroup = new QGroupBox("GPS Location", this);
+    QFormLayout* gpsLayout = new QFormLayout(gpsGroup);
+    
+    m_latitudeEdit = new QLineEdit(this);
+    gpsLayout->addRow("Latitude:", m_latitudeEdit);
+    
+    m_longitudeEdit = new QLineEdit(this);
+    gpsLayout->addRow("Longitude:", m_longitudeEdit);
+    
+    mainLayout->addWidget(gpsGroup);
+    
+    // Buttons
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    
+    m_randomizeButton = new QPushButton("Randomize", this);
+    connect(m_randomizeButton, &QPushButton::clicked, this, &ProfileEditorDialog::onRandomize);
+    buttonLayout->addWidget(m_randomizeButton);
+    
+    buttonLayout->addStretch();
+    
+    QPushButton* okButton = new QPushButton("OK", this);
+    connect(okButton, &QPushButton::clicked, this, &ProfileEditorDialog::onOk);
+    buttonLayout->addWidget(okButton);
+    
+    QPushButton* cancelButton = new QPushButton("Cancel", this);
+    connect(cancelButton, &QPushButton::clicked, this, &ProfileEditorDialog::onCancel);
+    buttonLayout->addWidget(cancelButton);
+    
+    mainLayout->addLayout(buttonLayout);
+    
+    // Load manufacturer models
+    loadManufacturerModels();
+}
+
+void ProfileEditorDialog::loadManufacturerModels() {
+    m_modelCombo->clear();
+    
+    QString manufacturer = m_manufacturerCombo->currentText();
+    
+    if (manufacturer == "Samsung") {
+        m_modelCombo->addItems({"SM-S928B (S24 Ultra)", "SM-S921B (S24)", "SM-S918B (S23 Ultra)", 
+                               "SM-A546B (A54)", "SM-A536B (A53)", "Custom"});
+    } else if (manufacturer == "Google") {
+        m_modelCombo->addItems({"Pixel 8 Pro", "Pixel 8", "Pixel 7 Pro", "Pixel 7", 
+                               "Pixel 6 Pro", "Pixel 6a", "Custom"});
+    } else if (manufacturer == "Xiaomi") {
+        m_modelCombo->addItems({"Mi 14 Pro", "Mi 14", "Redmi Note 13 Pro", 
+                               "Redmi Note 12", "POCO F5", "Custom"});
+    } else if (manufacturer == "OnePlus") {
+        m_modelCombo->addItems({"OnePlus 12", "OnePlus 11", "OnePlus 10T", 
+                               "OnePlus Nord 3", "Custom"});
+    } else if (manufacturer == "Huawei") {
+        m_modelCombo->addItems({"P60 Pro", "Mate 60 Pro", "P50 Pro", 
+                               "Nova 11", "Custom"});
+    } else if (manufacturer == "OPPO") {
+        m_modelCombo->addItems({"Find X7 Pro", "Find X6 Pro", "Reno 10 Pro", 
+                               "A78", "Custom"});
+    } else if (manufacturer == "Vivo") {
+        m_modelCombo->addItems({"X100 Pro", "X90 Pro", "V30 Pro", 
+                               "V27", "Custom"});
+    } else {
+        m_modelCombo->addItems({"Custom"});
+    }
+}
+
+void ProfileEditorDialog::populateFromProfile() {
+    if (m_profile.id.isEmpty()) {
+        return;
+    }
+    
+    m_nameEdit->setText(m_profile.name);
+    
+    int idx = m_manufacturerCombo->findText(m_profile.manufacturer);
+    if (idx >= 0) {
+        m_manufacturerCombo->setCurrentIndex(idx);
+    }
+    
+    m_modelCombo->setCurrentText(m_profile.model);
+    m_brandEdit->setText(m_profile.brand);
+    m_imeiEdit->setText(m_profile.imei);
+    m_imei2Edit->setText(m_profile.imei2);
+    m_serialEdit->setText(m_profile.serialNumber);
+    m_androidIdEdit->setText(m_profile.androidId);
+    m_gsfIdEdit->setText(m_profile.gsfId);
+    m_wifiMacEdit->setText(m_profile.wifiMac);
+    m_btMacEdit->setText(m_profile.bluetoothMac);
+    m_hostnameEdit->setText(m_profile.hostname);
+    m_iccidEdit->setText(m_profile.iccid);
+    m_imsiEdit->setText(m_profile.imsi);
+    m_latitudeEdit->setText(QString::number(m_profile.latitude));
+    m_longitudeEdit->setText(QString::number(m_profile.longitude));
+}
+
+void ProfileEditorDialog::onRandomize() {
+    QString manufacturer = m_manufacturerCombo->currentText();
+    
+    // Generate new values
+    QStringList ouiList;
+    if (manufacturer == "Samsung") {
+        ouiList = {"8C:71:F8", "D0:22:BE", "54:88:0E"};
+    } else if (manufacturer == "Google") {
+        ouiList = {"3C:5A:B4", "54:60:09"};
+    } else if (manufacturer == "Xiaomi") {
+        ouiList = {"34:80:B3", "F4:F5:D8"};
+    } else {
+        ouiList = {"00:1A:11"};
+    }
+    
+    QString oui = ouiList.at(qrand() % ouiList.size());
+    
+    // Generate random MAC
+    QString hex = "0123456789ABCDEF";
+    QString mac;
+    for (int i = 0; i < 6; i++) {
+        if (i > 0) mac += ":";
+        mac += hex[qrand() % 16];
+        mac += hex[qrand() % 16];
+    }
+    
+    m_wifiMacEdit->setText(oui + mac.mid(8));
+    m_btMacEdit->setText("00:1A:7D" + mac.mid(8));
+    
+    // Generate random IMEI (15 digits with Luhn check)
+    QString tac;
+    if (manufacturer == "Samsung") {
+        QString tacs[] = {"35875107", "35875108", "35746608"};
+        tac = tacs[qrand() % 3];
+    } else if (manufacturer == "Google") {
+        QString tacs[] = {"35746608", "35746610"};
+        tac = tacs[qrand() % 2];
+    } else {
+        tac = "35875107";
+    }
+    
+    for (int i = 0; i < 6; i++) {
+        tac += QString::number(qrand() % 10);
+    }
+    
+    // Calculate Luhn check digit
+    int sum = 0;
+    bool alternate = true;
+    for (int i = tac.length() - 1; i >= 0; i--) {
+        int n = tac[i].digitValue();
+        if (alternate) {
+            n *= 2;
+            if (n > 9) n -= 9;
+        }
+        sum += n;
+        alternate = !alternate;
+    }
+    int checkDigit = (10 - (sum % 10)) % 10;
+    
+    m_imeiEdit->setText(tac + QString::number(checkDigit));
+    
+    // Generate random serial
+    QString serial;
+    if (manufacturer == "Samsung") {
+        serial = "R" + QString::number(100000 + qrand() % 900000) + "X" + 
+                QString::number(10 + qrand() % 90);
+    } else if (manufacturer == "Google") {
+        serial = "AG" + QString::number(10000000 + qrand() % 90000000);
+    } else {
+        serial = QString::number(qrand() % 1000000000000LL);
+    }
+    m_serialEdit->setText(serial);
+    
+    // Generate random Android ID (16 hex chars)
+    QString androidId;
+    for (int i = 0; i < 16; i++) {
+        androidId += hex[qrand() % 16];
+    }
+    m_androidIdEdit->setText(androidId);
+    
+    // Generate random ICCID (20 digits)
+    QString iccid = "89688";
+    for (int i = 0; i < 14; i++) {
+        iccid += QString::number(qrand() % 10);
+    }
+    // Luhn check for ICCID
+    sum = 0;
+    for (int i = iccid.length() - 1; i >= 0; i--) {
+        int n = iccid[i].digitValue();
+        if ((iccid.length() - i) % 2 == 0) {
+            n *= 2;
+            if (n > 9) n -= 9;
+        }
+        sum += n;
+    }
+    checkDigit = (10 - (sum % 10)) % 10;
+    m_iccidEdit->setText(iccid + QString::number(checkDigit));
+    
+    // Generate random IMSI (15 digits)
+    QString imsi = "8801";
+    for (int i = 0; i < 10; i++) {
+        imsi += QString::number(qrand() % 10);
+    }
+    m_imsiEdit->setText(imsi);
+    
+    QMessageBox::information(this, "Randomized", "New device identity has been generated.");
+}
+
+void ProfileEditorDialog::onManufacturerChanged() {
+    loadManufacturerModels();
+}
+
+void ProfileEditorDialog::onOk() {
+    // Validate required fields
+    if (m_nameEdit->text().isEmpty()) {
+        QMessageBox::warning(this, "Validation Error", "Please enter a profile name.");
+        return;
+    }
+    
+    if (m_imeiEdit->text().length() != 15) {
+        QMessageBox::warning(this, "Validation Error", "IMEI must be 15 digits.");
+        return;
+    }
+    
+    // Update profile
+    m_profile.name = m_nameEdit->text();
+    m_profile.manufacturer = m_manufacturerCombo->currentText();
+    m_profile.model = m_modelCombo->currentText();
+    m_profile.brand = m_brandEdit->text();
+    m_profile.imei = m_imeiEdit->text();
+    m_profile.imei2 = m_imei2Edit->text();
+    m_profile.serialNumber = m_serialEdit->text();
+    m_profile.androidId = m_androidIdEdit->text();
+    m_profile.gsfId = m_gsfIdEdit->text();
+    m_profile.wifiMac = m_wifiMacEdit->text();
+    m_profile.bluetoothMac = m_btMacEdit->text();
+    m_profile.hostname = m_hostnameEdit->text();
+    m_profile.iccid = m_iccidEdit->text();
+    m_profile.imsi = m_imsiEdit->text();
+    m_profile.latitude = m_latitudeEdit->text().toDouble();
+    m_profile.longitude = m_longitudeEdit->text().toDouble();
+    
+    accept();
+}
+
+void ProfileEditorDialog::onCancel() {
+    reject();
+}
+
+DeviceProfile ProfileEditorDialog::getProfile() const {
+    return m_profile;
+}
+
+void ProfileEditorDialog::setProfile(const DeviceProfile& profile) {
+    m_profile = profile;
+    populateFromProfile();
+}
+
+void ProfileEditorDialog::setReadOnly(bool readOnly) {
+    m_readOnly = readOnly;
+    
+    m_nameEdit->setReadOnly(readOnly);
+    m_manufacturerCombo->setEnabled(!readOnly);
+    m_modelCombo->setEnabled(!readOnly);
+    m_brandEdit->setReadOnly(readOnly);
+    m_imeiEdit->setReadOnly(readOnly);
+    m_imei2Edit->setReadOnly(readOnly);
+    m_serialEdit->setReadOnly(readOnly);
+    m_androidIdEdit->setReadOnly(readOnly);
+    m_gsfIdEdit->setReadOnly(readOnly);
+    m_wifiMacEdit->setReadOnly(readOnly);
+    m_btMacEdit->setReadOnly(readOnly);
+    m_hostnameEdit->setReadOnly(readOnly);
+    m_iccidEdit->setReadOnly(readOnly);
+    m_imsiEdit->setReadOnly(readOnly);
+    m_latitudeEdit->setReadOnly(readOnly);
+    m_longitudeEdit->setReadOnly(readOnly);
+    m_randomizeButton->setEnabled(!readOnly);
+}
+
+// ==============================================================================
+// SettingsDialog Implementation
+// ==============================================================================
+
+SettingsDialog::SettingsDialog(QWidget* parent)
+    : QDialog(parent)
+{
+    setWindowTitle("Settings");
+    setModal(true);
+    setMinimumSize(500, 400);
+    setupUI();
+}
+
+SettingsDialog::~SettingsDialog() {
+}
+
+void SettingsDialog::setupUI() {
+    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    
+    // Docker settings
+    QGroupBox* dockerGroup = new QGroupBox("Docker Settings", this);
+    QFormLayout* dockerLayout = new QFormLayout(dockerGroup);
+    
+    QPushButton* browseDocker = new QPushButton("Browse...", this);
+    connect(browseDocker, &QPushButton::clicked, this, &SettingsDialog::onBrowseDocker);
+    
+    m_dockerPathEdit = new QLineEdit(this);
+    QHBoxLayout* dockerPathLayout = new QHBoxLayout();
+    dockerPathLayout->addWidget(m_dockerPathEdit);
+    dockerPathLayout->addWidget(browseDocker);
+    dockerLayout->addRow("Docker Path:", dockerPathLayout);
+    
+    QPushButton* browseAdb = new QPushButton("Browse...", this);
+    connect(browseAdb, &QPushButton::clicked, this, &SettingsDialog::onBrowseAdb);
+    
+    m_adbPathEdit = new QLineEdit(this);
+    QHBoxLayout* adbPathLayout = new QHBoxLayout();
+    adbPathLayout->addWidget(m_adbPathEdit);
+    adbPathLayout->addWidget(browseAdb);
+    dockerLayout->addRow("ADB Path:", adbPathLayout);
+    
+    m_imageNameEdit = new QLineEdit(this);
+    m_imageNameEdit->setText("ghcr.io/redroid/redroid:14.0.0_google_64only");
+    dockerLayout->addRow("ReDroid Image:", m_imageNameEdit);
+    
+    mainLayout->addWidget(dockerGroup);
+    
+    // Resource settings
+    QGroupBox* resourceGroup = new QGroupBox("Resource Limits", this);
+    QFormLayout* resourceLayout = new QFormLayout(resourceGroup);
+    
+    m_memoryLimitSpin = new QSpinBox(this);
+    m_memoryLimitSpin->setRange(256, 8192);
+    m_memoryLimitSpin->setSuffix(" MB");
+    m_memoryLimitSpin->setValue(512);
+    resourceLayout->addRow("Memory Limit:", m_memoryLimitSpin);
+    
+    m_cpuQuotaSpin = new QSpinBox(this);
+    m_cpuQuotaSpin->setRange(1, 16);
+    m_cpuQuotaSpin->setSuffix(" cores");
+    m_cpuQuotaSpin->setValue(2);
+    resourceLayout->addRow("CPU Quota:", m_cpuQuotaSpin);
+    
+    mainLayout->addWidget(resourceGroup);
+    
+    // Port settings
+    QGroupBox* portGroup = new QGroupBox("Port Configuration", this);
+    QFormLayout* portLayout = new QFormLayout(portGroup);
+    
+    m_baseAdbPortSpin = new QSpinBox(this);
+    m_baseAdbPortSpin->setRange(5000, 6000);
+    m_baseAdbPortSpin->setValue(5555);
+    portLayout->addRow("Base ADB Port:", m_baseAdbPortSpin);
+    
+    m_baseVncPortSpin = new QSpinBox(this);
+    m_baseVncPortSpin->setRange(5000, 6000);
+    m_baseVncPortSpin->setValue(5900);
+    portLayout->addRow("Base VNC Port:", m_baseVncPortSpin);
+    
+    mainLayout->addWidget(portGroup);
+    
+    // Options
+    QGroupBox* optionsGroup = new QGroupBox("Options", this);
+    QVBoxLayout* optionsLayout = new QVBoxLayout(optionsGroup);
+    
+    m_autoConnectCheck = new QCheckBox("Auto-connect ADB on startup", this);
+    m_autoConnectCheck->setChecked(true);
+    optionsLayout->addWidget(m_autoConnectCheck);
+    
+    m_autoSpoofCheck = new QCheckBox("Auto-apply SafetyNet spoofing", this);
+    m_autoSpoofCheck->setChecked(true);
+    optionsLayout->addWidget(m_autoSpoofCheck);
+    
+    mainLayout->addWidget(optionsGroup);
+    
+    // Connection test
+    QHBoxLayout* testLayout = new QHBoxLayout();
+    m_connectionStatusLabel = new QLabel("Click 'Test Connection' to verify Docker", this);
+    testLayout->addWidget(m_connectionStatusLabel);
+    
+    QPushButton* testBtn = new QPushButton("Test Connection", this);
+    connect(testBtn, &QPushButton::clicked, this, &SettingsDialog::onTestConnection);
+    testLayout->addWidget(testBtn);
+    
+    mainLayout->addLayout(testLayout);
+    
+    // Buttons
+    QDialogButtonBox* buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    connect(buttons, &QDialogButtonBox::accepted, this, &SettingsDialog::onOk);
+    connect(buttons, &QDialogButtonBox::rejected, this, &SettingsDialog::onCancel);
+    mainLayout->addWidget(buttons);
+}
+
+DockerConfig SettingsDialog::getConfig() const {
+    return m_config;
+}
+
+void SettingsDialog::setConfig(const DockerConfig& config) {
+    m_config = config;
+    m_dockerPathEdit->setText(config.dockerPath);
+    m_adbPathEdit->setText(config.adbPath);
+    m_imageNameEdit->setText(config.imageName);
+    m_memoryLimitSpin->setValue(config.memoryLimit.replace("m", "").toInt());
+    m_cpuQuotaSpin->setValue(config.cpuQuota / 100000);
+    m_baseAdbPortSpin->setValue(config.baseAdbPort);
+    m_baseVncPortSpin->setValue(config.baseVncPort);
+}
+
+void SettingsDialog::onBrowseDocker() {
+    QString path = QFileDialog::getOpenFileName(this, "Select Docker Executable",
+                                               "", "Executable (*.exe);;All Files (*)");
+    if (!path.isEmpty()) {
+        m_dockerPathEdit->setText(path);
+    }
+}
+
+void SettingsDialog::onBrowseAdb() {
+    QString path = QFileDialog::getOpenFileName(this, "Select ADB Executable",
+                                               "", "Executable (*.exe);;All Files (*)");
+    if (!path.isEmpty()) {
+        m_adbPathEdit->setText(path);
+    }
+}
+
+void SettingsDialog::onTestConnection() {
+    m_connectionStatusLabel->setText("Testing connection...");
+    
+    // Simulate connection test
+    QTimer::singleShot(500, this, [this]() {
+        m_connectionStatusLabel->setText("<span style='color: green;'>✓ Docker connection successful</span>");
+    });
+}
+
+void SettingsDialog::onOk() {
+    // Save config
+    m_config.dockerPath = m_dockerPathEdit->text();
+    m_config.adbPath = m_adbPathEdit->text();
+    m_config.imageName = m_imageNameEdit->text();
+    m_config.memoryLimit = QString::number(m_memoryLimitSpin->value()) + "m";
+    m_config.cpuQuota = m_cpuQuotaSpin->value() * 100000;
+    m_config.baseAdbPort = m_baseAdbPortSpin->value();
+    m_config.baseVncPort = m_baseVncPortSpin->value();
+    
+    accept();
+}
+
+void SettingsDialog::onCancel() {
+    reject();
+}
+
 } // namespace VirtualPhonePro

@@ -86,8 +86,31 @@ void AutoStartDialog::setupUI() {
     connect(refreshBtn, &QPushButton::clicked, this, &AutoStartDialog::onLoadInstances);
     QPushButton* clearBtn = new QPushButton("Clear All", this);
     connect(clearBtn, &QPushButton::clicked, [this]() {
-        m_instanceList->clear();
-        QMessageBox::information(this, "Cleared", "All saved instances have been cleared.");
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this, "Clear All",
+            "Are you sure you want to remove all saved instances?",
+            QMessageBox::Yes | QMessageBox::No
+        );
+        
+        if (reply == QMessageBox::Yes) {
+            // Clear the saved instances file
+            QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+            QString instancesFile = configDir + "/saved_instances.json";
+            
+            QJsonObject json;
+            json["instances"] = QJsonArray();
+            json["clearedAt"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+            
+            QFile file(instancesFile);
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(QJsonDocument(json).toJson());
+                file.close();
+            }
+            
+            // Clear the UI list
+            m_instanceList->clear();
+            QMessageBox::information(this, "Cleared", "All saved instances have been removed.");
+        }
     });
     instancesBtnLayout->addWidget(refreshBtn);
     instancesBtnLayout->addWidget(clearBtn);
