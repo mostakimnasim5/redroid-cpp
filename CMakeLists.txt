@@ -95,12 +95,23 @@ install(DIRECTORY profiles/ DESTINATION share/redroid/profiles)
 # ==============================================================================
 # Qt6 GUI Application (Optional)
 # ==============================================================================
-option(BUILD_QT6_GUI "Build Qt6 GUI application" OFF)
+option(BUILD_QT6_GUI "Build Qt6 GUI application" ON)
 
 if(BUILD_QT6_GUI)
     find_package(Qt6 COMPONENTS Core Gui Widgets Network REQUIRED)
     
-    set(QT6_SOURCES
+    # New GUI Module
+    set(QT6_GUI_SOURCES
+        src/GUI/main.cpp
+        src/GUI/MainWindow.cpp
+    )
+    
+    set(QT6_GUI_HEADERS
+        src/GUI/MainWindow.h
+    )
+    
+    # Core Modules
+    set(QT6_CORE_SOURCES
         src/mainwindow.cpp
         src/qtmain.cpp
         src/AutoStartDialog.cpp
@@ -118,7 +129,7 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/EnhancedDeviceProfile.cpp
     )
     
-    set(QT6_HEADERS
+    set(QT6_CORE_HEADERS
         src/mainwindow.h
         src/AutoStartDialog.h
         include/VirtualPhonePro/ReDroidController.h
@@ -134,11 +145,18 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/RealisticDeviceProfile.hpp
     )
     
-    add_executable(virtualphonepro-qt WIN32 ${QT6_SOURCES} ${QT6_HEADERS})
+    # Main GUI Executable
+    add_executable(virtualphonepro-qt WIN32 
+        ${QT6_GUI_SOURCES}
+        ${QT6_GUI_HEADERS}
+        ${QT6_CORE_SOURCES}
+        ${QT6_CORE_HEADERS}
+    )
     
     target_include_directories(virtualphonepro-qt PRIVATE
         include
         src
+        src/GUI
         ${Qt6_INCLUDE_DIRS}
     )
     
@@ -153,7 +171,7 @@ if(BUILD_QT6_GUI)
     
     install(TARGETS virtualphonepro-qt DESTINATION bin)
     
-    message(STATUS "Qt6 GUI enabled - use -DBUILD_QT6_GUI=ON to build")
+    message(STATUS "Qt6 GUI enabled by default")
 endif()
 
 # ==============================================================================
