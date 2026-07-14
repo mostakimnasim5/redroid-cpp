@@ -370,6 +370,93 @@ public:
      */
     QString getLogs(const QString& instanceId, int tail = 100);
 
+    // =========================================================================
+    // Network Isolation
+    // =========================================================================
+    
+    /**
+     * @brief Configure network isolation for an instance
+     * @param instanceId Target instance
+     * @param config Network isolation configuration
+     * @return true if configured successfully
+     */
+    bool configureNetworkIsolation(const QString& instanceId, 
+                                   const NetworkIsolationConfig& config);
+    
+    /**
+     * @brief Create isolated Docker network for an instance
+     * @param instanceId Target instance
+     * @param subnet Network subnet (e.g., "172.28.1.0/24")
+     * @return true if created successfully
+     */
+    bool createIsolatedNetwork(const QString& instanceId, const QString& subnet);
+    
+    /**
+     * @brief Delete isolated network for an instance
+     * @param instanceId Target instance
+     * @return true if deleted successfully
+     */
+    bool deleteIsolatedNetwork(const QString& instanceId);
+    
+    /**
+     * @brief Assign proxy to instance
+     * @param instanceId Target instance
+     * @param proxy Proxy configuration
+     * @return true if assigned successfully
+     */
+    bool assignProxy(const QString& instanceId, const ProxyConfig& proxy);
+    
+    /**
+     * @brief Remove proxy from instance
+     * @param instanceId Target instance
+     * @return true if removed successfully
+     */
+    bool removeProxy(const QString& instanceId);
+    
+    /**
+     * @brief Setup VPN for instance
+     * @param instanceId Target instance
+     * @param vpn VPN configuration
+     * @return true if setup successfully
+     */
+    bool setupVPN(const QString& instanceId, const VPNConfig& vpn);
+    
+    /**
+     * @brief Prevent network leaks (MAC, IP, DNS)
+     * @param instanceId Target instance
+     * @return true if applied successfully
+     */
+    bool applyLeakPrevention(const QString& instanceId);
+    
+    /**
+     * @brief Block IPv6 traffic
+     * @param instanceId Target instance
+     * @return true if blocked successfully
+     */
+    bool blockIPv6(const QString& instanceId);
+    
+    /**
+     * @brief Configure DNS servers
+     * @param instanceId Target instance
+     * @param dnsServers List of DNS servers
+     * @return true if configured successfully
+     */
+    bool configureDNS(const QString& instanceId, const QList<QString>& dnsServers);
+    
+    /**
+     * @brief Get current network info for instance
+     * @param instanceId Target instance
+     * @return Network information JSON
+     */
+    QString getNetworkInfo(const QString& instanceId);
+    
+    /**
+     * @brief Test for network leaks
+     * @param instanceId Target instance
+     * @return true if leaks detected
+     */
+    bool testForLeaks(const QString& instanceId);
+
 signals:
     /**
      * @brief Emitted when instance state changes

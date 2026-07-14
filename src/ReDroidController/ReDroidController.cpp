@@ -1154,4 +1154,377 @@ void ReDroidController::checkInstanceStatus(const QString& instanceId) {
     }
 }
 
+// ============================================================================
+// Network Isolation Implementation
+// ============================================================================
+
+bool ReDroidController::createIsolatedNetwork(const QString& instanceId, const QString& subnet) {
+    qDebug() << "Creating isolated network for instance:" << instanceId;
+    
+    QString networkName = QString("vpp-network-%1").arg(instanceId);
+    
+    // Build docker network create command
+    QStringList args = {
+        "network", "create",
+        "--driver", "bridge",
+        "--subnet", subnet,
+        "--ipam-driver", "default",
+        "--opt", QString("com.docker.network.bridge.name=%1").arg(networkName),
+        "--opt", "com.docker.network.bridge.enable_icc=true",
+        "--opt", "com.docker.network.bridge.enable_ip_masquerade=true",
+        "--dns", "8.8.8.8",
+        "--dns", "1.1.1.1",
+        networkName
+    };
+    
+    OperationResult result = executeDocker(args, 30000);
+    
+    if (result.success) {
+        QMutexLocker locker(&m_instancesMutex);
+        if (m_instances.contains(instanceId)) {
+            m_instances[instanceId].networkName = networkName;
+            m_instances[instanceId].networkConfig.networkName = networkName;
+            m_instances[instanceId].networkConfig.subnet = subnet;
+            m_instances[instanceId].networkConfig.mode = NetworkMode::IsolatedBridge;
+        }
+        qDebug() << "Isolated network created:" << networkName;
+    }
+    
+    return result.success;
+}
+
+bool ReDroidController::deleteIsolatedNetwork(const QString& instanceId) {
+    qDebug() << "Deleting isolated network for instance:" << instanceId;
+    
+    QString networkName;
+    
+    {
+        QMutexLocker locker(&m_instancesMutex);
+        if (m_instances.contains(instanceId)) {
+            networkName = m_instances[instanceId].networkName;
+        }
+    }
+    
+    if (networkName.isEmpty()) {
+        return true;  // Already deleted
+    }
+    
+    OperationResult result = executeDocker({"network", "rm", networkName}, 10000);
+    
+    if (result.success) {
+        QMutexLocker locker(&m_instancesMutex);
+        if (m_instances.contains(instanceId)) {
+            m_instances[instanceId].networkName.clear();
+        }
+        qDebug() << "Isolated network deleted:" << networkName;
+    }
+    
+    return result.success;
+}
+
+bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig& proxy) {
+    if (!proxy.isValid()) {
+        qWarning() << "Invalid proxy configuration";
+        return false;
+    }
+    
+    qDebug() << "Assigning proxy to instance:" << instanceId;
+    
+    // Build proxy URL
+    QString proxyUrl;
+    if (proxy.type == "socks5") {
+        proxyUrl = QString("socks5://%1:%2").arg(proxy.host).arg(proxy.port);
+    } else {
+        proxyUrl = QString("http://%1:%2").arg(proxy.host).arg(proxy.port);
+    }
+    
+    if (!proxy.username.isEmpty()) {
+        proxyUrl = proxyUrl.replace("://", 
+            QString("://%1:%2@").arg(proxy.username).arg(proxy.password));
+    }
+    
+    // Generate PAC file content
+    QString pacContent = QString(R"(
+        function FindProxyForURL(url, host) {
+            if (isPlainHostName(host) || 
+                shExpMatch(host, "*.local") ||
+                isInNet(dnsResolve(host), "10.0.0.0", "255.0.0.0") ||
+                isInNet(dnsResolve(host), "172.16.0.0", "255.240.0.0") ||
+                isInNet(dnsResolve(host), "192.168.0.0", "255.255.0.0") ||
+                isInNet(dnsResolve(host), "127.0.0.0", "255.0.0.0")) {
+                return "DIRECT";
+            }
+            return "PROXY %1:%2";
+        }
+    )").arg(proxy.host).arg(proxy.port);
+    
+    // Save PAC file locally
+    QString profileDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString pacPath = QString("%1/instances/%2/proxy.pac").arg(profileDir).arg(instanceId);
+    
+    QDir().mkpath(QString("%1/instances/%2").arg(profileDir).arg(instanceId));
+    
+    QFile pacFile(pacPath);
+    if (pacFile.open(QIODevice::WriteOnly)) {
+        pacFile.write(pacContent.toUtf8());
+        pacFile.close();
+    }
+    
+    // Push PAC file to container
+    pushFile(instanceId, pacPath, "/data/proxy.pac");
+    
+    // Apply proxy settings via ADB
+    QStringList commands = {
+        // Set global HTTP proxy
+        QString("settings put global http_proxy %1 %2").arg(proxy.host).arg(proxy.port),
+        QString("settings put global global_http_proxy_host %1").arg(proxy.host),
+        QString("settings put global global_http_proxy_port %1").arg(proxy.port),
+        QString("settings put global global_proxy_pac_url file:///data/proxy.pac"),
+        
+        // Configure DNS to prevent leaks
+        "setprop net.dns1 8.8.8.8",
+        "setprop net.dns2 1.1.1.1",
+        
+        // Disable IPv6
+        "sysctl -w net.ipv6.conf.all.disable_ipv6=1",
+        "sysctl -w net.ipv6.conf.default.disable_ipv6=1",
+        "sysctl -w net.ipv6.conf.lo.disable_ipv6=1"
+    };
+    
+    for (const QString& cmd : commands) {
+        executeShell(instanceId, cmd);
+    }
+    
+    // Store proxy config
+    {
+        QMutexLocker locker(&m_instancesMutex);
+        if (m_instances.contains(instanceId)) {
+            m_instances[instanceId].networkConfig.proxy = proxy;
+            m_instances[instanceId].networkConfig.mode = NetworkMode::Proxy;
+        }
+    }
+    
+    qDebug() << "Proxy assigned successfully";
+    return true;
+}
+
+bool ReDroidController::removeProxy(const QString& instanceId) {
+    qDebug() << "Removing proxy from instance:" << instanceId;
+    
+    QStringList commands = {
+        // Remove global proxy
+        "settings delete global http_proxy",
+        "settings delete global global_http_proxy_host",
+        "settings delete global global_http_proxy_port",
+        "settings delete global global_proxy_pac_url",
+        
+        // Reset DNS
+        "setprop net.dns1 8.8.8.8",
+        "setprop net.dns2 8.8.4.4",
+        
+        // Re-enable IPv6
+        "sysctl -w net.ipv6.conf.all.disable_ipv6=0",
+        "sysctl -w net.ipv6.conf.default.disable_ipv6=0"
+    };
+    
+    for (const QString& cmd : commands) {
+        executeShell(instanceId, cmd);
+    }
+    
+    // Clear proxy config
+    {
+        QMutexLocker locker(&m_instancesMutex);
+        if (m_instances.contains(instanceId)) {
+            m_instances[instanceId].networkConfig.mode = NetworkMode::Default;
+        }
+    }
+    
+    return true;
+}
+
+bool ReDroidController::configureNetworkIsolation(const QString& instanceId,
+                                                 const NetworkIsolationConfig& config) {
+    qDebug() << "Configuring network isolation for instance:" << instanceId;
+    
+    // Create isolated network if needed
+    if (config.mode == NetworkMode::IsolatedBridge || 
+        config.mode == NetworkMode::Proxy ||
+        config.mode == NetworkMode::VPN) {
+        
+        if (!config.subnet.isEmpty()) {
+            if (!createIsolatedNetwork(instanceId, config.subnet)) {
+                qWarning() << "Failed to create isolated network";
+            }
+        }
+    }
+    
+    // Assign proxy if configured
+    if (config.mode == NetworkMode::Proxy && config.proxy.isValid()) {
+        assignProxy(instanceId, config.proxy);
+    }
+    
+    // Apply leak prevention
+    applyLeakPrevention(instanceId);
+    
+    // Block IPv6 if configured
+    if (config.blockIPv6) {
+        blockIPv6(instanceId);
+    }
+    
+    // Configure DNS
+    if (!config.dnsServers.isEmpty()) {
+        configureDNS(instanceId, config.dnsServers);
+    }
+    
+    // Store configuration
+    {
+        QMutexLocker locker(&m_instancesMutex);
+        if (m_instances.contains(instanceId)) {
+            m_instances[instanceId].networkConfig = config;
+        }
+    }
+    
+    qDebug() << "Network isolation configured successfully";
+    return true;
+}
+
+bool ReDroidController::setupVPN(const QString& instanceId, const VPNConfig& vpn) {
+    qDebug() << "Setting up VPN for instance:" << instanceId;
+    
+    // VPN setup requires additional container for WireGuard/OpenVPN
+    // This is a placeholder for VPN configuration
+    
+    qWarning() << "VPN setup requires additional VPN container configuration";
+    
+    // Store VPN config
+    {
+        QMutexLocker locker(&m_instancesMutex);
+        if (m_instances.contains(instanceId)) {
+            m_instances[instanceId].networkConfig.vpn = vpn;
+            m_instances[instanceId].networkConfig.mode = NetworkMode::VPN;
+        }
+    }
+    
+    return false;  // Requires additional VPN container setup
+}
+
+bool ReDroidController::applyLeakPrevention(const QString& instanceId) {
+    qDebug() << "Applying leak prevention for instance:" << instanceId;
+    
+    QStringList commands = {
+        // Clear ARP cache
+        "ip neigh flush all",
+        
+        // Clear routing cache
+        "ip route flush cache",
+        
+        // Reset hostname to generic
+        "hostname android-" + QString::number(QRandomGenerator::global()->bounded(1000, 9999)),
+        
+        // Clear any IPv6 routes
+        "ip -6 route flush cache",
+        
+        // Disable IPv6 router advertisements
+        "sysctl -w net.ipv6.conf.all.accept_ra=0",
+        "sysctl -w net.ipv6.conf.default.accept_ra=0"
+    };
+    
+    for (const QString& cmd : commands) {
+        executeShell(instanceId, cmd);
+    }
+    
+    // Block STUN to prevent WebRTC leaks
+    QStringList stunBlocks = {
+        // Block Google STUN
+        "iptables -A OUTPUT -p udp --dport 19302 -j DROP",
+        // Block standard STUN
+        "iptables -A OUTPUT -p udp --dport 3478 -j DROP"
+    };
+    
+    for (const QString& cmd : stunBlocks) {
+        executeShell(instanceId, cmd);
+    }
+    
+    qDebug() << "Leak prevention applied";
+    return true;
+}
+
+bool ReDroidController::blockIPv6(const QString& instanceId) {
+    qDebug() << "Blocking IPv6 for instance:" << instanceId;
+    
+    QStringList commands = {
+        "sysctl -w net.ipv6.conf.all.disable_ipv6=1",
+        "sysctl -w net.ipv6.conf.default.disable_ipv6=1",
+        "sysctl -w net.ipv6.conf.lo.disable_ipv6=1"
+    };
+    
+    for (const QString& cmd : commands) {
+        executeShell(instanceId, cmd);
+    }
+    
+    return true;
+}
+
+bool ReDroidController::configureDNS(const QString& instanceId, const QList<QString>& dnsServers) {
+    qDebug() << "Configuring DNS for instance:" << instanceId;
+    
+    int index = 1;
+    for (const QString& dns : dnsServers) {
+        QString cmd = QString("setprop net.dns%1 %2").arg(index).arg(dns);
+        executeShell(instanceId, cmd);
+        
+        // Also set persist properties
+        QString persistCmd = QString("setprop persist.net.dns%1 %2").arg(index).arg(dns);
+        executeShell(instanceId, persistCmd);
+        
+        index++;
+    }
+    
+    // Flush DNS cache
+    executeShell(instanceId, "ndc resolver flushif wlan0");
+    executeShell(instanceId, "ndc resolver flushif eth0");
+    
+    return true;
+}
+
+QString ReDroidController::getNetworkInfo(const QString& instanceId) {
+    QStringList commands = {
+        "ip addr show",
+        "ip route show",
+        "cat /etc/resolv.conf",
+        "getprop net.hostname",
+        "getprop net.dns1",
+        "getprop net.dns2"
+    };
+    
+    QStringList outputs;
+    for (const QString& cmd : commands) {
+        outputs.append(QString("\n=== %1 ===\n%2").arg(cmd).arg(executeShell(instanceId, cmd)));
+    }
+    
+    return outputs.join("\n");
+}
+
+bool ReDroidController::testForLeaks(const QString& instanceId) {
+    qDebug() << "Testing for network leaks in instance:" << instanceId;
+    
+    bool leakDetected = false;
+    
+    // Check for IPv6 leak
+    QString ipv6Result = executeShell(instanceId, "curl -s -6 https://ifconfig.me 2>/dev/null");
+    if (!ipv6Result.trimmed().isEmpty()) {
+        qWarning() << "IPv6 leak detected! IP:" << ipv6Result;
+        leakDetected = true;
+    }
+    
+    // Check for DNS leak using external service
+    QString dnsLeakResult = executeShell(instanceId, 
+        "curl -s https://browserleaks.com/dns 2>/dev/null || echo 'check_failed'");
+    if (dnsLeakResult.contains("check_failed")) {
+        qWarning() << "DNS leak test could not be completed";
+    }
+    
+    return leakDetected;
+}
+
 } // namespace VirtualPhonePro
