@@ -1,102 +1,46 @@
 # ==============================================================================
-# RedroidCPP - Docker Compose Configuration
-# Android Emulator with Device Profile Integration
+# ReDroidCPP - Android Emulator Docker Compose
 # ==============================================================================
 
 services:
-  # ---------------------------------------------------------------------------
-  # Redroid Android Emulator Container
-  # ---------------------------------------------------------------------------
-  redroid:
+  android-emulator:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: redroid-emulator
-    hostname: android-emulator
-    image: redroid-cpp/emulator:latest
+    container_name: android-emulator
+    image: redroid-cpp/android-emulator:latest
 
-    # Privileged mode required for Android emulation
-    privileged: true
-    cgroup: host
-
-    # X11 Forwarding for Native Desktop Display on Windows
+    # X11 Forwarding for Native Desktop Display
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-    # Device provisioning environment
     environment:
-      # X11 Display Forwarding (Windows with VcXsrv/GWSL)
       - DISPLAY=host.docker.internal:0
+      - ANDROID_EMULATOR_VERSION=34
+      - ANDROID_SDK_ROOT=/opt/android-sdk
+      - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
-      # Device Configuration
-      - DEVICE_MANUFACTURER=Samsung
-      - DEVICE_MODEL=Galaxy S24 Ultra
-      - DEVICE_ANDROID_VERSION=15
-      - DEVICE_PROFILE_ID=
+    ports:
+      - "5554:5554"  # ADB
+      - "5555:5555"  # ADB
 
-      # Network Configuration
-      - ADB_PORT=15555
-      - REDROID_GPU_MODE=host
-      - REDROID_GPU=swiftshader_indirect
-
-      # Setup flags
-      - SETUP_DEVICE=true
-      - GENERATE_IMEI=true
-      - GENERATE_SERIAL=true
-
-    # Device passthrough
     devices:
       - /dev/kvm:/dev/kvm
-      - /dev/binderfs:/dev/binderfs
-      - /dev/binder:/dev/binder
-      - /dev/hwbinder:/dev/hwbinder
-      - /dev/vndbinder:/dev/vndbinder
 
-    # Mount volumes
     volumes:
-      - ../profiles:/opt/profiles:ro
-      - ../data:/data
-      - redroid-data:/data
+      - avd_data:/root/.android
 
-    # Port mapping
-    ports:
-      - "15555:5555"
-      - "5900:5900"
+    mem_limit: 4g
+    shm_size: 2gb
 
-    # Health check
     healthcheck:
-      test: ["CMD", "getprop", "sys.boot_completed"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
+      test: ["CMD", "adb", "shell", "getprop", "sys.boot_completed"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
       start_period: 60s
 
-    # Restart policy
     restart: unless-stopped
 
-    # Runtime options
-    shm_size: 256mb
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-
-  # ---------------------------------------------------------------------------
-  # CLI Management Tool
-  # ---------------------------------------------------------------------------
-  cli:
-    image: redroid-cpp/emulator:latest
-    container_name: redroid-cli
-    command: ["help"]
-    volumes:
-      - ../profiles:/opt/profiles:ro
-      - ../data:/data
-    network_mode: host
-    profiles:
-      - cli
-
-# ==============================================================================
-# Volumes
-# ==============================================================================
 volumes:
-  redroid-data:
+  avd_data:
