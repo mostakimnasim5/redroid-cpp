@@ -131,13 +131,19 @@ public:
      */
     static bool isValidTACFormat(const std::string& tac);
 
-private:
+	private:
     // Private constructor for singleton
     TACDatabase();
     ~TACDatabase() = default;
     
     // Initialize database with all TAC codes
     void initializeDatabase();
+    
+    // Add TAC entry to database
+    void addTAC(const std::string& tac, const std::string& brand,
+                const std::string& modelName, const std::string& internalName,
+                const std::string& deviceType, const std::string& deviceClass,
+                const std::string& year, const std::string& month);
     
     // Internal storage
     std::unordered_map<std::string, TACEntry> m_tacMap;                    // TAC -> Entry

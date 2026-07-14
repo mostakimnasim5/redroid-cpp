@@ -16,9 +16,33 @@ set(PROJECT_VERSION_MINOR 0)
 set(PROJECT_VERSION_PATCH 0)
 
 # ==============================================================================
+# Platform Detection
+# ==============================================================================
+if(WIN32)
+    message(STATUS "Building for Windows")
+    set(WINDOWS 1)
+elseif(UNIX)
+    message(STATUS "Building for Unix/Linux")
+    set(UNIX 1)
+endif()
+
+# ==============================================================================
 # Compiler Flags
 # ==============================================================================
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+if(MSVC)
+    add_compile_options(
+        /W4
+        /WX-
+        /permissive-
+        /EHsc
+    )
+    # Windows XP/Vista compatibility
+    add_definitions(-DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00)
+    # Lean and mean
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+    # Disable CRT deprecation warnings
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(
         -Wall
         -Wextra
@@ -29,15 +53,15 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # ==============================================================================
-# Source Files
+# Source Files - Core Module
 # ==============================================================================
-set(SOURCES
+set(CORE_SOURCES
     src/main.cpp
     src/Core/DeviceProfile.cpp
+    src/Core/DeviceManager.cpp
 )
 
-set(HEADERS
-    include/Data/TACDatabase.h
+set(CORE_HEADERS
     include/Core/DeviceProfile.h
     include/Core/DeviceManager.h
 )
@@ -45,16 +69,25 @@ set(HEADERS
 # ==============================================================================
 # Executable - CLI Tool
 # ==============================================================================
-add_executable(redroid-cli ${SOURCES} ${HEADERS})
+add_executable(redroid-cli ${CORE_SOURCES} ${CORE_HEADERS})
 
 # Include directories
 target_include_directories(redroid-cli PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
-# Link libraries (if needed)
+# Link libraries
 find_package(Threads REQUIRED)
 target_link_libraries(redroid-cli PRIVATE Threads::Threads)
+
+# Windows-specific libraries
+if(WIN32)
+    target_link_libraries(redroid-cli PRIVATE
+        ws2_32
+        advapi32
+        userenv
+    )
+endif()
 
 # ==============================================================================
 # Installation
@@ -80,11 +113,7 @@ if(DOCKER_EXECUTABLE)
     )
     
     add_custom_target(docker-run
-        COMMAND ${DOCKER_EXECUTABLE} run --rm -it \
-            --privileged \
-            --device /dev/kvm:/dev/kvm \
-            -v ${CMAKE_SOURCE_DIR}/profiles:/opt/profiles \
-            redroid-cpp/emulator:${PROJECT_VERSION}
+        COMMAND ${DOCKER_EXECUTABLE} run --rm -it --privileged --device /dev/kvm:/dev/kvm -v ${CMAKE_SOURCE_DIR}/profiles:/opt/profiles redroid-cpp/emulator:${PROJECT_VERSION}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Running emulator in Docker"
         VERBATIM

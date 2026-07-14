@@ -94,11 +94,22 @@ include_directories(${Qt${QT_VERSION_MAJOR}_INCLUDE_DIRS})
 set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceProfile.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/ReDroidController.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/MultiInstanceManager.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SafetyNetSpoofer.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/APIServer.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AppCloner.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/MagiskPatcher.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/NetworkConfig.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SensorSimulator.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/TestingFramework.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/WebhookManager.h
 )
 
 set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/DeviceProfile.cpp
     ${PROJECT_SOURCE_DIR}/ReDroidController.cpp
+    ${PROJECT_SOURCE_DIR}/MultiInstanceManager.cpp
+    ${PROJECT_SOURCE_DIR}/SafetyNetSpoofer.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -23,9 +23,8 @@ namespace RedroidCPP {
 // Forward Declarations
 // ============================================================================
 
-class DockerController;
-class ADBBridge;
-class AntiDetectionEngine;
+// Note: DockerController, ADBBridge, AntiDetectionEngine are stubs for future
+// full Docker integration. Currently using mock implementations.
 
 // ============================================================================
 // Device Instance Status
@@ -512,11 +511,6 @@ private:
     void updateDeviceStatus(const std::string& instanceId, DeviceStatus status);
     void fireEvent(const DeviceInstance& device, DeviceEvent event, const std::string& message);
     void cleanupInstance(DeviceInstance& device);
-    
-    // Components
-    std::unique_ptr<DockerController> m_docker;
-    std::unique_ptr<ADBBridge> m_adb;
-    std::unique_ptr<AntiDetectionEngine> m_antiDetection;
     
     // Device storage
     std::map<std::string, DeviceInstance> m_devices;
