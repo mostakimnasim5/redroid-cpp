@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y \
     libegl1-mesa \
     libopengl0 \
     libpulse0 \
+    libglu1-mesa \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

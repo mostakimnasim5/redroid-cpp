@@ -14,28 +14,36 @@ services:
     container_name: redroid-emulator
     hostname: android-emulator
     image: redroid-cpp/emulator:latest
-    
+
     # Privileged mode required for Android emulation
     privileged: true
     cgroup: host
-    
+
+    # X11 Forwarding for Native Desktop Display on Windows
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     # Device provisioning environment
     environment:
+      # X11 Display Forwarding (Windows with VcXsrv/GWSL)
+      - DISPLAY=host.docker.internal:0
+
       # Device Configuration
       - DEVICE_MANUFACTURER=Samsung
       - DEVICE_MODEL=Galaxy S24 Ultra
       - DEVICE_ANDROID_VERSION=15
       - DEVICE_PROFILE_ID=
-      
+
       # Network Configuration
       - ADB_PORT=15555
       - REDROID_GPU_MODE=host
-      
+      - REDROID_GPU=swiftshader_indirect
+
       # Setup flags
       - SETUP_DEVICE=true
       - GENERATE_IMEI=true
       - GENERATE_SERIAL=true
-      
+
     # Device passthrough
     devices:
       - /dev/kvm:/dev/kvm
@@ -43,18 +51,18 @@ services:
       - /dev/binder:/dev/binder
       - /dev/hwbinder:/dev/hwbinder
       - /dev/vndbinder:/dev/vndbinder
-    
+
     # Mount volumes
     volumes:
       - ../profiles:/opt/profiles:ro
       - ../data:/data
       - redroid-data:/data
-      
+
     # Port mapping
     ports:
       - "15555:5555"
       - "5900:5900"
-    
+
     # Health check
     healthcheck:
       test: ["CMD", "getprop", "sys.boot_completed"]
@@ -62,10 +70,10 @@ services:
       timeout: 5s
       retries: 30
       start_period: 60s
-    
+
     # Restart policy
     restart: unless-stopped
-    
+
     # Runtime options
     shm_size: 256mb
     ulimits:
