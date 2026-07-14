@@ -112,6 +112,7 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/MultiInstanceManager.cpp
         src/ReDroidController/SafetyNetSpoofer.cpp
         src/ReDroidController/BankingAppSpoofer.cpp
+        src/ReDroidController/DeepDeviceSpoofer.cpp
         src/ReDroidController/EnhancedDeviceProfile.cpp
     )
     
@@ -122,6 +123,7 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/DeviceProfile.h
         include/VirtualPhonePro/EnhancedDeviceProfile.h
         include/VirtualPhonePro/BankingAppSpoofer.h
+        include/VirtualPhonePro/DeepDeviceSpoofer.h
     )
     
     add_executable(virtualphonepro-qt WIN32 ${QT6_SOURCES} ${QT6_HEADERS})

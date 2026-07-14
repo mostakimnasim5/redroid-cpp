@@ -98,6 +98,7 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/MultiInstanceManager.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SafetyNetSpoofer.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/BankingAppSpoofer.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeepDeviceSpoofer.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/APIServer.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AppCloner.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/MagiskPatcher.h
@@ -114,6 +115,7 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/MultiInstanceManager.cpp
     ${PROJECT_SOURCE_DIR}/SafetyNetSpoofer.cpp
     ${PROJECT_SOURCE_DIR}/BankingAppSpoofer.cpp
+    ${PROJECT_SOURCE_DIR}/DeepDeviceSpoofer.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
