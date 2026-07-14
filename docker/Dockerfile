@@ -1,82 +1,99 @@
-# ==============================================================================
-# RedroidCPP - Docker-based Android Emulator
-# Professional Android Emulator with Device Profile Integration
-# ==============================================================================
+# =============================================================================
+# ReDroidCPP - Android Emulator Dockerfile
+# Base: Ubuntu 22.04 with OpenJDK 17, Android SDK, and Emulator
+# =============================================================================
 
-# Build stage for C++ CLI tool
-FROM alpine:3.19 AS builder
+FROM ubuntu:22.04
 
-WORKDIR /build
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies
-RUN apk add --no-cache \
-    cmake \
-    make \
-    g++ \
-    linux-headers
-
-# Copy project files
-COPY ../CMakeLists.txt ./CMakeLists.txt
-COPY ../include/ ./include/
-COPY ../src/ ./src/
-
-# Build CLI tool
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 . && \
-    make -j$(nproc)
-
-# ==============================================================================
-# Final Emulator Image
-# ==============================================================================
-FROM ghcr.io/redroid/redroid:15.0.0_google_64only
-
-# Labels
-LABEL maintainer="mostakimnasim5"
-LABEL description="RedroidCPP - Docker-based Android Emulator with Device Profile"
-LABEL version="3.0.0"
-
-# Environment variables
-ENV ANDROID_HOME=/system
-ENV PATH=$PATH:$ANDROID_HOME/bin:/opt/bin
-ENV REDROID_VERSION=15.0.0
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash \
-    coreutils \
-    util-linux \
-    procps \
-    ca-certificates \
-    openssl \
-    udev \
+# =============================================================================
+# Install System Dependencies
+# =============================================================================
+RUN apt-get update && apt-get install -y \
+    openjdk-17-jdk \
+    wget \
+    unzip \
     curl \
+    python3 \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxrandr2 \
+    libxi6 \
+    libgl1-mesa-glx \
+    libegl1-mesa \
+    libopengl0 \
+    libpulse0 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Copy provisioning scripts
-COPY bin/ /opt/bin/
-COPY configs/ /opt/configs/
+# =============================================================================
+# Set Environment Variables
+# =============================================================================
+ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH="${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator"
 
-# Make scripts executable
-RUN chmod +x /opt/bin/*.sh
+# =============================================================================
+# Download and Install Android Command Line Tools
+# =============================================================================
+RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \
+    && cd ${ANDROID_HOME}/cmdline-tools \
+    && wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip \
+    && unzip -q cmdline-tools.zip \
+    && mv cmdline-tools latest \
+    && rm cmdline-tools.zip
 
-# Create directories
-RUN mkdir -p /data/profiles /data/devices /var/log
+# =============================================================================
+# Accept All SDK Licenses
+# =============================================================================
+RUN yes | sdkmanager --licenses --sdk_root=${ANDROID_SDK_ROOT}
 
-# Copy CLI tool from builder
-COPY --from=builder /build/redroid-cli /opt/bin/redroid-cli
-RUN chmod +x /opt/bin/redroid-cli
+# =============================================================================
+# Install Platform Tools and Build Tools
+# =============================================================================
+RUN sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
+    "platform-tools" \
+    "platforms;android-34" \
+    "build-tools;34.0.0"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD /opt/bin/redroid-cli status 2>/dev/null || exit 1
+# =============================================================================
+# Install System Image
+# =============================================================================
+RUN sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
+    "system-images;android-34;google_apis;x86_64"
 
-WORKDIR /data
+# =============================================================================
+# Create AVD (Android Virtual Device)
+# =============================================================================
+RUN echo "no" | avdmanager create avd \
+    --sdk_root=${ANDROID_SDK_ROOT} \
+    --name AndroidEmulator \
+    --package "system-images;android-34;google_apis;x86_64" \
+    --force
 
-ENTRYPOINT ["/opt/bin/entrypoint.sh"]
-CMD ["start"]
+# =============================================================================
+# Download Android Emulator
+# =============================================================================
+RUN sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
+    "emulator"
 
-# Exposed ports
-EXPOSE 15555 5555 5900
+# =============================================================================
+# Cleanup - Remove apt cache to keep image small
+# =============================================================================
+RUN rm -rf /var/cache/apt/archives/* \
+    && rm -rf /tmp/* \
+    && rm -rf /var/tmp/*
 
-# Volume for persistent data
-VOLUME ["/data"]
+# =============================================================================
+# Working Directory
+# =============================================================================
+WORKDIR /workspace
+
+# =============================================================================
+# Default Command
+# =============================================================================
+CMD ["/bin/bash"]
