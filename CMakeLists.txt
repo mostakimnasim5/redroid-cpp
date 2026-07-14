@@ -57,13 +57,9 @@ endif()
 # ==============================================================================
 set(CORE_SOURCES
     src/main.cpp
-    src/Core/DeviceProfile.cpp
-    src/Core/DeviceManager.cpp
 )
 
 set(CORE_HEADERS
-    include/Core/DeviceProfile.h
-    include/Core/DeviceManager.h
 )
 
 # ==============================================================================
