@@ -97,6 +97,67 @@ install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY profiles/ DESTINATION share/redroid/profiles)
 
 # ==============================================================================
+# Qt6 GUI Application (Optional)
+# ==============================================================================
+option(BUILD_QT6_GUI "Build Qt6 GUI application" OFF)
+
+if(BUILD_QT6_GUI)
+    find_package(Qt6 COMPONENTS Core Gui Widgets Network REQUIRED)
+    
+    set(QT6_SOURCES
+        src/mainwindow.cpp
+        src/qtmain.cpp
+        src/AutoStartDialog.cpp
+        src/ReDroidController/ReDroidController.cpp
+        src/ReDroidController/MultiInstanceManager.cpp
+        src/ReDroidController/SafetyNetSpoofer.cpp
+        src/ReDroidController/BankingAppSpoofer.cpp
+        src/ReDroidController/EnhancedDeviceProfile.cpp
+    )
+    
+    set(QT6_HEADERS
+        src/mainwindow.h
+        src/AutoStartDialog.h
+        include/VirtualPhonePro/ReDroidController.h
+        include/VirtualPhonePro/DeviceProfile.h
+        include/VirtualPhonePro/EnhancedDeviceProfile.h
+        include/VirtualPhonePro/BankingAppSpoofer.h
+    )
+    
+    add_executable(virtualphonepro-qt WIN32 ${QT6_SOURCES} ${QT6_HEADERS})
+    
+    target_include_directories(virtualphonepro-qt PRIVATE
+        include
+        src
+        ${Qt6_INCLUDE_DIRS}
+    )
+    
+    target_link_libraries(virtualphonepro-qt PRIVATE
+        Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network
+        Threads::Threads
+    )
+    
+    if(WIN32)
+        target_link_libraries(virtualphonepro-qt PRIVATE ws2_32 advapi32 userenv)
+    endif()
+    
+    install(TARGETS virtualphonepro-qt DESTINATION bin)
+    
+    message(STATUS "Qt6 GUI enabled - use -DBUILD_QT6_GUI=ON to build")
+endif()
+
+# ==============================================================================
+# Banking App Testing Module
+# ==============================================================================
+option(BUILD_BANKING_MODULE "Build banking app testing module" ON)
+
+if(BUILD_BANKING_MODULE)
+    message(STATUS "Banking App Testing Module enabled")
+    message(STATUS "  - BankingAppSpoofer: Root/Hook/Emulator detection bypass")
+    message(STATUS "  - EnhancedDeviceProfile: 100% realistic device profiles")
+endif()
+
+# ==============================================================================
 # Testing
 # ==============================================================================
 enable_testing()
