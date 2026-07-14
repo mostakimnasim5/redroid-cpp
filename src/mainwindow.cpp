@@ -95,6 +95,13 @@ void MainWindow::setupMenuBar() {
     
     fileMenu->addSeparator();
     
+    QAction* autoStartAction = new QAction("&Auto-Start Settings...", this);
+    autoStartAction->setShortcut(Qt::CTRL + Qt::Key_A);
+    connect(autoStartAction, &QAction::triggered, this, &MainWindow::on_actionAutoStart_triggered);
+    fileMenu->addAction(autoStartAction);
+    
+    fileMenu->addSeparator();
+    
     QAction* settingsAction = new QAction("&Settings", this);
     settingsAction->setShortcut(QKeySequence::Preferences);
     connect(settingsAction, &QAction::triggered, this, &MainWindow::on_actionSettings_triggered);
@@ -119,6 +126,16 @@ void MainWindow::setupMenuBar() {
     stopAction->setShortcut(Qt::Key_F6);
     connect(stopAction, &QAction::triggered, this, &MainWindow::on_actionStop_triggered);
     instanceMenu->addAction(stopAction);
+    
+    instanceMenu->addSeparator();
+    
+    QAction* saveAutoStartAction = new QAction("&Save for Auto-Start", this);
+    connect(saveAutoStartAction, &QAction::triggered, this, &MainWindow::on_actionSaveForAutoStart_triggered);
+    instanceMenu->addAction(saveAutoStartAction);
+    
+    QAction* removeAutoStartAction = new QAction("&Remove from Auto-Start", this);
+    connect(removeAutoStartAction, &QAction::triggered, this, &MainWindow::on_actionRemoveFromAutoStart_triggered);
+    instanceMenu->addAction(removeAutoStartAction);
     
     instanceMenu->addSeparator();
     
@@ -823,6 +840,177 @@ void SettingsDialog::onOk() {
 
 void SettingsDialog::onCancel() {
     reject();
+}
+
+// ==============================================================================
+// Auto-Start Implementation
+// ==============================================================================
+
+void MainWindow::showAutoStartSettings() {
+    QMessageBox::information(this, "Auto-Start Settings", 
+        "Auto-Start Settings:\n\n"
+        "• Enable auto-start in File menu\n"
+        "• Save instances for auto-start via Instance menu\n"
+        "• Containers will restore on next app launch");
+}
+
+void MainWindow::autoStartInstances() {
+    qDebug() << "[AutoStart] Starting saved instances...";
+    
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    QString instancesFile = configDir + "/saved_instances.json";
+    
+    QFile file(instancesFile);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "[AutoStart] No saved instances found";
+        return;
+    }
+    
+    QByteArray data = file.readAll();
+    file.close();
+    
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    
+    if (error.error != QJsonParseError::NoError) {
+        qDebug() << "[AutoStart] JSON parse error:" << error.errorString();
+        return;
+    }
+    
+    QJsonObject json = doc.object();
+    QJsonArray instances = json["instances"].toArray();
+    
+    ReDroidController& controller = ReDroidController::instance();
+    
+    for (const QJsonValue& value : instances) {
+        QJsonObject instance = value.toObject();
+        QString instanceId = instance["instanceId"].toString();
+        QString profileData = instance["profileData"].toString();
+        
+        if (instanceId.isEmpty()) continue;
+        
+        qDebug() << "[AutoStart] Restoring instance:" << instanceId;
+        
+        QJsonDocument profileDoc = QJsonDocument::fromJson(profileData.toUtf8());
+        DeviceProfile profile;
+        profile.fromJson(profileDoc.object());
+        
+        if (controller.startInstance(instanceId, profile)) {
+            qDebug() << "[AutoStart] Instance started:" << instanceId;
+            showNotification(QString("Auto-started: %1").arg(instanceId));
+        }
+    }
+}
+
+void MainWindow::saveInstanceForAutoStart(const QString& instanceId, const DeviceProfile& profile) {
+    qDebug() << "[AutoStart] Saving instance:" << instanceId;
+    
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    QDir().mkpath(configDir);
+    QString instancesFile = configDir + "/saved_instances.json";
+    
+    QJsonObject json;
+    QJsonArray instances;
+    
+    QFile file(instancesFile);
+    if (file.open(QIODevice::ReadOnly)) {
+        QByteArray data = file.readAll();
+        file.close();
+        
+        QJsonParseError error;
+        QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+        if (error.error == QJsonParseError::NoError) {
+            json = doc.object();
+            instances = json["instances"].toArray();
+        }
+    }
+    
+    QJsonObject newInstance;
+    newInstance["instanceId"] = instanceId;
+    newInstance["profileData"] = QString(QJsonDocument(profile.toJson()).toJson());
+    newInstance["savedAt"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    
+    QJsonArray newInstances;
+    for (const QJsonValue& value : instances) {
+        QJsonObject obj = value.toObject();
+        if (obj["instanceId"].toString() != instanceId) {
+            newInstances.append(obj);
+        }
+    }
+    newInstances.append(newInstance);
+    
+    json["instances"] = newInstances;
+    
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(json).toJson());
+        file.close();
+        showNotification(QString("Saved for auto-start: %1").arg(instanceId));
+    }
+}
+
+void MainWindow::removeInstanceFromAutoStart(const QString& instanceId) {
+    qDebug() << "[AutoStart] Removing instance:" << instanceId;
+    
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    QString instancesFile = configDir + "/saved_instances.json";
+    
+    QFile file(instancesFile);
+    if (!file.open(QIODevice::ReadOnly)) return;
+    
+    QByteArray data = file.readAll();
+    file.close();
+    
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) return;
+    
+    QJsonObject json = doc.object();
+    QJsonArray instances = json["instances"].toArray();
+    
+    QJsonArray newInstances;
+    for (const QJsonValue& value : instances) {
+        QJsonObject obj = value.toObject();
+        if (obj["instanceId"].toString() != instanceId) {
+            newInstances.append(obj);
+        }
+    }
+    
+    json["instances"] = newInstances;
+    
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(json).toJson());
+        file.close();
+        showNotification(QString("Removed from auto-start: %1").arg(instanceId));
+    }
+}
+
+void MainWindow::on_actionAutoStart_triggered() {
+    showAutoStartSettings();
+}
+
+void MainWindow::on_actionSaveForAutoStart_triggered() {
+    if (m_selectedInstanceId.isEmpty()) {
+        QMessageBox::warning(this, "No Instance Selected", "Please select an instance first.");
+        return;
+    }
+    
+    ReDroidController& controller = ReDroidController::instance();
+    InstanceInfo info = controller.getInstanceInfo(m_selectedInstanceId);
+    
+    DeviceProfile profile;
+    profile.id = info.profileId;
+    profile.name = info.instanceId;
+    
+    saveInstanceForAutoStart(m_selectedInstanceId, profile);
+}
+
+void MainWindow::on_actionRemoveFromAutoStart_triggered() {
+    if (m_selectedInstanceId.isEmpty()) {
+        QMessageBox::warning(this, "No Instance Selected", "Please select an instance first.");
+        return;
+    }
+    
+    removeInstanceFromAutoStart(m_selectedInstanceId);
 }
 
 } // namespace VirtualPhonePro

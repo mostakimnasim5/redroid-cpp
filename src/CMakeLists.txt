@@ -112,6 +112,7 @@ set(APP_HEADERS
 set(APP_SOURCES
     ${PROJECT_SOURCE_DIR}/main.cpp
     ${PROJECT_SOURCE_DIR}/mainwindow.cpp
+    ${PROJECT_SOURCE_DIR}/qtmain.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

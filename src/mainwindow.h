@@ -18,6 +18,10 @@
 #include <QGroupBox>
 #include <QTabWidget>
 #include <QTableWidgetItem>
+#include <QSettings>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QStandardPaths>
 
 #include "VirtualPhonePro/DeviceProfile.h"
 #include "VirtualPhonePro/ReDroidController.h"
@@ -27,6 +31,9 @@ namespace Ui {
 }
 
 namespace VirtualPhonePro {
+
+// Forward declaration
+class AutoStartDialog;
 
 /**
  * @brief Main Window for VirtualPhonePro Application
@@ -55,6 +62,12 @@ public slots:
     void connectAdb(const QString& instanceId);
     void disconnectAdb(const QString& instanceId);
     
+    // Auto-Start
+    void showAutoStartSettings();
+    void autoStartInstances();
+    void saveInstanceForAutoStart(const QString& instanceId, const DeviceProfile& profile);
+    void removeInstanceFromAutoStart(const QString& instanceId);
+    
     // Settings
     void showSettings();
 
@@ -65,8 +78,11 @@ private slots:
     void on_actionStop_triggered();
     void on_actionDelete_triggered();
     void on_actionRefresh_triggered();
+    void on_actionAutoStart_triggered();
     void on_actionSettings_triggered();
     void on_actionExit_triggered();
+    void on_actionSaveForAutoStart_triggered();
+    void on_actionRemoveFromAutoStart_triggered();
     
     // Toolbar actions
     void on_newInstanceButton_clicked();

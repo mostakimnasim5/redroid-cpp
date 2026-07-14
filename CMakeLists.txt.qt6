@@ -1,0 +1,144 @@
+# =============================================================================
+# VirtualPhonePro Qt6 GUI - Standalone Build Configuration
+# =============================================================================
+# Usage: cmake -B build-qt6 -S . -DCMAKE_BUILD_TYPE=Release
+#        cmake --build build-qt6
+# =============================================================================
+
+cmake_minimum_required(VERSION 3.16)
+project(VirtualPhoneProQt VERSION 2.0.0 LANGUAGES CXX)
+
+# =============================================================================
+# C++ Standard
+# =============================================================================
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# =============================================================================
+# Qt6 Configuration
+# =============================================================================
+set(QT_VERSION_MAJOR 6)
+
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
+    Core
+    Gui
+    Widgets
+    Network
+    Concurrent
+)
+
+if(NOT Qt${QT_VERSION_MAJOR}_FOUND)
+    message(FATAL_ERROR "Qt${QT_VERSION_MAJOR} not found. Please install Qt6:\n"
+        "  Ubuntu/Debian: sudo apt install qt6-base-dev qt6-tools-dev\n"
+        "  Windows: Download from https://www.qt.io/download-qt-installer\n"
+        "  macOS: brew install qt6")
+endif()
+
+message(STATUS "Found Qt${QT_VERSION_MAJOR}: ${Qt${QT_VERSION_MAJOR}_VERSION}")
+
+# =============================================================================
+# Platform Detection
+# =============================================================================
+if(WIN32)
+    message(STATUS "Building for Windows")
+    add_definitions(-DUNICODE -D_UNICODE)
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+elseif(UNIX)
+    message(STATUS "Building for Unix/Linux")
+endif()
+
+# =============================================================================
+# Source Files
+# =============================================================================
+set(SOURCES
+    src/main.cpp
+    src/mainwindow.cpp
+    src/qtmain.cpp
+    src/ReDroidController/ReDroidController.cpp
+    src/ReDroidController/MultiInstanceManager.cpp
+    src/ReDroidController/SafetyNetSpoofer.cpp
+    src/ReDroidController/DeviceProfile.cpp
+)
+
+set(HEADERS
+    src/mainwindow.h
+    include/VirtualPhonePro/ReDroidController.h
+    include/VirtualPhonePro/DeviceProfile.h
+    include/VirtualPhonePro/MultiInstanceManager.h
+    include/VirtualPhonePro/SafetyNetSpoofer.h
+)
+
+# =============================================================================
+# Include Directories
+# =============================================================================
+include_directories(
+    ${Qt${QT_VERSION_MAJOR}_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+# =============================================================================
+# Build Executable
+# =============================================================================
+add_executable(virtualphonepro-qt
+    WIN32
+    ${SOURCES}
+    ${HEADERS}
+)
+
+# Qt6 Automoc
+set_target_properties(virtualphonepro-qt PROPERTIES
+    AUTOMOC TRUE
+    AUTORCC TRUE
+    AUTOUIC TRUE
+)
+
+# =============================================================================
+# Link Libraries
+# =============================================================================
+target_link_libraries(virtualphonepro-qt PRIVATE
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Gui
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::Concurrent
+    pthread
+)
+
+if(WIN32)
+    target_link_libraries(virtualphonepro-qt PRIVATE
+        ws2_32
+        advapi32
+        userenv
+        iphlpapi
+    )
+endif()
+
+# =============================================================================
+# Compiler Warnings
+# =============================================================================
+if(MSVC)
+    target_compile_options(virtualphonepro-qt PRIVATE /W4 /WX- /EHsc)
+else()
+    target_compile_options(virtualphonepro-qt PRIVATE -Wall -Wextra)
+endif()
+
+# =============================================================================
+# Installation
+# =============================================================================
+install(TARGETS virtualphonepro-qt DESTINATION bin)
+
+# =============================================================================
+# Summary
+# =============================================================================
+message(STATUS "")
+message(STATUS "===========================================")
+message(STATUS "  VirtualPhonePro Qt6 GUI Configuration")
+message(STATUS "===========================================")
+message(STATUS "  Version: ${PROJECT_VERSION}")
+message(STATUS "  Qt Version: ${Qt${QT_VERSION_MAJOR}_VERSION}")
+message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "===========================================")
+message(STATUS "")
