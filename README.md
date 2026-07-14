@@ -1,207 +1,225 @@
-# RedroidCPP / VirtualPhonePro - Professional Android Emulator Manager
+# ReDroidCPP - Professional Android Emulator Controller
 
 <div align="center">
 
 ![Version](https://img.shields.io/badge/Version-3.0.0-blue)
-![C++](https://img.shields.io/badge/C%2B%2B-17-green)
-![License](https://img.shields.io/badge/License-Apache--2.0-orange)
+![C++](https://img.shields.io/badge/C++-17-green)
+![Qt](https://img.shields.io/badge/Qt-6.5+-purple)
+![License](https://img.shields.io/badge/License-Testing--Only-red)
 
-**Professional-grade C++ application for managing virtual Android devices with complete device profile generation.**
-
-*Built for Banking App Testing, Security Testing, and Anti-Detection Verification*
+**Enterprise-grade Android emulator controller with advanced anti-detection features**
 
 </div>
 
-> **Note:** This project is evolving into **VirtualPhonePro** - a commercial-grade Windows application with Qt6 GUI for managing multiple ReDroid instances with advanced anti-detection capabilities.
-> 
-> 📄 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the new system architecture.
-
 ---
 
-## 🎯 Complete Device Profile Features
+## 🎯 Overview
 
-### 📱 Device IDs
-| Property | Description | Format |
-|----------|-------------|--------|
-| IMEI | International Mobile Equipment Identity | 15 digits (Luhn validated) |
-| IMEI2 | Secondary IMEI (Dual SIM) | 15 digits |
-| Serial | Device Serial Number | Manufacturer-specific |
-| Android ID | Android System Identifier | 16 hex chars |
-| GSF ID | Google Services Framework ID | 10 digits |
-| AAID | Google Advertising ID | UUID format |
+ReDroidCPP is a professional-grade C++/Qt6 application for managing ReDroid (Real Docker) Android containers. It provides advanced device spoofing, multi-instance management, and comprehensive anti-detection features for banking app testing and security research.
 
-### 🔗 MAC Addresses
-| Property | Description |
+## ✨ Features
+
+### Core Features
+
+| Feature | Description |
 |---------|-------------|
-| WiFi MAC | WiFi interface MAC address |
-| Bluetooth MAC | Bluetooth interface MAC address |
-| Ethernet MAC | Ethernet interface MAC address |
+| **Multi-Instance Management** | Run multiple Android instances simultaneously |
+| **Device Profile Generation** | Samsung, Google Pixel, Xiaomi, Huawei, OnePlus, etc. |
+| **Docker Integration** | Auto-start containers with ReDroid |
+| **Qt6 GUI** | Modern Windows application |
+| **REST API** | HTTP API for automation |
 
-### 📋 SIM Configuration
-| Property | Description |
+### Anti-Detection Features
+
+| Feature | Description |
 |---------|-------------|
-| ICCID | Integrated Circuit Card Identifier (20 digits) |
-| IMSI | International Mobile Subscriber Identity (15 digits) |
-| Carrier | Network operator name |
-| MCC/MNC | Mobile Country/Network Codes |
+| **SafetyNet/Play Integrity** | Hardware attestation spoofing |
+| **Banking App Support** | Root/Hook/Emulator detection bypass |
+| **Behavioral Analysis** | Human typing patterns, touch simulation |
+| **TLS Fingerprinting** | JA3/JA4 SSL fingerprint spoofing |
+| **Hardware Emulation** | CPU, GPU, Battery, Thermal simulation |
+| **OEM Deep Spoofing** | Samsung Knox, Huawei HMS, Xiaomi MIUI |
 
-### ⚙️ Hardware
-| Component | Properties |
-|----------|-----------|
-| **CPU** | Architecture, cores, frequency, BogoMIPS |
-| **GPU** | Renderer, vendor, OpenGL ES, Vulkan |
-| **Memory** | Total RAM, heap sizes |
-| **Battery** | Capacity, temperature, voltage |
+## 📊 Project Statistics
 
-### 🔨 Build Information
-| Property | Description |
-|---------|-------------|
-| Fingerprint | Full Android build fingerprint |
-| Bootloader | Bootloader version |
-| Build ID | Build identifier (UP1A.xxxxxxx) |
-| Security Patch | Security patch level date |
+| Metric | Value |
+|--------|-------|
+| **Source Files** | 39 |
+| **Total Lines** | 15,657 |
+| **Modules** | 18 |
+| **Documentation** | Complete |
 
-### 🔒 Verified Boot
-| Property | Description |
-|---------|-------------|
-| State | Boot state (green/yellow/orange/red) |
-| Locked | Device lock status |
-| VBMeta Digest | Verified boot metadata digest |
+## 🏗️ Architecture
 
-### 🌐 Network Configuration
-| Property | Description |
-|---------|-------------|
-| Hostname | Device hostname |
-| IP Address | DHCP-assigned IP |
-| DNS | Primary and secondary DNS |
-| TCP Buffers | Network buffer configurations |
+```
+ReDroidCPP/
+├── include/VirtualPhonePro/         # Public headers
+│   ├── ReDroidController.h         # Main controller
+│   ├── DeviceProfile.h             # Device profiles
+│   ├── BankingAppSpoofer.h         # Banking app bypass
+│   ├── AdvancedAntiDetection.hpp    # Anti-detection
+│   ├── TLSFingerprint.hpp           # SSL fingerprinting
+│   └── HyperRealisticTouchEmulator.hpp
+│
+├── src/
+│   ├── ReDroidController/          # Implementation
+│   │   ├── ReDroidController.cpp
+│   │   ├── BankingAppSpoofer.cpp
+│   │   ├── AdvancedAntiDetection.cpp
+│   │   └── ...
+│   ├── main.cpp                    # CLI entry
+│   ├── mainwindow.cpp              # Qt6 GUI
+│   └── AutoStartDialog.cpp         # Docker auto-start
+│
+├── docker/                         # Docker configs
+├── profiles/                       # Device profiles
+└── CMakeLists.txt                 # Build system
+```
 
-### 📍 GPS/Location
-| Property | Description |
-|---------|-------------|
-| Latitude | GPS latitude coordinate |
-| Longitude | GPS longitude coordinate |
-| Altitude | Altitude in meters |
-| Accuracy | Location accuracy in meters |
-| Constellations | GPS, GLONASS, BeiDou, Galileo, QZSS |
+## 🔒 Anti-Detection Module Tree
 
-### 📊 Sensors
-| Sensor | Properties |
-|--------|-----------|
-| Accelerometer | Name, vendor, range, resolution |
-| Gyroscope | Name, vendor, range, resolution |
-| Magnetic Field | Name, vendor, range, resolution |
-| Barometer | Name, vendor, pressure range |
-| Light | Name, vendor, lux range |
-| Proximity | Name, vendor, distance range |
+```
+Anti-Detection System
+│
+├── 🔐 Identity Spoofing
+│   ├── Unique Device IDs (IMEI, Serial, Android ID)
+│   ├── MAC Addresses (WiFi, Bluetooth)
+│   ├── SIM Cards (ICCID, IMSI)
+│   └── Advertising IDs
+│
+├── 🛡️ Security Bypass
+│   ├── SafetyNet Attestation
+│   ├── Play Integrity API
+│   ├── Root Detection Bypass
+│   ├── Hook Detection Bypass
+│   └── SSL Pinning Bypass
+│
+├── 🌐 Network Spoofing
+│   ├── TLS Fingerprinting (JA3/JA4)
+│   ├── DNS Configuration
+│   └── Proxy Support
+│
+├── 📱 Hardware Emulation
+│   ├── CPU Simulation (8-core)
+│   ├── GPU (Adreno 750)
+│   ├── Battery State
+│   └── Thermal Management
+│
+├── 👆 Touch Simulation
+│   ├── Tap/Double Tap
+│   ├── Swipe (All directions)
+│   ├── Pinch-to-Zoom
+│   └── Pressure Sensitivity
+│
+└── 🏭 OEM Deep Spoofing
+    ├── Samsung Knox
+    ├── Huawei HMS
+    ├── Xiaomi MIUI
+    └── Qualcomm QSEE
+```
 
-### 🛡️ Security
-| Property | Description |
-|---------|-------------|
-| SELinux | SELinux status (Enforcing) |
-| Keymaster | Keymaster version |
-| Strongbox | Strongbox availability |
-| KNOX | Samsung KNOX ID and version |
-| Hardware Attestation | Attestation status |
-
----
-
-## 📦 Supported Manufacturers
+## 📦 Supported Devices
 
 | Manufacturer | Models |
 |-------------|--------|
-| Samsung | Galaxy S24/S23/Z Fold/A-series |
-| Google | Pixel 8/7/6/Fold |
-| Xiaomi | Xiaomi 14/13, Redmi, POCO |
-| OnePlus | OnePlus 12/11/10T |
-| OPPO | Find X7/X6, Reno |
-| Vivo | X100/X90, V30 |
-| Huawei | Mate 60, P60, Mate X5 |
-| Motorola | Edge 50/40/30 |
-| Sony | Xperia 1/5/10 |
-| ASUS | ROG Phone, Zenfone |
-| Realme | GT 5 Pro, C67 |
-| Nokia | G42, X30 |
-
----
+| Samsung | Galaxy S24 Ultra, S23, A-series |
+| Google | Pixel 8, 7, 6 series |
+| Xiaomi | Mi 13, Redmi Note series |
+| Huawei | P60, Mate series |
+| OnePlus | 11, 10 series |
+| Custom | Any Android device |
 
 ## 🚀 Installation
+
+### Prerequisites
+
+- **Windows 10/11** (64-bit)
+- **Visual Studio 2022** with C++ desktop development
+- **Qt 6.5+** with MSVC 2022 64-bit
+- **CMake 3.20+**
+- **Docker Desktop** (for container support)
+
+### Quick Start
 
 ```bash
 # Clone the repository
 git clone https://github.com/mostakimnasim5/redroid-cpp.git
 cd redroid-cpp
 
-# Compile
-g++ -std=c++17 -O2 -Wall -I include -o redroid-cli src/main.cpp src/Core/DeviceProfile.cpp
+# Build for Windows
+.\build-windows.bat
 
-# Run
-./redroid-cli help
+# Run the application
+.\build\Release\virtualphonepro-qt.exe
 ```
 
----
+## 🛠️ Building
 
-## 📖 Usage
+### Windows (CMake)
 
 ```bash
-# Create device
-./redroid-cli create -m Samsung -a 14
-
-# Create Google device
-./redroid-cli create -m Google
-
-# List devices
-./redroid-cli list
-
-# Show device info
-./redroid-cli info <device-id>
-
-# Show all properties
-./redroid-cli profile -m Xiaomi
-
-# Validate IMEI
-./redroid-cli validate 358751090123456
-
-# System status
-./redroid-cli status
-
-# Supported manufacturers
-./redroid-cli manufacturers
+mkdir build && cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 -DBUILD_QT6_GUI=ON
+cmake --build . --config Release
 ```
 
----
+### Windows (Qt Creator)
 
-## 📁 Project Structure
+1. Open Qt Creator
+2. File → Open File or Project
+3. Select `CMakeLists.txt`
+4. Configure kit: Desktop Qt 6.5.x MSVC2022 64bit
+5. Build and Run
 
-```
-redroid-cpp/
-├── src/
-│   ├── main.cpp                 # CLI application entry point
-│   └── Core/
-│       └── DeviceProfile.cpp     # Device profile implementation
-├── include/
-│   ├── Core/
-│   │   ├── DeviceProfile.h       # Complete device profile header
-│   │   └── DeviceManager.h       # Device manager
-│   └── Data/
-│       └── TACDatabase.h         # TAC database for IMEI
-├── docker/
-│   ├── Dockerfile                # Multi-stage Docker build
-│   ├── docker-compose.yml        # Container orchestration
-│   └── bin/
-│       ├── entrypoint.sh         # Container startup script
-│       └── init.sh               # Device provisioning script
-├── tools/
-│   └── manage.sh                 # Device management CLI
-├── profiles/                     # Device profile storage
-├── data/                         # Runtime data
-├── CMakeLists.txt
-├── LICENSE
-├── README.md
-└── CONTRIBUTING.md
+### Linux
+
+```bash
+mkdir build && cd build
+cmake .. -DBUILD_QT6_GUI=ON
+make -j$(nproc)
 ```
 
----
+## 📖 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [BUILD_WINDOWS.md](BUILD_WINDOWS.md) | Windows build instructions |
+| [BUILD_GUIDE.md](BUILD_GUIDE.md) | General build guide |
+
+## 🚀 Usage
+
+### GUI Mode
+
+```bash
+# Launch Qt6 GUI
+virtualphonepro-qt.exe
+```
+
+### CLI Mode
+
+```bash
+# Create instance
+redroid-cli create --manufacturer samsung --model "SM-S928B"
+
+# List instances
+redroid-cli list
+
+# Apply banking profile
+redroid-cli spoof --instance 0 --profile banking
+
+# Start instance
+redroid-cli start --instance 0
+```
+
+## 📋 Requirements
+
+| Component | Version | Required |
+|-----------|---------|----------|
+| C++ Standard | C++17 | Yes |
+| CMake | 3.20+ | Yes |
+| Qt6 | 6.5+ | Yes (for GUI) |
+| OpenSSL | 1.1+ | Optional |
+| Docker | 20.10+ | Optional |
 
 ## ⚖️ Disclaimer
 
@@ -211,12 +229,10 @@ redroid-cpp/
 > - Anti-Detection Verification
 > - QA Testing
 
----
-
 ## 📄 License
 
-Licensed under the Apache License 2.0.
+Licensed for authorized testing purposes only.
 
 ---
 
-**Version 3.0.0** - Complete Device Profile Implementation
+**Version 3.0.0** - Complete Professional Implementation
