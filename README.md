@@ -1,4 +1,4 @@
-# RedroidCPP - Professional Android Emulator Manager v3.0.0
+# RedroidCPP / VirtualPhonePro - Professional Android Emulator Manager
 
 <div align="center">
 
@@ -11,6 +11,10 @@
 *Built for Banking App Testing, Security Testing, and Anti-Detection Verification*
 
 </div>
+
+> **Note:** This project is evolving into **VirtualPhonePro** - a commercial-grade Windows application with Qt6 GUI for managing multiple ReDroid instances with advanced anti-detection capabilities.
+> 
+> 📄 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the new system architecture.
 
 ---
 

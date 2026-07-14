@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# RedroidCPP - Docker Entrypoint Script
+# VirtualPhonePro - Docker Entrypoint Script
 # Initialize and start the Android emulator
 # ==============================================================================
 
@@ -17,9 +17,10 @@ NC='\033[0m'
 # Configuration
 ANDROID_HOME="/system"
 REDROID_DATA="/data"
-PROFILE_DIR="/opt/profiles"
+PROFILE_DIR="/opt/vpp/config"
+SCRIPTS_DIR="/opt/vpp/scripts"
 ADB_PORT="${ADB_PORT:-15555}"
-BIN_DIR="/opt/bin"
+BIN_DIR="/opt/vpp/bin"
 
 # Print banner
 print_banner() {

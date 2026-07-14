@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# RedroidCPP - Device Provisioning Script
+# VirtualPhonePro - Device Provisioning Script
 # Apply device profile properties to Android container
 # ==============================================================================
 
@@ -11,27 +11,42 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+NC='\033[0m'
 
 # Configuration
-DEVICE_PROFILE_DIR="/opt/profiles"
+CONFIG_DIR="/opt/vpp/config"
+SCRIPTS_DIR="/opt/vpp/scripts"
 DATA_DIR="/data"
 PROFILE_ID=""
-MANUFACTURER="${DEVICE_MANUFACTURER:-Samsung}"
-MODEL="${DEVICE_MODEL:-Galaxy S24 Ultra}"
-ANDROID_VERSION="${DEVICE_ANDROID_VERSION:-15}"
+LOG_FILE="/data/logs/init.log"
+
+# Device defaults (can be overridden by environment variables)
+MANUFACTURER="${VPP_DEVICE_MANUFACTURER:-Samsung}"
+MODEL="${VPP_DEVICE_MODEL:-Galaxy S24 Ultra}"
+BRAND="${VPP_DEVICE_BRAND:-samsung}"
+DEVICE="${VPP_DEVICE:-dm3q}"
+ANDROID_VERSION="${VPP_ANDROID_VERSION:-14}"
 
 # Logging
 log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "${GREEN}[INFO]${NC} $(date '+%H:%M:%S') - $1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] $1" >> "$LOG_FILE"
 }
 
 log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $(date '+%H:%M:%S') - $1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN] $1" >> "$LOG_FILE"
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $(date '+%H:%M:%S') - $1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $1" >> "$LOG_FILE"
+}
+
+log_success() {
+    echo -e "${CYAN}[✓]${NC} $(date '+%H:%M:%S') - $1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [OK] $1" >> "$LOG_FILE"
 }
 
 # Check if running as root
@@ -303,12 +318,19 @@ set_fingerprint() {
 
 # Main entry point
 main() {
-    check_root
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║       VirtualPhonePro - Device Provisioning Script v1.0         ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
     
     log_info "=========================================="
-    log_info "  RedroidCPP Device Provisioning Script"
-    log_info "  Version: 3.0.0"
+    log_info "  VirtualPhonePro Device Setup"
+    log_info "  Version: 1.0.0"
     log_info "=========================================="
+    
+    # Create log directory
+    mkdir -p /data/logs
     
     case "${1:-setup}" in
         setup)
@@ -339,8 +361,32 @@ main() {
             echo "Serial: $(getprop ro.serialno 2>/dev/null || echo 'Not set')"
             echo "Android ID: $(settings get secure android_id 2>/dev/null || echo 'Not set')"
             ;;
+        spoof)
+            # Run the comprehensive spoofing script
+            if [ -f "${SCRIPTS_DIR}/spoof-properties.sh" ]; then
+                log_info "Running comprehensive property spoofing..."
+                "${SCRIPTS_DIR}/spoof-properties.sh"
+            else
+                log_warn "Spoof script not found"
+            fi
+            ;;
+        all)
+            # Run all setup scripts
+            log_info "Running full device configuration..."
+            setup_device
+            if [ -f "${SCRIPTS_DIR}/spoof-properties.sh" ]; then
+                "${SCRIPTS_DIR}/spoof-properties.sh"
+            fi
+            if [ -f "${SCRIPTS_DIR}/setup-network.sh" ]; then
+                "${SCRIPTS_DIR}/setup-network.sh"
+            fi
+            if [ -f "${SCRIPTS_DIR}/setup-gps.sh" ]; then
+                "${SCRIPTS_DIR}/setup-gps.sh"
+            fi
+            log_success "Full configuration completed!"
+            ;;
         *)
-            echo "Usage: $0 {setup|load|identity|mac|sim|fingerprint|status}"
+            echo "Usage: $0 {setup|load|identity|mac|sim|fingerprint|spoof|all|status}"
             echo ""
             echo "Commands:"
             echo "  setup              - Generate and apply complete device profile"
@@ -349,6 +395,8 @@ main() {
             echo "  mac                - Generate only MAC addresses"
             echo "  sim                - Generate only SIM configuration"
             echo "  fingerprint        - Set custom fingerprint"
+            echo "  spoof              - Run comprehensive property spoofing"
+            echo "  all                - Run full device configuration"
             echo "  status             - Show current device identity"
             exit 1
             ;;
