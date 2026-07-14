@@ -115,6 +115,9 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/DeepDeviceSpoofer.cpp
         src/ReDroidController/GoogleFacebookSpoofer.cpp
         src/ReDroidController/UniqueDeviceGenerator.cpp
+        src/ReDroidController/AdvancedAntiDetection.cpp
+        src/ReDroidController/TLSFingerprint.cpp
+        src/ReDroidController/HyperRealisticTouchEmulator.cpp
         src/ReDroidController/EnhancedDeviceProfile.cpp
     )
     
@@ -128,6 +131,9 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/DeepDeviceSpoofer.h
         include/VirtualPhonePro/GoogleFacebookSpoofer.h
         include/VirtualPhonePro/UniqueDeviceGenerator.h
+        include/VirtualPhonePro/AdvancedAntiDetection.h
+        include/VirtualPhonePro/TLSFingerprint.h
+        include/VirtualPhonePro/HyperRealisticTouchEmulator.h
     )
     
     add_executable(virtualphonepro-qt WIN32 ${QT6_SOURCES} ${QT6_HEADERS})

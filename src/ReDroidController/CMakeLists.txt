@@ -101,6 +101,9 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeepDeviceSpoofer.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/GoogleFacebookSpoofer.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/UniqueDeviceGenerator.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AdvancedAntiDetection.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/TLSFingerprint.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HyperRealisticTouchEmulator.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/APIServer.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AppCloner.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/MagiskPatcher.h
@@ -120,6 +123,9 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/DeepDeviceSpoofer.cpp
     ${PROJECT_SOURCE_DIR}/GoogleFacebookSpoofer.cpp
     ${PROJECT_SOURCE_DIR}/UniqueDeviceGenerator.cpp
+    ${PROJECT_SOURCE_DIR}/AdvancedAntiDetection.cpp
+    ${PROJECT_SOURCE_DIR}/TLSFingerprint.cpp
+    ${PROJECT_SOURCE_DIR}/HyperRealisticTouchEmulator.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
