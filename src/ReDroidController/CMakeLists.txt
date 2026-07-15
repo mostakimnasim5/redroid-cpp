@@ -138,6 +138,8 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SSLCertificateManager.h
     # NEW: Device Integrity Manager
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceIntegrityManager.h
+    # NEW: Security Mitigation Manager (Deep System Patching)
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SecurityMitigationManager.h
 )
 
 set(REDCONTROLLER_SOURCES
@@ -180,6 +182,8 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/SSLCertificateManager.cpp
     # NEW: Device Integrity Manager
     ${PROJECT_SOURCE_DIR}/DeviceIntegrityManager.cpp
+    # NEW: Security Mitigation Manager (Deep System Patching)
+    ${PROJECT_SOURCE_DIR}/SecurityMitigationManager.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

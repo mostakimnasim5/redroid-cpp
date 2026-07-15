@@ -516,7 +516,97 @@ QJsonObject status = sniffer.getIntegrityStatus("instance-1");
 
 ---
 
-## 12. Multi-Instance Management
+## 13. Security Mitigation Manager (Deep System Patching)
+
+**Header:** `include/VirtualPhonePro/SecurityMitigationManager.h`  
+**Implementation:** `src/ReDroidController/SecurityMitigationManager.cpp`
+
+### Gap Analysis & Detection
+
+| Detection Category | Artifacts Detected |
+|-------------------|-------------------|
+| Kernel Level | Docker kernel, WSL2 signatures, test-keys |
+| Filesystem Level | overlayfs, aufs, emulator files |
+| Process Level | Container cgroups, qemud sockets |
+| Hardware Level | QEMU props, goldfish sensors |
+| Security Level | Magisk/su binaries, test-keys |
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Kernel Spoofing | Spoof /proc/version, kernel command line |
+| Mount Sanitization | Hide Docker/overlay from /proc/mounts |
+| SELinux Masking | Mock enforcing when permissive |
+| TEE Attestation | Green boot state, hardware attestation |
+| Uptime Randomization | Persistent realistic uptime |
+| Developer Hiding | ADB/developer options toggle |
+| Root Removal | Magisk/su artifact elimination |
+| Device Identity | Full retail device spoofing |
+
+### Profiles
+
+| Profile | Use Case |
+|---------|---------|
+| `banking` | Maximum stealth for banking apps |
+| `security` | Security research |
+| `qa` | QA testing |
+| `stealth` | Maximum stealth (all mitigations) |
+
+### Usage
+
+```cpp
+SecurityMitigationManager& security = SecurityMitigationManager::instance();
+
+// Initialize
+security.initialize("instance-1");
+
+// Apply banking app profile (maximum stealth)
+security.applyBankingAppProfile("instance-1");
+
+// Apply maximum stealth
+security.applyMaxStealthProfile("instance-1");
+
+// Scan for virtualization artifacts
+QList<DetectionItem> detections = security.scanForArtifacts("instance-1");
+
+// Apply kernel spoofing
+KernelSpoofConfig config;
+config.spoofedKernelVersion = "5.15.147-android14-11-g123456";
+security.spoofKernelVersion("instance-1", config);
+
+// Enable green boot state
+security.applyGreenBootState("instance-1");
+
+// Mock SELinux enforcing
+security.mockSELinuxEnforcing("instance-1", true);
+
+// Randomize uptime (1-7 days)
+security.randomizeUptime("instance-1", 86400, 604800);
+
+// Start continuous monitoring
+security.startMonitoring("instance-1", 5000);
+```
+
+### Android Shell Integration
+
+```bash
+# Run the patch script
+adb shell sh /data/local/tmp/patch_system.sh banking
+
+# This applies:
+# - Kernel version spoofing
+# - Mount sanitization
+# - SELinux enforcement masking
+# - Verified boot (green)
+# - Device identity spoofing
+# - Uptime randomization
+# - ADB hiding
+```
+
+---
+
+## 14. Multi-Instance Management
 
 **Header:** `include/VirtualPhonePro/MultiInstanceManager.h`  
 **Implementation:** `src/ReDroidController/MultiInstanceManager.cpp`
