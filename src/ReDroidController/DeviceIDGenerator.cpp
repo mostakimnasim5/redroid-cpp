@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cctype>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 DeviceIDGenerator::DeviceIDGenerator()
     : m_initialized(false)
@@ -431,4 +431,4 @@ std::map<std::string, std::string> DeviceIDGenerator::generateCompleteDeviceIden
     return identity;
 }
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro

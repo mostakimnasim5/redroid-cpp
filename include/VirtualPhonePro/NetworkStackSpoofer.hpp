@@ -4,7 +4,7 @@
 #include <map>
 #include <vector>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 struct NetworkStackConfig {
     std::string tcpCongestionControl;

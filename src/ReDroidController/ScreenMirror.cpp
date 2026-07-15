@@ -14,7 +14,7 @@
 #include <sys/wait.h>
 #endif
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 ScreenMirror::ScreenMirror()
     : m_mirroring(false)

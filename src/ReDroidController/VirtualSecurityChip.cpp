@@ -8,7 +8,7 @@
 #include <ctime>
 #include <cstring>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 VirtualSecurityChip::VirtualSecurityChip()
     : m_initialized(false)
@@ -579,4 +579,4 @@ void VirtualSecurityChip::reset() {
     Logger::getInstance().info("Virtual Security Chip reset");
 }
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro

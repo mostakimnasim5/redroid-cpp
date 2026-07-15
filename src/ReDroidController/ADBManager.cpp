@@ -17,7 +17,7 @@
 #include <signal.h>
 #endif
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 ADBManager& ADBManager::getInstance() {
     static ADBManager instance;

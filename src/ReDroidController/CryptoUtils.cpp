@@ -10,7 +10,7 @@
 #include <regex>
 #include <algorithm>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 std::string CryptoUtils::md5(const std::string& input) {
     unsigned char digest[MD5_DIGEST_LENGTH];

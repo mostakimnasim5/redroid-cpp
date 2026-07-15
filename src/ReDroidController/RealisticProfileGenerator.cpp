@@ -9,7 +9,7 @@
 #include <cctype>
 #include <cstring>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 // ============================================================
 // STATIC DATABASE - SAMSUNG DEVICES
@@ -1389,4 +1389,4 @@ std::string RealisticProfileGenerator::getTimezoneFromIP(const std::string& ipAd
     return IPTimezoneConverter::getInstance().getTimezoneFromIP(ipAddress);
 }
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro

@@ -4,7 +4,7 @@
 #include <vector>
 #include <map>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 struct HardeningConfig {
     bool hideRoot;

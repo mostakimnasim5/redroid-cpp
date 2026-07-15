@@ -6,7 +6,7 @@
 #include <map>
 #include <random>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 /**
  * DeviceIDGenerator - Generates valid device identifiers
@@ -103,6 +103,6 @@ private:
     std::map<std::string, std::string> m_brandOUIs;
 };
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro
 
 #endif // DEVICE_ID_GENERATOR_HPP

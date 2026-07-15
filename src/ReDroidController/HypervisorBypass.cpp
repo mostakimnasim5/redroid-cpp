@@ -5,7 +5,7 @@
 #include <fstream>
 #include <sstream>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 HypervisorBypass& HypervisorBypass::getInstance() {
     static HypervisorBypass instance;

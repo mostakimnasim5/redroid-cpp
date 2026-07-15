@@ -6,7 +6,7 @@
 #include <iomanip>
 #include "openssl_stub.h"
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 const std::vector<std::string> AdvancedSpoofing::DEVICE_ID_PROPERTIES = {
     "ro.product.device",

@@ -16,7 +16,7 @@
 #include <errno.h>
 #endif
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 HttpClient::HttpClient()
     : m_timeout(30)
@@ -168,7 +168,7 @@ HttpResponse HttpClient::executeRequest(const std::string& method, const std::st
     if (!m_userAgent.empty()) {
         requestStream << "User-Agent: " << m_userAgent << "\r\n";
     } else {
-        requestStream << "User-Agent: AntiDetectPro/1.0\r\n";
+        requestStream << "User-Agent: ReDroidCPP/3.0\r\n";
     }
     
     for (const auto& header : headers) {

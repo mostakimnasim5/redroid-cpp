@@ -7,7 +7,7 @@
 #include <chrono>
 #include <functional>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 enum class HypervisorType {
     NONE,

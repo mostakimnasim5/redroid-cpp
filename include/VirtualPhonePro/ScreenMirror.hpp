@@ -6,7 +6,7 @@
 #include <functional>
 #include <atomic>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 struct ScreenInfo {
     int width;

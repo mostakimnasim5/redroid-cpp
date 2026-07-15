@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cctype>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 IPTimezoneConverter::IPTimezoneConverter()
     : m_initialized(false)
@@ -457,4 +457,4 @@ uint32_t IPTimezoneConverter::ipToNumber(const std::string& ip) const {
     return result;
 }
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro

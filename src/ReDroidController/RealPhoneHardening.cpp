@@ -4,7 +4,7 @@
 #include <random>
 #include <chrono>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 RealPhoneHardening& RealPhoneHardening::getInstance() {
     static RealPhoneHardening instance;

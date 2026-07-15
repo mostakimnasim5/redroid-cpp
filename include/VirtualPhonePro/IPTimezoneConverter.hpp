@@ -6,7 +6,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 /**
  * IPTimezoneConverter - IP Address to Timezone/Locale Mapping
@@ -88,6 +88,6 @@ private:
     uint32_t ipToNumber(const std::string& ip) const;
 };
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro
 
 #endif // IP_TIMEZONE_CONVERTER_HPP

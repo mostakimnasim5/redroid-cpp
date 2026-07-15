@@ -4,7 +4,7 @@
 #include "VirtualPhonePro/TimingAttackPrevention.hpp"
 #include "VirtualPhonePro/PlayIntegrityManager.hpp"
 #include "VirtualPhonePro/EmulatorDetectionBypass.hpp"
-#include "VirtualPhonePro/HardwareFingerprintSpoofer.hpp"
+#include "VirtualPhonePro/HardwareFingerprintSpoofer.h"
 #include "VirtualPhonePro/NetworkStackSpoofer.hpp"
 #include "VirtualPhonePro/SafetyNetAdvancedBypass.hpp"
 #include "VirtualPhonePro/HypervisorBypass.hpp"
@@ -603,7 +603,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "  ✓ Timing Attack Prevention (seed:" << QString::number(timingSeed.baseSeed, 16) << ")";
     
     // 2. Hypervisor Bypass (KVM/ARM)
-    AntiDetect::HypervisorBypass& hypervisorBypass = AntiDetect::HypervisorBypass::getInstance();
+    VirtualPhonePro::HypervisorBypass& hypervisorBypass = VirtualPhonePro::HypervisorBypass::getInstance();
     hypervisorBypass.initialize();
     hypervisorBypass.enableBypass();
     hypervisorBypass.setDeviceAsRealHardware();
@@ -613,7 +613,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "  ✓ Hypervisor Bypass (KVM/ARM/Timing)";
     
     // 3. SafetyNet Advanced Bypass
-    AntiDetect::SafetyNetAdvancedBypass& safetyNet = AntiDetect::SafetyNetAdvancedBypass::getInstance();
+    VirtualPhonePro::SafetyNetAdvancedBypass& safetyNet = VirtualPhonePro::SafetyNetAdvancedBypass::getInstance();
     safetyNet.initialize();
     safetyNet.performFullBypass();
     safetyNet.setGreenBootState();
@@ -625,7 +625,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "  ✓ SafetyNet Advanced Bypass";
     
     // 4. Real Phone Hardening
-    AntiDetect::RealPhoneHardening& phoneHardening = AntiDetect::RealPhoneHardening::getInstance();
+    VirtualPhonePro::RealPhoneHardening& phoneHardening = VirtualPhonePro::RealPhoneHardening::getInstance();
     phoneHardening.initialize();
     phoneHardening.applyAllHardening();
     phoneHardening.applyEmulatorBypass();
@@ -655,7 +655,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "\n[Phase 3] Hardware & Network Spoofing...";
     
     // Hardware Fingerprint Spoofer
-    AntiDetect::HardwareFingerprintSpoofer& hwSpoof = AntiDetect::HardwareFingerprintSpoofer::getInstance();
+    VirtualPhonePro::HardwareFingerprintSpoofer& hwSpoof = VirtualPhonePro::HardwareFingerprintSpoofer::getInstance();
     hwSpoof.initialize();
     if (manufacturer.toLower() == "samsung") {
         hwSpoof.setSnapdragon8Gen1Profile();
@@ -669,7 +669,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "  ✓ Hardware Fingerprint Spoofer";
     
     // Network Stack Spoofer
-    AntiDetect::NetworkStackSpoofer& netSpoof = AntiDetect::NetworkStackSpoofer::getInstance();
+    VirtualPhonePro::NetworkStackSpoofer& netSpoof = VirtualPhonePro::NetworkStackSpoofer::getInstance();
     netSpoof.initialize();
     netSpoof.enableAllSpoofing();
     netSpoof.setTTL64();
@@ -689,7 +689,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "\n[Phase 4] Security & Encryption Systems...";
     
     // TrustZone/Crypto Emulation
-    AntiDetect::CryptoEmulator& cryptoEmu = AntiDetect::CryptoEmulator::getInstance();
+    VirtualPhonePro::CryptoEmulator& cryptoEmu = VirtualPhonePro::CryptoEmulator::getInstance();
     cryptoEmu.initialize();
     cryptoEmu.prepareTrustZone();
     cryptoEmu.setKeymasterVersion(4);
@@ -697,7 +697,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "  ✓ TrustZone/Crypto Emulation";
     
     // Virtual Security Chip
-    AntiDetect::VirtualSecurityChip& secChip = AntiDetect::VirtualSecurityChip::getInstance();
+    VirtualPhonePro::VirtualSecurityChip& secChip = VirtualPhonePro::VirtualSecurityChip::getInstance();
     secChip.initialize();
     secChip.enableSecureBoot();
     secChip.enableHardwareAttestation();
@@ -765,7 +765,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // =========================================================================
     qDebug() << "\n[Phase 8] Advanced Spoofing...";
     
-    AntiDetect::AdvancedSpoofing& advSpoof = AntiDetect::AdvancedSpoofing::getInstance();
+    VirtualPhonePro::AdvancedSpoofing& advSpoof = VirtualPhonePro::AdvancedSpoofing::getInstance();
     advSpoof.initialize();
     advSpoof.enableCanvasSpoofing();
     advSpoof.enableWebGLHardening();
@@ -832,7 +832,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // =========================================================================
     qDebug() << "\n[Phase 11] Generating Realistic Profile...";
     
-    AntiDetect::RealisticProfileGenerator& profileGen = AntiDetect::RealisticProfileGenerator::getInstance();
+    VirtualPhonePro::RealisticProfileGenerator& profileGen = VirtualPhonePro::RealisticProfileGenerator::getInstance();
     profileGen.initialize();
     profileGen.setDeviceType(manufacturer.toStdString(), model.toStdString());
     profileGen.enableNaturalMovement("walking");

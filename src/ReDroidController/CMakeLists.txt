@@ -140,7 +140,7 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceIntegrityManager.h
     # NEW: Security Mitigation Manager (Deep System Patching)
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SecurityMitigationManager.h
-    # NEW: Hardware Fingerprint Spoofer
+    # NEW: Hardware Fingerprint Spoofer (kept .h version, removed .hpp)
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HardwareFingerprintSpoofer.h
     # NEW: Persistent Identity Manager
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/PersistentIdentityManager.h
@@ -154,8 +154,6 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/PlayIntegrityManager.hpp
     # NEW: Emulator Detection Bypass
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/EmulatorDetectionBypass.hpp
-    # NEW: Hardware Fingerprint Spoofer
-    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HardwareFingerprintSpoofer.hpp
     # NEW: Network Stack Spoofer
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/NetworkStackSpoofer.hpp
     # NEW: SafetyNet Advanced Bypass
@@ -184,6 +182,8 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HttpClient.hpp
     # NEW: Crypto Utils
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/CryptoUtils.hpp
+    # NEW: Logger (centralized logging)
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/Logger.hpp
 )
 
 set(REDCONTROLLER_SOURCES
@@ -228,7 +228,7 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/DeviceIntegrityManager.cpp
     # NEW: Security Mitigation Manager (Deep System Patching)
     ${PROJECT_SOURCE_DIR}/SecurityMitigationManager.cpp
-    # NEW: Hardware Fingerprint Spoofer
+    # NEW: Hardware Fingerprint Spoofer (kept one version)
     ${PROJECT_SOURCE_DIR}/HardwareFingerprintSpoofer.cpp
     # NEW: Persistent Identity Manager
     ${PROJECT_SOURCE_DIR}/PersistentIdentityManager.cpp
@@ -242,8 +242,6 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/PlayIntegrityManager.cpp
     # NEW: Emulator Detection Bypass
     ${PROJECT_SOURCE_DIR}/EmulatorDetectionBypass.cpp
-    # NEW: Hardware Fingerprint Spoofer
-    ${PROJECT_SOURCE_DIR}/HardwareFingerprintSpoofer.cpp
     # NEW: Network Stack Spoofer
     ${PROJECT_SOURCE_DIR}/NetworkStackSpoofer.cpp
     # NEW: SafetyNet Advanced Bypass
@@ -272,6 +270,10 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/HttpClient.cpp
     # NEW: Crypto Utils
     ${PROJECT_SOURCE_DIR}/CryptoUtils.cpp
+    # NEW: Logger (centralized logging)
+    ${PROJECT_SOURCE_DIR}/Logger.cpp
+    # NEW: OpenSSL Stub (crypto without OpenSSL dependency)
+    ${PROJECT_SOURCE_DIR}/openssl_stub.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

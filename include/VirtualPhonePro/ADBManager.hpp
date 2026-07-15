@@ -7,7 +7,7 @@
 #include <mutex>
 #include <atomic>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 struct DeviceInfo {
     std::string serial;

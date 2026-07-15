@@ -4,7 +4,7 @@
 #include <sstream>
 #include <random>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 NetworkStackSpoofer& NetworkStackSpoofer::getInstance() {
     static NetworkStackSpoofer instance;

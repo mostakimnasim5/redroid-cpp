@@ -8,7 +8,7 @@
 #include <sstream>
 #include <random>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 SafetyNetAdvancedBypass& SafetyNetAdvancedBypass::getInstance() {
     static SafetyNetAdvancedBypass instance;

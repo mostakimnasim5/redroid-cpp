@@ -7,7 +7,7 @@
 #include <sstream>
 #include <iomanip>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 CryptoEmulator::CryptoEmulator()
     : m_initialized(false)
@@ -413,4 +413,4 @@ void CryptoEmulator::reset() {
     Logger::getInstance().info("CryptoEmulator reset");
 }
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro

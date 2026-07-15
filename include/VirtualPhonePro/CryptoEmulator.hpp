@@ -6,7 +6,7 @@
 #include <map>
 #include <memory>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 /**
  * CryptoEmulator - Cryptographic Certificate and Key Injection System
@@ -96,6 +96,6 @@ private:
     std::string m_apkDigest;
 };
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro
 
 #endif // CRYPTO_EMULATOR_HPP

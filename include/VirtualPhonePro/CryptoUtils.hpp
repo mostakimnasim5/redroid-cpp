@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 class CryptoUtils {
 public:

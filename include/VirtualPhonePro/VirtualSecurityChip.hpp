@@ -9,7 +9,7 @@
 #include <mutex>
 #include <chrono>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 /**
  * VirtualSecurityChip - Software-based TEE (Trusted Execution Environment)
@@ -116,6 +116,6 @@ private:
     std::chrono::steady_clock::time_point m_startTime;
 };
 
-} // namespace AntiDetect
+} // namespace VirtualPhonePro
 
 #endif // VIRTUAL_SECURITY_CHIP_HPP

@@ -8,7 +8,7 @@
 #include <set>
 #include <mutex>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 // ============================================================
 // UNIQUE DEVICE IDENTIFIER GENERATION

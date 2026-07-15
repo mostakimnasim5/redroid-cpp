@@ -6,7 +6,7 @@
 #include <random>
 #include <chrono>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 struct AdvancedSpoofingResult {
     bool success;

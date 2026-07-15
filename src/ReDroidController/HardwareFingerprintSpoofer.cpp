@@ -1,11 +1,11 @@
-#include "HardwareFingerprintSpoofer.hpp"
+#include "VirtualPhonePro/HardwareFingerprintSpoofer.h"
 #include "ADBManager.hpp"
 #include "Logger.hpp"
 #include <sstream>
 #include <iomanip>
 #include <random>
 
-namespace AntiDetect {
+namespace VirtualPhonePro {
 
 HardwareFingerprintSpoofer& HardwareFingerprintSpoofer::getInstance() {
     static HardwareFingerprintSpoofer instance;
