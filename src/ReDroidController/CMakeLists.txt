@@ -146,6 +146,8 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/PersistentIdentityManager.h
     # NEW: Frida & Xposed Detection Bypass
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/FridaXposedDetector.h
+    # NEW: Android Realism Engine (100% realistic Android)
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AndroidRealismEngine.h
 )
 
 set(REDCONTROLLER_SOURCES
@@ -196,6 +198,8 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/PersistentIdentityManager.cpp
     # NEW: Frida & Xposed Detection Bypass
     ${PROJECT_SOURCE_DIR}/FridaXposedDetector.cpp
+    # NEW: Android Realism Engine (100% realistic Android)
+    ${PROJECT_SOURCE_DIR}/AndroidRealismEngine.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

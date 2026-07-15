@@ -561,6 +561,27 @@ bool ReDroidController::applyProfile(const QString& instanceId, const DeviceProf
     return true;
 }
 
+bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QString& manufacturer, const QString& model) {
+    qDebug() << "Applying complete realism for:" << manufacturer << model;
+    
+    // Initialize and apply Android Realism Engine
+    AndroidRealismEngine& engine = AndroidRealismEngine::instance();
+    
+    // Initialize for this device
+    engine.initialize(instanceId, manufacturer, model);
+    
+    // Apply complete configuration
+    bool result = engine.applyCompleteConfiguration(instanceId);
+    
+    if (result) {
+        qDebug() << "Complete realism applied successfully";
+    } else {
+        qWarning() << "Failed to apply complete realism";
+    }
+    
+    return result;
+}
+
 bool ReDroidController::setProperty(const QString& instanceId, const QString& prop, const QString& value) {
     QString cmd = QString("setprop %1 %2").arg(prop).arg(value);
     QString result = executeShell(instanceId, cmd);

@@ -4,6 +4,7 @@
 #define VIRTUALPHONEPRO_REDROIDCONTROLLER_H
 
 #include "VirtualPhonePro/DeviceProfile.h"
+#include "VirtualPhonePro/AndroidRealismEngine.h"
 
 #include <QObject>
 #include <QString>
@@ -245,6 +246,15 @@ public:
      * @return true if applied successfully
      */
     bool applyProfile(const QString& instanceId, const DeviceProfile& profile);
+    
+    /**
+     * @brief Apply complete realism configuration for 100% realistic Android
+     * @param instanceId Target instance
+     * @param manufacturer Device manufacturer
+     * @param model Device model
+     * @return true if applied successfully
+     */
+    bool applyCompleteRealism(const QString& instanceId, const QString& manufacturer, const QString& model);
     
     /**
      * @brief Apply individual property
