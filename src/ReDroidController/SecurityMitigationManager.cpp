@@ -192,8 +192,8 @@ void SecurityMitigationManager::initializeDeviceProfiles() {
     pixel8.bootloader = "boot-104763-428000";
     pixel8.baseband = "g5123b-123456-240112-B12345678";
     pixel8.kernelVersion = "5.15.147-android14-11-g";
-    pixel8.buildFingerprint = "google/husky/husky:14/UP1A.231005.007/xxx:user/release-keys";
-    pixel8.buildDescription = "husky-user 14 UP1A.231005.007 xxx release-keys";
+    pixel8.buildFingerprint = "google/husky/husky:14/UP1A.231005.007/20231215.210029:user/release-keys";
+    pixel8.buildDescription = "husky-user 14 UP1A.231005.007 20231215.210029 release-keys";
     pixel8.buildTags = "release-keys";
     pixel8.buildType = "user";
     m_deviceProfiles["google_pixel_8_pro"] = pixel8;
@@ -210,8 +210,8 @@ void SecurityMitigationManager::initializeDeviceProfiles() {
     xiaomi14.bootloader = "UJ-231123";
     xiaomi14.baseband = "UJ-231123";
     xiaomi14.kernelVersion = "5.15.147-android14-11-g";
-    xiaomi14.buildFingerprint = "xiaomi/shennong/shennong:14/UKQ1.231101.001/xxx:user/release-keys";
-    xiaomi14.buildDescription = "shennong-user 14 UKQ1.231101.001 xxx release-keys";
+    xiaomi14.buildFingerprint = "xiaomi/shennong/shennong:14/UKQ1.231101.001/20231215.210029:user/release-keys";
+    xiaomi14.buildDescription = "shennong-user 14 UKQ1.231101.001 20231215.210029 release-keys";
     xiaomi14.buildTags = "release-keys";
     xiaomi14.buildType = "user";
     m_deviceProfiles["xiaomi_14_pro"] = xiaomi14;

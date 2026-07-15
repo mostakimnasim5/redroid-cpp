@@ -178,7 +178,7 @@ bool BankingAppSpoofer::removeRootApps(const QString& instanceId) {
     QStringList apps = {
         "com.topjohnwu.magisk",
         "com.koushikdutta.superuser",
-        "eu.chainfire.supesu",
+        "eu.chainfire.supersu",
         "com.noshufou.android.su",
         "com.noshufou.android.su.elite",
         "com.zachspong.temphider",

@@ -179,7 +179,7 @@ bool SafetyNetSpoofer::spoofGooglePlayServices(const QString& instanceId) {
     QStringList cmds = {
         // Enable Play Services
         "settings put global play_services_enabled 1",
-        "settings put global f寸寸寸寸寸s_enabled 1",
+        "settings put global games_services_enabled 1",
         "settings put global app_operations_enabled 1",
         
         // Play Protect
@@ -318,7 +318,6 @@ bool SafetyNetSpoofer::installSpoofedGmsCore(const QString& instanceId) {
         
         // SafetyNet Provider
         "settings put secure safetynet.enabled 1",
-        "settings put secure safetynet.api_key.test_key AIzaSyA8B2xXXXXXX",
         
         // attestation
         "setprop ro.attestation.enabled true",
@@ -477,7 +476,7 @@ QByteArray SafetyNetSpoofer::generateSafetyNetJws(const QString& instanceId) {
         {"device", "dm3q"},
         {"product", "dm3q"},
         {"bootloader", "S928BXXU1AXXX"},
-        {"buildFingerprint", "samsung/dm3q/dm3q:14/UP1A.231005.007/xxx:user/release-keys"},
+        {"buildFingerprint", "samsung/dm3q/dm3q:14/UP1A.231005.007/20240115.200015:user/release-keys"},
     };
     payload["deviceInfo"] = deviceInfo;
     

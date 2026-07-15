@@ -142,7 +142,7 @@ void EnhancedBuildInfo::generateForDevice(const QString& manufacturer, const QSt
         hardware = "gschip";
         this->model = "Pixel 8 Pro";
         deviceName = "Pixel 8 Pro";
-        fingerprint = "google/husky/husky:14/UQ1A.240105.002/xxx:user/release-keys";
+        fingerprint = "google/husky/husky:14/UQ1A.240105.002/20240115.200015:user/release-keys";
         bootloader = "UQ1A.240105.002";
         buildId = "UQ1A.240105.002";
         buildType = "user";
@@ -160,7 +160,7 @@ void EnhancedBuildInfo::generateForDevice(const QString& manufacturer, const QSt
         this->model = manufacturer + " Device";
         deviceName = manufacturer + " Device";
         fingerprint = manufacturer.toLower() + "/" + manufacturer.toLower() + "/" + manufacturer.toLower() + 
-                     ":14/UP1A.231005.007/xxx:user/release-keys";
+                     ":14/UP1A.231005.007/20240115.200015:user/release-keys";
         bootloader = "bootloader";
         buildId = "UP1A.231005.007";
         buildType = "user";
