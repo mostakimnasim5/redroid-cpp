@@ -154,6 +154,24 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/PlayIntegrityManager.hpp
     # NEW: Emulator Detection Bypass
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/EmulatorDetectionBypass.hpp
+    # NEW: Hardware Fingerprint Spoofer
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HardwareFingerprintSpoofer.hpp
+    # NEW: Network Stack Spoofer
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/NetworkStackSpoofer.hpp
+    # NEW: SafetyNet Advanced Bypass
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SafetyNetAdvancedBypass.hpp
+    # NEW: Hypervisor Bypass
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HypervisorBypass.hpp
+    # NEW: Real Phone Hardening
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/RealPhoneHardening.hpp
+    # NEW: Virtual Security Chip
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/VirtualSecurityChip.hpp
+    # NEW: Crypto Emulator
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/CryptoEmulator.hpp
+    # NEW: Advanced Spoofing
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AdvancedSpoofing.hpp
+    # NEW: Realistic Profile Generator
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/RealisticProfileGenerator.hpp
 )
 
 set(REDCONTROLLER_SOURCES
@@ -212,6 +230,24 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/PlayIntegrityManager.cpp
     # NEW: Emulator Detection Bypass
     ${PROJECT_SOURCE_DIR}/EmulatorDetectionBypass.cpp
+    # NEW: Hardware Fingerprint Spoofer
+    ${PROJECT_SOURCE_DIR}/HardwareFingerprintSpoofer.cpp
+    # NEW: Network Stack Spoofer
+    ${PROJECT_SOURCE_DIR}/NetworkStackSpoofer.cpp
+    # NEW: SafetyNet Advanced Bypass
+    ${PROJECT_SOURCE_DIR}/SafetyNetAdvancedBypass.cpp
+    # NEW: Hypervisor Bypass
+    ${PROJECT_SOURCE_DIR}/HypervisorBypass.cpp
+    # NEW: Real Phone Hardening
+    ${PROJECT_SOURCE_DIR}/RealPhoneHardening.cpp
+    # NEW: Virtual Security Chip
+    ${PROJECT_SOURCE_DIR}/VirtualSecurityChip.cpp
+    # NEW: Crypto Emulator
+    ${PROJECT_SOURCE_DIR}/CryptoEmulator.cpp
+    # NEW: Advanced Spoofing
+    ${PROJECT_SOURCE_DIR}/AdvancedSpoofing.cpp
+    # NEW: Realistic Profile Generator
+    ${PROJECT_SOURCE_DIR}/RealisticProfileGenerator.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
