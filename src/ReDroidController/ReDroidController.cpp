@@ -1548,4 +1548,164 @@ bool ReDroidController::testForLeaks(const QString& instanceId) {
     return leakDetected;
 }
 
+// ============================================================================
+// Android Studio Emulator Support (Windows)
+// ============================================================================
+
+bool ReDroidController::isAdbAvailable() {
+    QString adbPath = m_config.adbPath;
+    
+    // Try to find adb
+    if (adbPath.isEmpty() || adbPath == "adb") {
+        adbPath = findAdbPath();
+    }
+    
+    if (adbPath.isEmpty()) {
+        return false;
+    }
+    
+    QProcess process;
+    process.start(adbPath, {"version"});
+    bool available = process.waitForFinished(5000);
+    
+    if (available && process.exitCode() == 0) {
+        qDebug() << "ADB found at:" << adbPath;
+        return true;
+    }
+    
+    return false;
+}
+
+QString ReDroidController::findAdbPath() {
+    QStringList possiblePaths;
+    
+#ifdef Q_OS_WIN32
+    // Common Android SDK locations on Windows
+    QStringList sdkPaths = {
+        qEnvironmentVariable("LOCALAPPDATA") + "/Android/Sdk/platform-tools/adb.exe",
+        qEnvironmentVariable("USERPROFILE") + "/Android/Sdk/platform-tools/adb.exe",
+        "C:/Users/" + qEnvironmentVariable("USERNAME") + "/AppData/Local/Android/Sdk/platform-tools/adb.exe",
+        "C:/Android/Sdk/platform-tools/adb.exe",
+        "C:/Program Files/Android/Sdk/platform-tools/adb.exe",
+    };
+    
+    for (const QString& path : sdkPaths) {
+        if (QFile::exists(path)) {
+            return path;
+        }
+    }
+    
+    // Try to find in PATH
+    QProcess process;
+    process.start("where", {"adb.exe"});
+    if (process.waitForFinished(3000)) {
+        QString output = process.readAll().trimmed();
+        if (!output.isEmpty()) {
+            return output.split('\n').first();
+        }
+    }
+#else
+    // Linux/Mac
+    QStringList paths = {"/usr/bin/adb", "/usr/local/bin/adb", "/opt/android-sdk/platform-tools/adb"};
+    for (const QString& path : paths) {
+        if (QFile::exists(path)) {
+            return path;
+        }
+    }
+#endif
+    
+    return "adb"; // Fallback to PATH
+}
+
+QStringList ReDroidController::detectAndroidStudioEmulators() {
+    QStringList emulators;
+    
+    // Ensure ADB path is set
+    if (m_config.adbPath.isEmpty()) {
+        m_config.adbPath = findAdbPath();
+    }
+    
+    // First, try adb devices
+    QProcess process;
+    process.start(m_config.adbPath, {"devices"});
+    if (!process.waitForFinished(5000)) {
+        qWarning() << "ADB devices command timed out";
+        return emulators;
+    }
+    
+    QString output = process.readAll();
+    QStringList lines = output.split('\n', Qt::SkipEmptyParts);
+    
+    for (const QString& line : lines) {
+        QString trimmed = line.trimmed();
+        if (trimmed.isEmpty() || trimmed.startsWith("List")) continue;
+        
+        // Format: emulator-5554    device
+        QStringList parts = trimmed.split(QRegExp("\\s+"));
+        if (parts.size() >= 2 && parts[1] == "device") {
+            QString serial = parts[0];
+            if (serial.startsWith("emulator-")) {
+                emulators.append(serial);
+                qDebug() << "Found Android Studio Emulator:" << serial;
+            }
+        }
+    }
+    
+    return emulators;
+}
+
+QString ReDroidController::connectToAndroidStudioEmulator() {
+    // First try to find already running emulators
+    QStringList runningEmulators = detectAndroidStudioEmulators();
+    
+    if (!runningEmulators.isEmpty()) {
+        QString emulator = runningEmulators.first();
+        qDebug() << "Found running emulator:" << emulator;
+        
+        InstanceInfo info;
+        info.instanceId = emulator;
+        info.serial = emulator;
+        info.status = InstanceStatus::RUNNING;
+        info.adbPort = emulator.replace("emulator-", "").toInt();
+        
+        QMutexLocker locker(&m_instancesMutex);
+        m_instances[emulator] = info;
+        m_adbSerials[emulator] = emulator;
+        
+        return emulator;
+    }
+    
+    // If no emulator is running, try to connect to common ports
+    QStringList ports = {"5554", "5556", "5558", "5560"};
+    for (const QString& port : ports) {
+        QString serial = QString("emulator-%1").arg(port);
+        QString result = executeCommand(QString("connect localhost:%1").arg(port));
+        
+        if (!result.contains("failed") && !result.contains("error")) {
+            qDebug() << "Connected to emulator at port" << port;
+            
+            InstanceInfo info;
+            info.instanceId = serial;
+            info.serial = serial;
+            info.status = InstanceStatus::RUNNING;
+            info.adbPort = port.toInt();
+            
+            QMutexLocker locker(&m_instancesMutex);
+            m_instances[serial] = info;
+            m_adbSerials[serial] = serial;
+            
+            return serial;
+        }
+    }
+    
+    qWarning() << "No Android Studio Emulator found or could not connect";
+    return QString();
+}
+
+void ReDroidController::setAndroidStudioAdbPath(const QString& path) {
+    m_config.adbPath = path;
+    saveConfiguration();
+    qDebug() << "Android Studio ADB path set to:" << path;
+}
+
 } // namespace VirtualPhonePro

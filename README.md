@@ -2,10 +2,10 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/Version-4.0.0-blue)
+![Version](https://img.shields.io/badge/Version-5.0.0-blue)
 ![C++](https://img.shields.io/badge/C++-17-green)
 ![Qt](https://img.shields.io/badge/Qt-6.5+-purple)
-![License](https://img.shields.io/badge/License-Testing--Only-red)
+![Platform](https://img.shields.io/badge/Platform-Windows-red)
 
 **Enterprise-grade Android emulator controller with advanced anti-detection features**
 
@@ -15,7 +15,36 @@
 
 ## 🎯 Overview
 
-ReDroidCPP is a professional-grade C++/Qt6 application for managing ReDroid (Real Docker) Android containers. It provides advanced device spoofing, multi-instance management, and comprehensive anti-detection features for banking app testing and security research.
+ReDroidCPP is a professional-grade C++/Qt6 application for managing Android emulators on Windows. It works with **Android Studio Emulator** to provide advanced device spoofing and comprehensive anti-detection features for banking app testing and security research.
+
+> 💡 **No Docker Required!** - This project uses Android Studio Emulator instead of Docker.
+
+---
+
+## 🚀 Quick Start (Windows)
+
+### ১. Install Requirements
+```
+- Android Studio (with Virtual Device)
+- Visual Studio 2022
+- Qt6 (optional for GUI)
+```
+
+### ২. Start Android Studio Emulator
+```
+Android Studio → Tools → Device Manager → Start Pixel 6 Pro
+```
+
+### ৩. Build & Run
+```powershell
+.\build-win.bat Release
+.\launch-gui.bat
+```
+
+### ৪. Apply Device Profile
+```
+GUI-তে Profile বেছে নিন → Apply Profile
+```
 
 ## ✨ Features
 
@@ -25,9 +54,9 @@ ReDroidCPP is a professional-grade C++/Qt6 application for managing ReDroid (Rea
 |---------|-------------|
 | **Multi-Instance Management** | Run multiple Android instances simultaneously |
 | **Device Profile Generation** | Samsung, Google Pixel, Xiaomi, Huawei, OnePlus, etc. |
-| **Docker Integration** | Auto-start containers with ReDroid |
+| **Android Studio Emulator** | Works with standard Android Studio emulator |
 | **Qt6 GUI** | Modern Windows application |
-| **REST API** | HTTP API for automation |
+| **ADB Integration** | Direct ADB commands for device control |
 
 ### Anti-Detection Features
 
@@ -56,25 +85,28 @@ ReDroidCPP/
 ├── include/VirtualPhonePro/         # Public headers
 │   ├── ReDroidController.h         # Main controller
 │   ├── DeviceProfile.h             # Device profiles
+│   ├── AndroidRealismEngine.hpp    # 100% realistic spoofing
 │   ├── BankingAppSpoofer.h         # Banking app bypass
-│   ├── AdvancedAntiDetection.hpp    # Anti-detection
-│   ├── TLSFingerprint.hpp           # SSL fingerprinting
-│   └── HyperRealisticTouchEmulator.hpp
+│   ├── HardwareAttestation.h        # Hardware attestation
+│   ├── SafetyNetSpoofer.h          # SafetyNet/Play Integrity
+│   └── ...
 │
 ├── src/
 │   ├── ReDroidController/          # Implementation
 │   │   ├── ReDroidController.cpp
+│   │   ├── AndroidRealismEngine.cpp
 │   │   ├── BankingAppSpoofer.cpp
-│   │   ├── AdvancedAntiDetection.cpp
+│   │   ├── SafetyNetSpoofer.cpp
 │   │   └── ...
 │   ├── main.cpp                    # CLI entry
 │   ├── mainwindow.cpp              # Qt6 GUI
-│   └── AutoStartDialog.cpp         # Docker auto-start
+│   └── AutoStartDialog.cpp         # Emulator setup
 │
-├── docker/                         # Docker configs
 ├── profiles/                       # Device profiles
 └── CMakeLists.txt                 # Build system
 ```
+
+**Note:** Docker support has been removed. The project now uses Android Studio Emulator via ADB.
 
 ## 🔒 Anti-Detection Module Tree
 
