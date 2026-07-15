@@ -1,49 +1,56 @@
 # ==============================================================================
-# ReDroidCPP - Android Emulator Docker Compose
+# ReDroidCPP - ReDroid Docker Compose
+# Uses lightweight ReDroid (Real Docker Android) container
 # ==============================================================================
 
 services:
   android-emulator:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/Dockerfile.custom
     container_name: android-emulator
     image: redroid-cpp/android-emulator:latest
-    entrypoint: ["/bin/bash", "/entrypoint.sh"]
-
-    # X11 Forwarding for Native Desktop Display
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    hostname: android-emulator
+    
+    # Privileged mode required for ReDroid
+    privileged: true
+    
+    # KVM access for hardware acceleration
+    devices:
+      - /dev/kvm:/dev/kvm
+      - /dev/fuse:/dev/fuse
 
     environment:
-      - DISPLAY=host.docker.internal:0
-      - ANDROID_EMULATOR_VERSION=34
-      - ANDROID_SDK_ROOT=/opt/android-sdk
-      - ANDROID_HOME=/opt/android-sdk
-      - ANDROID_AVD_HOME=/root/.android/avd
-      - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+      # ReDroid GPU Mode (swiftshader for software, auto for hardware)
+      - REDROID_GPU_MODE=swiftshader
+      # ReDroid Memory Configuration
+      - REDROID_MEM_SIZE=512M
+      # Device Configuration (default values)
+      - VPP_DEVICE_MANUFACTURER=Samsung
+      - VPP_DEVICE_MODEL=SM-S928B
+      - VPP_ANDROID_VERSION=14
 
     ports:
-      - "5554:5554"  # ADB
       - "5555:5555"  # ADB
 
-    # Note: /dev/kvm will be used automatically if available
-    # Fallback to software rendering (swiftshader_indirect) if not available
-
     volumes:
-      - avd_data:/root/.android
+      # Device profiles persistence
+      - ./configs:/opt/vpp/config:ro
+      - ./bin:/opt/vpp/scripts:ro
+      - device_data:/data
 
-    mem_limit: 4g
-    shm_size: 2gb
+    # KVM is required for ReDroid
+    cap_add:
+      - NET_ADMIN
 
     healthcheck:
-      test: ["CMD", "adb", "shell", "getprop", "sys.boot_completed"]
+      test: ["CMD", "getprop", "sys.boot_completed"]
       interval: 30s
       timeout: 10s
-      retries: 10
+      retries: 15
       start_period: 60s
 
     restart: unless-stopped
 
 volumes:
-  avd_data:
+  device_data:

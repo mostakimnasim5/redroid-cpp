@@ -1,41 +1,38 @@
 # ==============================================================================
 # VirtualPhonePro - Custom ReDroid Image
 # Optimized for Anti-Detection with Device Spoofing
-# Base: redroid/redroid:14.0.0-latest
+# Base: redroid/redroid:14.0.0-latest (google_64only variant)
 # ==============================================================================
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 1: Builder - Pre-configure system properties
-# ─────────────────────────────────────────────────────────────────────────────
+# Multi-stage build to ensure all tools are available
+# Stage 1: Builder - Install required tools
+# ==============================================================================
 FROM ubuntu:22.04 AS builder
 
-# Install required tools
 RUN apt-get update && apt-get install -y \
     android-tools-adb \
     android-tools-fastboot \
     unzip \
+    wget \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Download ReDroid system image for property extraction
-ENV REDROID_VERSION=14.0.0
-ENV REDROID_IMAGE=ghcr.io/redroid/redroid:${REDROID_VERSION}-google_64only
-
-# ─────────────────────────────────────────────────────────────────────────────
+# ==============================================================================
 # Stage 2: Runtime - ReDroid Base with Spoofing Support
-# ─────────────────────────────────────────────────────────────────────────────
-FROM ghcr.io/redroid/redroid:${REDROID_VERSION}-google_64only AS redroid-spoofed
+# ==============================================================================
+FROM ghcr.io/redroid/redroid:14.0.0-google_64only AS redroid-spoofed
 
 # Metadata
 LABEL maintainer="VirtualPhonePro"
 LABEL version="1.0.0"
 LABEL description="VirtualPhonePro - Anti-Detect ReDroid with Device Spoofing"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ==============================================================================
 # Environment Variables for Device Configuration
-# These can be overridden at runtime from Windows C++ host
-# ─────────────────────────────────────────────────────────────────────────────
+# These can be overridden at runtime
+# ==============================================================================
 
-# Device Identity (passed from Windows C++ app)
+# Device Identity
 ENV VPP_DEVICE_MANUFACTURER="Samsung"
 ENV VPP_DEVICE_BRAND="samsung"
 ENV VPP_DEVICE_MODEL="SM-S928B"
@@ -49,11 +46,11 @@ ENV VPP_BUILD_ID="UP1A.231005.007"
 ENV VPP_BUILD_TYPE="userdebug"
 ENV VPP_SECURITY_PATCH="2024-01-01"
 
-# Bootloader & Fingerprint
+# Fingerprint
 ENV VPP_BOOTLOADER="S928BXXU1AXXX"
 ENV VPP_FINGERPRINT_PREFIX="samsung/dm3q/dm3q"
 
-# Identity
+# Identity (can be set at runtime)
 ENV VPP_IMEI=""
 ENV VPP_IMEI2=""
 ENV VPP_SERIAL=""
@@ -77,73 +74,118 @@ ENV VPP_MNC="260"
 ENV VPP_GPS_LAT="37.7749"
 ENV VPP_GPS_LON="-122.4194"
 
-# GPU Mode
+# GPU Mode (swiftshader for software, auto for hardware with GPU)
 ENV REDROID_GPU_MODE="swiftshader"
+ENV REDROID_MEM_SIZE="512M"
 
-# Memory Optimization
-ENV REDROID_MEMSTART="0x80000000"
-ENV REDROID_MEMSIZE="512M"
+# ==============================================================================
+# Create Directory Structure
+# ==============================================================================
+RUN mkdir -p /opt/vpp/config /opt/vpp/scripts /data/device /data/logs && \
+    chmod 755 /opt /opt/vpp /data
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Install Runtime Dependencies
-# ─────────────────────────────────────────────────────────────────────────────
-USER root
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash \
-    coreutils \
-    util-linux \
-    procps \
-    ca-certificates \
-    openssl \
-    curl \
-    wget \
-    nano \
-    sudo \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Create VirtualPhonePro Directory Structure
-# ─────────────────────────────────────────────────────────────────────────────
-RUN mkdir -p /opt/vpp/bin \
-             /opt/vpp/config \
-             /opt/vpp/profiles \
-             /opt/vpp/scripts \
-             /data/device \
-             /data/profiles \
-             /data/logs
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Copy Spoofing Scripts
-# ─────────────────────────────────────────────────────────────────────────────
+# ==============================================================================
+# Copy Tools from Builder
+# ==============================================================================
 COPY --from=builder /usr/bin/adb /opt/vpp/bin/adb
 COPY --from=builder /usr/bin/fastboot /opt/vpp/bin/fastboot
+COPY --from=builder /usr/bin/unzip /usr/bin/unzip
 
-COPY docker/bin/init.sh /opt/vpp/scripts/init.sh
-COPY docker/bin/entrypoint.sh /opt/vpp/scripts/entrypoint.sh
-COPY docker/bin/spoof-properties.sh /opt/vpp/scripts/spoof-properties.sh
-COPY docker/bin/apply-identity.sh /opt/vpp/scripts/apply-identity.sh
-COPY docker/bin/setup-network.sh /opt/vpp/scripts/setup-network.sh
-COPY docker/bin/setup-gps.sh /opt/vpp/scripts/setup-gps.sh
+RUN chmod +x /opt/vpp/bin/* /usr/bin/unzip
 
-# Make scripts executable
-RUN chmod +x /opt/vpp/scripts/*.sh \
-    && chmod +x /opt/vpp/bin/*
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Create Property Override Files
-# ─────────────────────────────────────────────────────────────────────────────
-# These files will be read by our init scripts to apply spoofing
+# ==============================================================================
+# Copy Configuration Files
+# ==============================================================================
 COPY docker/configs/ /opt/vpp/config/
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Create late_props Service
-# This allows overriding read-only (ro.*) properties
-# ─────────────────────────────────────────────────────────────────────────────
-RUN cat > /system/etc/init/android boot analytic.rc << 'EOF'
-# VirtualPhonePro - Late Property Override Service
-# This runs after boot to apply spoofed properties
-service vpp_late_props /system/bin/late_props
+# ==============================================================================
+# Create Property Override Script (Late Props)
+# This runs after boot to set device properties
+# ==============================================================================
+RUN cat > /system/bin/vpp_late_props.sh << 'LATEPROPS'
+#!/system/bin/sh
+# ============================================================
+# VirtualPhonePro - Late Property Override Script
+# Runs after boot to apply device spoofing properties
+# ============================================================
+
+LOG_FILE="/data/logs/vpp_props.log"
+PROPS_FILE="/opt/vpp/config/device.properties"
+DEFAULT_PROPS="/opt/vpp/config/default.properties"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+
+log "=== VirtualPhonePro Late Props Starting ==="
+
+# Wait for system to settle
+sleep 3
+
+# Select properties file
+if [ -f "$PROPS_FILE" ]; then
+    log "Using custom properties from $PROPS_FILE"
+    SOURCE_FILE="$PROPS_FILE"
+elif [ -f "$DEFAULT_PROPS" ]; then
+    log "Using default properties from $DEFAULT_PROPS"
+    SOURCE_FILE="$DEFAULT_PROPS"
+else
+    log "ERROR: No properties file found!"
+    exit 1
+fi
+
+# Source properties
+. "$SOURCE_FILE"
+
+# Apply Device Identity
+[ -n "$RO_PRODUCT_BRAND" ] && setprop ro.product.brand "$RO_PRODUCT_BRAND"
+[ -n "$RO_PRODUCT_MANUFACTURER" ] && setprop ro.product.manufacturer "$RO_PRODUCT_MANUFACTURER"
+[ -n "$RO_PRODUCT_MODEL" ] && setprop ro.product.model "$RO_PRODUCT_MODEL"
+[ -n "$RO_PRODUCT_DEVICE" ] && setprop ro.product.device "$RO_PRODUCT_DEVICE"
+[ -n "$RO_PRODUCT_NAME" ] && setprop ro.product.name "$RO_PRODUCT_NAME"
+
+# Apply Fingerprint
+[ -n "$RO_BUILD_FINGERPRINT" ] && setprop ro.build.fingerprint "$RO_BUILD_FINGERPRINT"
+[ -n "$RO_BUILD_DESCRIPTION" ] && setprop ro.build.description "$RO_BUILD_DESCRIPTION"
+
+# Apply Identity
+[ -n "$RO_SERIALNO" ] && setprop ro.serialno "$RO_SERIALNO"
+[ -n "$RO_GSM_DEVICE_IMEI" ] && setprop ro.gsm.device.imei "$RO_GSM_DEVICE_IMEI"
+[ -n "$RO_ANDROID_ID" ] && setprop ro.android_id "$RO_ANDROID_ID"
+[ -n "$RO_GSF_ID" ] && setprop ro.gsfid "$RO_GSF_ID"
+
+# Apply Network
+[ -n "$NET_HOSTNAME" ] && setprop net.hostname "$NET_HOSTNAME"
+[ -n "$WIFI_MAC" ] && setprop wifi.interface wlan0
+[ -n "$WIFI_MAC" ] && ip link set wlan0 address "$WIFI_MAC" 2>/dev/null
+
+# Apply Build Properties
+[ -n "$RO_BOOTLOADER" ] && setprop ro.bootloader "$RO_BOOTLOADER"
+[ -n "$RO_BUILD_ID" ] && setprop ro.build.id "$RO_BUILD_ID"
+[ -n "$RO_BUILD_VERSION_SECURITY_PATCH" ] && setprop ro.build.version.security_patch "$RO_BUILD_VERSION_SECURITY_PATCH"
+[ -n "$RO_BUILD_TYPE" ] && setprop ro.build.type "$RO_BUILD_TYPE"
+
+# Apply Verified Boot State
+setprop ro.boot.verifiedbootstate "green"
+setprop ro.boot.flash.locked "1"
+setprop ro.secure 1
+
+# Apply SIM Info
+[ -n "$RO_GSM_SIM_IMSI" ] && setprop ro.gsm.sim.imsi "$RO_GSM_SIM_IMSI"
+[ -n "$RO_GSM_SIM_OPERATOR" ] && setprop gsm.sim.operator.numeric "$RO_GSM_SIM_OPERATOR"
+
+log "=== VirtualPhonePro Late Props Completed ==="
+exit 0
+LATEPROPS
+
+RUN chmod 755 /system/bin/vpp_late_props.sh
+
+# ==============================================================================
+# Register Late Props Service
+# ==============================================================================
+RUN cat > /system/etc/init/vpp_late_props.rc << 'SERVICERC'
+# VirtualPhonePro Late Props Service
+service vpp_late_props /system/bin/vpp_late_props.sh
     user root
     group root
     disabled
@@ -151,136 +193,19 @@ service vpp_late_props /system/bin/late_props
 
 on property:sys.boot_completed=1
     start vpp_late_props
-EOF
+SERVICERC
 
-# Create late_props executable
-RUN cat > /system/bin/late_props << 'LAtePROPS'
-#!/system/bin/sh
-# ============================================================
-# VirtualPhonePro - Late Property Override Script
-# Runs after boot to set read-only properties
-# ============================================================
+RUN chmod 644 /system/etc/init/vpp_late_props.rc
 
-LOG_FILE="/data/logs/late_props.log"
-PROPS_FILE="/opt/vpp/config/device.properties"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
-}
-
-log "=== VirtualPhonePro Late Props Service Started ==="
-
-# Wait for system to settle
-sleep 2
-
-# Check if properties file exists
-if [ ! -f "$PROPS_FILE" ]; then
-    log "WARNING: $PROPS_FILE not found, using defaults"
-    PROPS_FILE="/opt/vpp/config/default.properties"
-fi
-
-if [ -f "$PROPS_FILE" ]; then
-    log "Loading properties from $PROPS_FILE"
-    
-    # Source the properties file
-    . "$PROPS_FILE"
-    
-    # Apply Device Identity Properties
-    if [ -n "$RO_PRODUCT_BRAND" ]; then
-        setprop ro.product.brand "$RO_PRODUCT_BRAND" 2>/dev/null
-        log "Set ro.product.brand = $RO_PRODUCT_BRAND"
-    fi
-    
-    if [ -n "$RO_PRODUCT_MANUFACTURER" ]; then
-        setprop ro.product.manufacturer "$RO_PRODUCT_MANUFACTURER" 2>/dev/null
-        log "Set ro.product.manufacturer = $RO_PRODUCT_MANUFACTURER"
-    fi
-    
-    if [ -n "$RO_PRODUCT_MODEL" ]; then
-        setprop ro.product.model "$RO_PRODUCT_MODEL" 2>/dev/null
-        log "Set ro.product.model = $RO_PRODUCT_MODEL"
-    fi
-    
-    if [ -n "$RO_PRODUCT_DEVICE" ]; then
-        setprop ro.product.device "$RO_PRODUCT_DEVICE" 2>/dev/null
-        log "Set ro.product.device = $RO_PRODUCT_DEVICE"
-    fi
-    
-    # Apply Fingerprint
-    if [ -n "$RO_BUILD_FINGERPRINT" ]; then
-        setprop ro.build.fingerprint "$RO_BUILD_FINGERPRINT" 2>/dev/null
-        setprop ro.product.build.fingerprint "$RO_BUILD_FINGERPRINT" 2>/dev/null
-        log "Set ro.build.fingerprint = $RO_BUILD_FINGERPRINT"
-    fi
-    
-    # Apply Identity
-    if [ -n "$RO_SERIALNO" ]; then
-        setprop ro.serialno "$RO_SERIALNO" 2>/dev/null
-        log "Set ro.serialno = $RO_SERIALNO"
-    fi
-    
-    if [ -n "$RO_GSM_DEVICE_IMEI" ]; then
-        setprop ro.gsm.device.imei "$RO_GSM_DEVICE_IMEI" 2>/dev/null
-        log "Set ro.gsm.device.imei = $RO_GSM_DEVICE_IMEI"
-    fi
-    
-    if [ -n "$RO_GSM_SIM_IMSI" ]; then
-        setprop ro.gsm.sim.imsi "$RO_GSM_SIM_IMSI" 2>/dev/null
-        log "Set ro.gsm.sim.imsi = $RO_GSM_SIM_IMSI"
-    fi
-    
-    # Apply Network Properties
-    if [ -n "$NET_HOSTNAME" ]; then
-        setprop net.hostname "$NET_HOSTNAME" 2>/dev/null
-        log "Set net.hostname = $NET_HOSTNAME"
-    fi
-    
-    # Apply Build Properties
-    if [ -n "$RO_BOOTLOADER" ]; then
-        setprop ro.bootloader "$RO_BOOTLOADER" 2>/dev/null
-        log "Set ro.bootloader = $RO_BOOTLOADER"
-    fi
-    
-    if [ -n "$RO_BUILD_ID" ]; then
-        setprop ro.build.id "$RO_BUILD_ID" 2>/dev/null
-        log "Set ro.build.id = $RO_BUILD_ID"
-    fi
-    
-    if [ -n "$RO_BUILD_VERSION_SECURITY_PATCH" ]; then
-        setprop ro.build.version.security_patch "$RO_BUILD_VERSION_SECURITY_PATCH" 2>/dev/null
-        log "Set ro.build.version.security_patch = $RO_BUILD_VERSION_SECURITY_PATCH"
-    fi
-    
-    # Apply Verified Boot State (green = unlocked)
-    setprop ro.boot.verifiedbootstate "green" 2>/dev/null
-    setprop ro.boot.flash.locked "1" 2>/dev/null
-    setprop ro.secure_state "unlocked" 2>/dev/null
-    log "Set verified boot state = green, locked = 1"
-    
-else
-    log "ERROR: Properties file not found!"
-fi
-
-log "=== VirtualPhonePro Late Props Service Completed ==="
-exit 0
-LAtePROPS
-
-RUN chmod 755 /system/bin/late_props
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Set Entry Point
-# ─────────────────────────────────────────────────────────────────────────────
+# ==============================================================================
+# Entry Point
+# ==============================================================================
 WORKDIR /data
-ENTRYPOINT ["/opt/vpp/scripts/entrypoint.sh"]
-CMD ["start"]
+EXPOSE 5555
 
 # Health Check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
-    CMD getprop sys.boot_completed | grep -q "1" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=10 \
+    CMD getprop sys.boot_completed 2>/dev/null | grep -q "1" || exit 1
 
-# Exposed Ports
-EXPOSE 5555 5900 5554
-
-# Low Memory Configuration
-# Docker memory limit should be set to 512MB-768MB
-# Using systemd drop-in or docker-compose ulimits
+# Default command - start adb and stay alive
+CMD ["sh", "-c", "while true; do sleep 3600; done"]
