@@ -517,34 +517,6 @@ private:
     void stopMonitoring();
     void checkInstanceStatus(const QString& instanceId);
     
-    // ========================================================================
-    // Android Studio Emulator Support (Windows)
-    // ========================================================================
-    
-    /**
-     * @brief Detect and connect to Android Studio Emulator
-     * @return instance ID if connected, empty string if failed
-     */
-    QString connectToAndroidStudioEmulator();
-    
-    /**
-     * @brief Detect available Android Studio Emulators
-     * @return list of available emulator instance IDs
-     */
-    QStringList detectAndroidStudioEmulators();
-    
-    /**
-     * @brief Set ADB path for Android Studio Emulator
-     * @param path Path to adb.exe (usually in Android SDK)
-     */
-    void setAndroidStudioAdbPath(const QString& path);
-    
-    /**
-     * @brief Check if ADB is working
-     * @return true if ADB is available
-     */
-    bool isAdbAvailable();
-    
     // Singleton
     static ReDroidController* s_instance;
     
