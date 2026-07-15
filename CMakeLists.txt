@@ -127,6 +127,7 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/HyperRealisticTouchEmulator.cpp
         src/ReDroidController/RealisticDeviceProfile.cpp
         src/ReDroidController/EnhancedDeviceProfile.cpp
+        src/ReDroidController/NetworkProfileManager.cpp
     )
     
     set(QT6_CORE_HEADERS
@@ -142,6 +143,7 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/AdvancedAntiDetection.h
         include/VirtualPhonePro/TLSFingerprint.h
         include/VirtualPhonePro/HyperRealisticTouchEmulator.h
+        include/VirtualPhonePro/NetworkProfileManager.h
         include/VirtualPhonePro/RealisticDeviceProfile.hpp
     )
     
