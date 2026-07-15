@@ -140,6 +140,12 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceIntegrityManager.h
     # NEW: Security Mitigation Manager (Deep System Patching)
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SecurityMitigationManager.h
+    # NEW: Hardware Fingerprint Spoofer
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HardwareFingerprintSpoofer.h
+    # NEW: Persistent Identity Manager
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/PersistentIdentityManager.h
+    # NEW: Frida & Xposed Detection Bypass
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/FridaXposedDetector.h
 )
 
 set(REDCONTROLLER_SOURCES
@@ -184,6 +190,12 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/DeviceIntegrityManager.cpp
     # NEW: Security Mitigation Manager (Deep System Patching)
     ${PROJECT_SOURCE_DIR}/SecurityMitigationManager.cpp
+    # NEW: Hardware Fingerprint Spoofer
+    ${PROJECT_SOURCE_DIR}/HardwareFingerprintSpoofer.cpp
+    # NEW: Persistent Identity Manager
+    ${PROJECT_SOURCE_DIR}/PersistentIdentityManager.cpp
+    # NEW: Frida & Xposed Detection Bypass
+    ${PROJECT_SOURCE_DIR}/FridaXposedDetector.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
