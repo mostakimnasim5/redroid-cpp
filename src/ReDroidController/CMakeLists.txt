@@ -172,6 +172,18 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AdvancedSpoofing.hpp
     # NEW: Realistic Profile Generator
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/RealisticProfileGenerator.hpp
+    # NEW: ADB Manager
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/ADBManager.hpp
+    # NEW: Screen Mirror
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/ScreenMirror.hpp
+    # NEW: IP Timezone Converter
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/IPTimezoneConverter.hpp
+    # NEW: Device ID Generator
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceIDGenerator.hpp
+    # NEW: Http Client
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HttpClient.hpp
+    # NEW: Crypto Utils
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/CryptoUtils.hpp
 )
 
 set(REDCONTROLLER_SOURCES
@@ -248,6 +260,18 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/AdvancedSpoofing.cpp
     # NEW: Realistic Profile Generator
     ${PROJECT_SOURCE_DIR}/RealisticProfileGenerator.cpp
+    # NEW: ADB Manager
+    ${PROJECT_SOURCE_DIR}/ADBManager.cpp
+    # NEW: Screen Mirror
+    ${PROJECT_SOURCE_DIR}/ScreenMirror.cpp
+    # NEW: IP Timezone Converter
+    ${PROJECT_SOURCE_DIR}/IPTimezoneConverter.cpp
+    # NEW: Device ID Generator
+    ${PROJECT_SOURCE_DIR}/DeviceIDGenerator.cpp
+    # NEW: Http Client
+    ${PROJECT_SOURCE_DIR}/HttpClient.cpp
+    # NEW: Crypto Utils
+    ${PROJECT_SOURCE_DIR}/CryptoUtils.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
