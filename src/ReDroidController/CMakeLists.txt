@@ -150,6 +150,10 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AndroidRealismEngine.h
     # NEW: Timing Attack Prevention
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/TimingAttackPrevention.hpp
+    # NEW: Play Integrity Manager
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/PlayIntegrityManager.hpp
+    # NEW: Emulator Detection Bypass
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/EmulatorDetectionBypass.hpp
 )
 
 set(REDCONTROLLER_SOURCES
@@ -204,6 +208,10 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/AndroidRealismEngine.cpp
     # NEW: Timing Attack Prevention
     ${PROJECT_SOURCE_DIR}/TimingAttackPrevention.cpp
+    # NEW: Play Integrity Manager
+    ${PROJECT_SOURCE_DIR}/PlayIntegrityManager.cpp
+    # NEW: Emulator Detection Bypass
+    ${PROJECT_SOURCE_DIR}/EmulatorDetectionBypass.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
