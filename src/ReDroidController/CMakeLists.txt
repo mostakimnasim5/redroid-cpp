@@ -112,6 +112,11 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SensorSimulator.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/TestingFramework.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/WebhookManager.h
+    # Advanced Realistic Phone Simulation
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/BatteryPowerManager.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/CarrierNetworkSimulator.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/ScreenStateManager.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AdvancedRealisticSimulation.h
 )
 
 set(REDCONTROLLER_SOURCES
@@ -128,6 +133,11 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/TLSFingerprint.cpp
     ${PROJECT_SOURCE_DIR}/HyperRealisticTouchEmulator.cpp
     ${PROJECT_SOURCE_DIR}/RealisticDeviceProfile.cpp
+    # Advanced Realistic Phone Simulation
+    ${PROJECT_SOURCE_DIR}/BatteryPowerManager.cpp
+    ${PROJECT_SOURCE_DIR}/CarrierNetworkSimulator.cpp
+    ${PROJECT_SOURCE_DIR}/ScreenStateManager.cpp
+    ${PROJECT_SOURCE_DIR}/AdvancedRealisticSimulation.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

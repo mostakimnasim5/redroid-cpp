@@ -1,12 +1,170 @@
-# VirtualPhonePro - Advanced Features Documentation
+# ReDroidCPP - Advanced Features Documentation
 
 ## Overview
 
-This document describes the advanced features implemented in VirtualPhonePro for enhanced emulator management and anti-detection capabilities.
+This document describes the advanced features implemented in ReDroidCPP for enhanced emulator management and anti-detection capabilities.
 
 ---
 
-## 1. SafetyNet/Play Integrity Spoofing
+## 1. Advanced Realistic Phone Simulation
+
+**Master Header:** `include/VirtualPhonePro/AdvancedRealisticSimulation.h`  
+**Coordinator:** `src/ReDroidController/AdvancedRealisticSimulation.cpp`
+
+### Core Components
+
+| Component | Description |
+|-----------|-------------|
+| `BatteryPowerManager` | Realistic battery & power management |
+| `CarrierNetworkSimulator` | Carrier info, signal strength, network types |
+| `ScreenStateManager` | Screen states, brightness, refresh rates |
+
+### Usage
+
+```cpp
+// Configure all systems for a realistic phone
+AdvancedRealisticSimulator& sim = AdvancedRealisticSimulator::instance();
+sim.configureDevice("instance-1", "Samsung", "SM-S928B");
+
+// Apply all spoofing
+sim.applyAllSpoofing("instance-1");
+
+// Get complete state
+QJsonObject state = sim.getCompleteState("instance-1");
+```
+
+---
+
+## 2. Battery & Power Management
+
+**Header:** `include/VirtualPhonePro/BatteryPowerManager.h`  
+**Implementation:** `src/ReDroidController/BatteryPowerManager.cpp`
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Battery State Simulation | Level, temperature, voltage, health |
+| Charging Modes | AC, USB, Wireless, Fast Charge |
+| Temperature Control | Normal, overheating simulation |
+| Health Based on Age | Degradation over time |
+
+### Usage
+
+```cpp
+BatteryPowerManager& battery = BatteryPowerManager::instance();
+
+// Configure for device
+battery.configureForDevice("Samsung", "Galaxy S24 Ultra");
+
+// Set battery state
+BatteryState state;
+state.level = 75;
+state.temperature = 320; // 32.0°C
+state.health = BatteryHealth::GOOD;
+state.plugState = BatteryPlugState::AC;
+battery.setBatteryState("instance-1", state);
+
+// Start charging
+battery.startCharging("instance-1", BatteryPlugState::WIRELESS);
+
+// Set temperature
+battery.setTemperature("instance-1", 35); // 35°C
+```
+
+---
+
+## 3. Carrier & Network Simulation
+
+**Header:** `include/VirtualPhonePro/CarrierNetworkSimulator.h`  
+**Implementation:** `src/ReDroidController/CarrierNetworkSimulator.cpp`
+
+### Supported Carriers
+
+| Region | Carriers |
+|--------|----------|
+| US | T-Mobile, AT&T, Verizon, Sprint, US Cellular |
+| UK | EE, O2, Vodafone, Three |
+| Europe | Deutsche Telekom, Orange, Bouygues |
+| Asia | Jio, Airtel, SoftBank, NTT DOCOMO, SK Telecom |
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Carrier Configuration | Name, MCC/MNC, country |
+| Signal Strength | dBm, ASU, level (0-4) |
+| Network Types | GSM, 3G, LTE, 5G, NR |
+| Dual SIM | Multi-SIM configuration |
+| Roaming | Home, roaming, international |
+
+### Usage
+
+```cpp
+CarrierNetworkSimulator& carrier = CarrierNetworkSimulator::instance();
+
+// Configure carrier
+carrier.configureCarrier("instance-1", "T-Mobile", "US");
+
+// Set signal strength
+SignalStrength signal;
+signal.dBm = -75;
+signal.level = 3;
+carrier.setSignalStrength("instance-1", signal);
+
+// Set network type
+carrier.setNetworkType("instance-1", NetworkType::NR); // 5G
+
+// Enable roaming
+carrier.setRoamingStatus("instance-1", RoamingStatus::HOME);
+
+// Simulate travel
+carrier.simulateTravel("instance-1", "GB", 60000); // 1 min in UK
+```
+
+---
+
+## 4. Screen State & Brightness Management
+
+**Header:** `include/VirtualPhonePro/ScreenStateManager.h`  
+**Implementation:** `src/ReDroidController/ScreenStateManager.cpp`
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Screen States | ON, OFF, DOZE, SUSPEND |
+| Brightness Control | Manual, Auto, HBM |
+| Ambient Light | Darkness to outdoor |
+| Refresh Rates | 60Hz, 90Hz, 120Hz, 144Hz |
+| Screen Modes | Standard, Vivid, Natural, Night |
+
+### Usage
+
+```cpp
+ScreenStateManager& screen = ScreenStateManager::instance();
+
+// Screen on/off
+screen.screenOn("instance-1");
+screen.screenOff("instance-1");
+
+// Brightness
+screen.setBrightness("instance-1", 180); // Manual
+screen.enableAutoBrightness("instance-1");
+
+// Ambient light
+screen.setAmbientLightLevel("instance-1", AmbientLightLevel::OUTDOOR);
+
+// Refresh rate
+screen.setRefreshRate("instance-1", 120);
+
+// Night mode
+screen.enableNightMode("instance-1", 50); // 50% intensity
+```
+
+---
+
+## 5. SafetyNet/Play Integrity Spoofing
 
 **Header:** `include/VirtualPhonePro/SafetyNetSpoofer.h`  
 **Implementation:** `src/ReDroidController/SafetyNetSpoofer.cpp`
