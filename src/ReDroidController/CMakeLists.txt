@@ -148,6 +148,8 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/FridaXposedDetector.h
     # NEW: Android Realism Engine (100% realistic Android)
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AndroidRealismEngine.h
+    # NEW: Timing Attack Prevention
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/TimingAttackPrevention.hpp
 )
 
 set(REDCONTROLLER_SOURCES
@@ -200,6 +202,8 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/FridaXposedDetector.cpp
     # NEW: Android Realism Engine (100% realistic Android)
     ${PROJECT_SOURCE_DIR}/AndroidRealismEngine.cpp
+    # NEW: Timing Attack Prevention
+    ${PROJECT_SOURCE_DIR}/TimingAttackPrevention.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

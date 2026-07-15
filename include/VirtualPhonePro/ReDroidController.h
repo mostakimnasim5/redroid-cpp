@@ -5,6 +5,7 @@
 
 #include "VirtualPhonePro/DeviceProfile.h"
 #include "VirtualPhonePro/AndroidRealismEngine.h"
+#include "VirtualPhonePro/TimingAttackPrevention.hpp"
 
 #include <QObject>
 #include <QString>
