@@ -121,6 +121,11 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HardwareAttestation.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HALSimulation.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/OEMDeepSpoofing.h
+    # Enterprise Core Modules
+    ${PROJECT_INCLUDE_DIR}/Database/FingerprintEngine.h
+    ${PROJECT_INCLUDE_DIR}/Android/SensorInjector.h
+    ${PROJECT_INCLUDE_DIR}/Android/LocaleTimezoneManager.h
+    ${PROJECT_INCLUDE_DIR}/Android/FileSystemRealism.h
 )
 
 set(REDCONTROLLER_SOURCES
@@ -146,6 +151,11 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/HardwareAttestation.cpp
     ${PROJECT_SOURCE_DIR}/HALSimulation.cpp
     ${PROJECT_SOURCE_DIR}/OEMDeepSpoofing.cpp
+    # Enterprise Core Modules
+    ${PROJECT_SOURCE_DIR}/Database/FingerprintEngine.cpp
+    ${PROJECT_SOURCE_DIR}/Android/SensorInjector.cpp
+    ${PROJECT_SOURCE_DIR}/Android/LocaleTimezoneManager.cpp
+    ${PROJECT_SOURCE_DIR}/Android/FileSystemRealism.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
