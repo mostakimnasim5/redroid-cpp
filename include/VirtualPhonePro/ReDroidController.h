@@ -539,6 +539,73 @@ private:
     
     // App paths
     QString m_appDir;
+
+public:
+    // ========================================================================
+    // UNIQUE DEVICE PROFILE SYSTEM
+    // ========================================================================
+    
+    /**
+     * @brief Generate a unique profile for a specific device instance
+     * @param instanceId The device instance ID
+     * @param profileName Base profile name to use
+     * @return JSON object with unique values
+     */
+    QJsonObject generateUniqueProfile(const QString& instanceId, const QString& profileName);
+    
+    /**
+     * @brief Apply unique profile values to a device
+     * @param instanceId The device instance ID
+     * @param profile JSON profile with unique values
+     * @return Success status
+     */
+    bool applyUniqueProfile(const QString& instanceId, const QJsonObject& profile);
+    
+    /**
+     * @brief Get unique fingerprint hash for this device
+     * @param instanceId The device instance ID
+     * @return SHA256 hash of device identifiers
+     */
+    QString getDeviceUniqueFingerprint(const QString& instanceId);
+    
+    /**
+     * @brief Verify that a device has unique identifiers
+     * @param instanceId The device instance ID
+     * @return True if device appears unique
+     */
+    bool verifyDeviceUniqueness(const QString& instanceId);
+    
+    // ========================================================================
+    // REALISTIC TOUCH SIMULATION
+    // ========================================================================
+    
+    /**
+     * @brief Perform a realistic tap with human-like timing
+     * @param instanceId The device instance ID
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @return Success status
+     */
+    bool performRealisticTap(const QString& instanceId, int x, int y);
+    
+    /**
+     * @brief Perform a realistic swipe with human-like timing
+     * @param instanceId The device instance ID
+     * @param x1 Start X coordinate
+     * @param y1 Start Y coordinate
+     * @param x2 End X coordinate
+     * @param y2 End Y coordinate
+     * @return Success status
+     */
+    bool performRealisticSwipe(const QString& instanceId, int x1, int y1, int x2, int y2);
+    
+    /**
+     * @brief Type text with realistic human-like timing
+     * @param instanceId The device instance ID
+     * @param text Text to type
+     * @return Success status
+     */
+    bool performRealisticType(const QString& instanceId, const QString& text);
 };
 
 /**

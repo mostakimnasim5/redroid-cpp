@@ -1,4 +1,7 @@
 #include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/UniqueDeviceGenerator.h"
+#include "VirtualPhonePro/AndroidRealismEngine.h"
+#include "VirtualPhonePro/TimingAttackPrevention.hpp"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -14,6 +17,9 @@
 #include <QTemporaryFile>
 #include <QMutexLocker>
 #include <QUuid>
+#include <QThread>
+#include <QHostInfo>
+#include <QtMath>
 
 #ifdef Q_OS_WIN32
 #include <windows.h>
@@ -564,7 +570,41 @@ bool ReDroidController::applyProfile(const QString& instanceId, const DeviceProf
 bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QString& manufacturer, const QString& model) {
     qDebug() << "Applying complete realism for:" << manufacturer << model;
     
-    // Initialize and apply Android Realism Engine
+    // =========================================================================
+    // STEP 1: Initialize Timing Attack Prevention with UNIQUE seed per device
+    // =========================================================================
+    TimingAttackPrevention& timing = TimingAttackPrevention::instance();
+    DeviceTimingSeed timingSeed = timing.createDeviceSeed(instanceId);
+    qDebug() << "[Realism] Created unique timing seed for instance:" << instanceId;
+    
+    // =========================================================================
+    // STEP 2: Generate UNIQUE device identity using UniqueDeviceGenerator
+    // =========================================================================
+    UniqueDeviceGenerator& deviceGen = UniqueDeviceGenerator::instance();
+    
+    // Generate unique values for this specific instance
+    QString uniqueIMEI = deviceGen.generateUniqueIMEI();
+    QString uniqueIMEI2 = deviceGen.generateUniqueIMEI();
+    QString uniqueSerial = deviceGen.generateUniqueSerial(manufacturer);
+    QString uniqueAndroidId = deviceGen.generateUniqueAndroidId();
+    QString uniqueGSFId = deviceGen.generateUniqueGSFId();
+    QString uniqueWifiMac = deviceGen.generateUniqueMAC();
+    QString uniqueBluetoothMac = deviceGen.generateUniqueMAC();
+    QString uniqueICCID = deviceGen.generateUniqueICCID();
+    QString uniqueIMSI = deviceGen.generateUniqueIMSI();
+    QString uniqueDeviceKey = deviceGen.generateUniqueDeviceKey();
+    
+    qDebug() << "[Realism] Generated unique identity:"
+             << "\n  IMEI1:" << uniqueIMEI
+             << "\n  IMEI2:" << uniqueIMEI2
+             << "\n  Serial:" << uniqueSerial
+             << "\n  AndroidID:" << uniqueAndroidId
+             << "\n  WiFi MAC:" << uniqueWifiMac
+             << "\n  BT MAC:" << uniqueBluetoothMac;
+    
+    // =========================================================================
+    // STEP 3: Initialize and apply Android Realism Engine
+    // =========================================================================
     AndroidRealismEngine& engine = AndroidRealismEngine::instance();
     
     // Initialize for this device
@@ -573,10 +613,73 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // Apply complete configuration
     bool result = engine.applyCompleteConfiguration(instanceId);
     
+    // =========================================================================
+    // STEP 4: Apply UNIQUE identity properties to the device
+    // =========================================================================
+    // These unique values override any defaults
+    QStringList uniqueCommands = {
+        // Unique Identity
+        QString("setprop ro.serialno %1").arg(uniqueSerial),
+        QString("setprop ro.gsm.device.imei %1").arg(uniqueIMEI),
+        QString("setprop persist.radio.imei %1").arg(uniqueIMEI),
+        QString("ro.gsm.sim.imei" + instanceId + " %1").arg(uniqueIMEI),
+        QString("setprop ro.android_id %1").arg(uniqueAndroidId),
+        QString("setprop ro.gsfid.version %1").arg(uniqueGSFId),
+        
+        // Unique Network
+        QString("settings put secure android_id %1").arg(uniqueAndroidId),
+        QString("service call wifi %1").arg(uniqueWifiMac), // WiFi MAC
+        
+        // Unique SIM
+        QString("setprop persist.radio.iccid %1").arg(uniqueICCID),
+        QString("setprop persist.radio.imsi %1").arg(uniqueIMSI),
+        
+        // Device Key
+        QString("setprop ro.device.key %1").arg(uniqueDeviceKey),
+    };
+    
+    for (const QString& cmd : uniqueCommands) {
+        executeShell(instanceId, cmd);
+    }
+    
+    // =========================================================================
+    // STEP 5: Initialize Battery Simulation for this device
+    // =========================================================================
+    BatteryDrainConfig batteryConfig;
+    batteryConfig.initialLevel = 70 + (timingSeed.baseSeed % 30); // Random 70-100%
+    batteryConfig.avgTemp = 28.0f + (timingSeed.baseSeed % 15); // Random 28-43°C
+    timing.initializeBattery(instanceId, batteryConfig);
+    
+    // =========================================================================
+    // STEP 6: Configure Touch Pressure for this device
+    // =========================================================================
+    TouchPressureConfig pressureConfig;
+    pressureConfig.avgPressure = 0.4f + (timingSeed.baseSeed % 100) / 200.0f;
+    pressureConfig.pressureStdDev = 0.1f + (timingSeed.baseSeed % 50) / 500.0f;
+    timing.setTouchPressureConfig(instanceId, pressureConfig);
+    
+    // =========================================================================
+    // STEP 7: Configure Network Jitter for this device
+    // =========================================================================
+    NetworkJitterConfig networkConfig;
+    networkConfig.baseLatency = 30.0f + (timingSeed.baseSeed % 100); // 30-130ms
+    networkConfig.jitterStdDev = 10.0f + (timingSeed.baseSeed % 30); // 10-40ms
+    timing.setNetworkJitterConfig(instanceId, networkConfig);
+    
+    // =========================================================================
+    // STEP 8: Configure Sensor Noise for this device
+    // =========================================================================
+    SensorNoiseConfig sensorConfig;
+    sensorConfig.accelerometerNoise = 0.02f + (timingSeed.baseSeed % 100) / 5000.0f;
+    sensorConfig.gyroscopeNoise = 0.01f + (timingSeed.baseSeed % 50) / 5000.0f;
+    sensorConfig.gpsNoise = 1.0f + (timingSeed.baseSeed % 20); // 1-21m
+    timing.setSensorNoiseConfig(instanceId, sensorConfig);
+    
     if (result) {
-        qDebug() << "Complete realism applied successfully";
+        qDebug() << "[Realism] Complete realism applied successfully for instance:" << instanceId;
+        qDebug() << "[Realism] This device has unique identity - no two devices are the same!";
     } else {
-        qWarning() << "Failed to apply complete realism";
+        qWarning() << "[Realism] Failed to apply complete realism";
     }
     
     return result;
@@ -1546,6 +1649,256 @@ bool ReDroidController::testForLeaks(const QString& instanceId) {
     }
     
     return leakDetected;
+}
+
+// ============================================================================
+// UNIQUE DEVICE PROFILE GENERATION & APPLICATION
+// ============================================================================
+
+QJsonObject ReDroidController::generateUniqueProfile(const QString& instanceId, const QString& profileName) {
+    qDebug() << "[UniqueProfile] Generating unique profile for instance:" << instanceId;
+    
+    // Load base profile
+    QJsonObject profile = loadProfile(profileName);
+    
+    if (profile.isEmpty()) {
+        qWarning() << "[UniqueProfile] Failed to load profile:" << profileName;
+        return QJsonObject();
+    }
+    
+    // Generate UNIQUE values for this instance
+    UniqueDeviceGenerator& deviceGen = UniqueDeviceGenerator::instance();
+    TimingAttackPrevention& timing = TimingAttackPrevention::instance();
+    
+    // Get unique timing seed
+    DeviceTimingSeed seed = timing.getDeviceSeed(instanceId);
+    
+    // Generate unique identity based on seed
+    QString uniqueSeedStr = QString::number(seed.baseSeed);
+    
+    // Override identity with unique values
+    QJsonObject identity = profile["identity"].toObject();
+    
+    // Generate unique IMEI with proper TAC
+    QString tac = identity["imei"].toString().left(8);
+    QString imeiSn = uniqueSeedStr.right(6);
+    QString imeiCheck = deviceGen.generateUniqueIMEI();
+    identity["imei"] = imeiCheck;
+    identity["imei2"] = deviceGen.generateUniqueIMEI(); // Second SIM
+    
+    // Generate unique serial number
+    identity["serialNumber"] = deviceGen.generateUniqueSerial(profile["manufacturer"].toString());
+    
+    // Generate unique Android ID (16 hex chars)
+    QString androidId = deviceGen.generateUniqueAndroidId();
+    identity["androidId"] = androidId;
+    
+    // Generate unique GSF ID
+    identity["gsfId"] = deviceGen.generateUniqueGSFId();
+    
+    // Generate unique MAC addresses
+    identity["wifiMac"] = deviceGen.generateUniqueMAC();
+    identity["bluetoothMac"] = deviceGen.generateUniqueMAC();
+    
+    // Generate unique SIM data
+    QJsonObject sim = profile["sim"].toObject();
+    sim["iccid"] = deviceGen.generateUniqueICCID();
+    sim["imsi"] = deviceGen.generateUniqueIMSI();
+    
+    // Apply unique values
+    profile["identity"] = identity;
+    profile["sim"] = sim;
+    
+    // Override network with unique values
+    QJsonObject network = profile["network"].toObject();
+    network["wifiMac"] = deviceGen.generateUniqueMAC();
+    network["bluetoothMac"] = deviceGen.generateUniqueMAC();
+    profile["network"] = network;
+    
+    // Add instance-specific metadata
+    profile["instanceId"] = instanceId;
+    profile["uniqueSeed"] = uniqueSeedStr;
+    profile["isUniqueInstance"] = true;
+    profile["generatedAt"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    
+    qDebug() << "[UniqueProfile] Generated unique profile:"
+             << "\n  Instance:" << instanceId
+             << "\n  IMEI:" << identity["imei"].toString()
+             << "\n  Serial:" << identity["serialNumber"].toString()
+             << "\n  AndroidID:" << identity["androidId"].toString()
+             << "\n  WiFi MAC:" << network["wifiMac"].toString();
+    
+    return profile;
+}
+
+bool ReDroidController::applyUniqueProfile(const QString& instanceId, const QJsonObject& profile) {
+    qDebug() << "[UniqueProfile] Applying unique profile to instance:" << instanceId;
+    
+    if (profile.isEmpty()) {
+        qWarning() << "[UniqueProfile] Empty profile, cannot apply";
+        return false;
+    }
+    
+    // Extract unique values
+    QJsonObject identity = profile["identity"].toObject();
+    QJsonObject network = profile["network"].toObject();
+    QJsonObject sim = profile["sim"].toObject();
+    
+    // Build setprop commands for all unique values
+    QStringList commands = {
+        // Identity
+        QString("setprop ro.serialno %1").arg(identity["serialNumber"].toString()),
+        QString("setprop persist.radio.imei %1").arg(identity["imei"].toString()),
+        QString("setprop ro.gsm.device.imei %1").arg(identity["imei"].toString()),
+        QString("setprop ro.android_id %1").arg(identity["androidId"].toString()),
+        QString("setprop gsfid.version %1").arg(identity["gsfId"].toString()),
+        
+        // Network
+        QString("settings put secure android_id %1").arg(identity["androidId"].toString()),
+        QString("settings put secure bluetooth_address %1").arg(network["bluetoothMac"].toString()),
+        
+        // SIM
+        QString("setprop persist.radio.iccid %1").arg(sim["iccid"].toString()),
+        QString("setprop persist.radio.imsi %1").arg(sim["imsi"].toString()),
+        
+        // Build properties
+        QString("setprop ro.build.display.id %1").arg(profile["buildId"].toString()),
+        QString("setprop ro.build.fingerprint %1").arg(profile["fingerprint"].toString()),
+    };
+    
+    // Execute all commands
+    for (const QString& cmd : commands) {
+        QString result = executeShell(instanceId, cmd);
+        if (!result.isEmpty() && result.contains("error", Qt::CaseInsensitive)) {
+            qWarning() << "[UniqueProfile] Command failed:" << cmd << "Result:" << result;
+        }
+    }
+    
+    qDebug() << "[UniqueProfile] Unique profile applied successfully to:" << instanceId;
+    return true;
+}
+
+QString ReDroidController::getDeviceUniqueFingerprint(const QString& instanceId) {
+    // Generate a unique fingerprint hash for this device instance
+    // This combines multiple unique identifiers
+    
+    QStringList identifiers = {
+        getProperty(instanceId, "ro.serialno"),
+        getProperty(instanceId, "ro.android_id"),
+        getProperty(instanceId, "ro.gsm.device.imei"),
+        getProperty(instanceId, "ro.build.fingerprint"),
+        QHostInfo::localHostName(),
+        QString::number(QDateTime::currentMSecsSinceEpoch())
+    };
+    
+    QString combined = identifiers.join(":");
+    QByteArray hash = QCryptographicHash::hash(combined.toUtf8(), QCryptographicHash::Sha256);
+    
+    return hash.toHex();
+}
+
+bool ReDroidController::verifyDeviceUniqueness(const QString& instanceId) {
+    qDebug() << "[Uniqueness] Verifying device uniqueness for:" << instanceId;
+    
+    // Get key identifiers
+    QString serial = getProperty(instanceId, "ro.serialno");
+    QString androidId = getProperty(instanceId, "ro.android_id");
+    QString imei = getProperty(instanceId, "ro.gsm.device.imei");
+    QString fingerprint = getProperty(instanceId, "ro.build.fingerprint");
+    
+    bool isUnique = !serial.isEmpty() && 
+                    !androidId.isEmpty() && 
+                    !imei.isEmpty() &&
+                    !fingerprint.isEmpty();
+    
+    if (isUnique) {
+        qDebug() << "[Uniqueness] Device is UNIQUE:"
+                 << "\n  Serial:" << serial
+                 << "\n  AndroidID:" << androidId
+                 << "\n  IMEI:" << imei;
+    } else {
+        qWarning() << "[Uniqueness] WARNING: Device may not be unique!"
+                   << "\n  Serial:" << serial
+                   << "\n  AndroidID:" << androidId
+                   << "\n  IMEI:" << imei;
+    }
+    
+    return isUnique;
+}
+
+// ============================================================================
+// REALISTIC TOUCH SIMULATION
+// ============================================================================
+
+bool ReDroidController::performRealisticTap(const QString& instanceId, int x, int y) {
+    TimingAttackPrevention& timing = TimingAttackPrevention::instance();
+    
+    // Generate human-like think delay before tap
+    int thinkDelay = timing.generateHumanThinkDelay(instanceId, "tap");
+    QThread::msleep(thinkDelay);
+    
+    // Generate realistic tap pressure
+    float pressure = timing.generateTouchPressure(instanceId, x, y, 0);
+    
+    // Generate tap duration
+    int tapDelay = timing.generateTapDelay(instanceId);
+    
+    // Execute tap with timing
+    QString cmd = QString("input tap %1 %2").arg(x).arg(y);
+    executeShell(instanceId, cmd);
+    
+    // Add post-tap delay
+    QThread::msleep(tapDelay);
+    
+    qDebug() << "[RealisticTouch] Tap:" << x << "," << y 
+             << "pressure:" << pressure << "delay:" << thinkDelay << "ms";
+    
+    return true;
+}
+
+bool ReDroidController::performRealisticSwipe(const QString& instanceId, int x1, int y1, int x2, int y2) {
+    TimingAttackPrevention& timing = TimingAttackPrevention::instance();
+    
+    // Generate human-like think delay before swipe
+    int thinkDelay = timing.generateHumanThinkDelay(instanceId, "swipe");
+    QThread::msleep(thinkDelay);
+    
+    // Calculate distance
+    int distance = static_cast<int>(qSqrt(qPow(x2 - x1, 2) + qPow(y2 - y1, 2)));
+    
+    // Generate realistic swipe duration
+    int swipeDuration = timing.generateSwipeDuration(instanceId, distance);
+    
+    // Execute swipe
+    QString cmd = QString("input swipe %1 %2 %3 %4 %5")
+                      .arg(x1).arg(y1).arg(x2).arg(y2).arg(swipeDuration);
+    executeShell(instanceId, cmd);
+    
+    qDebug() << "[RealisticTouch] Swipe:" << x1 << "," << y1 << "->" << x2 << "," << y2
+             << "duration:" << swipeDuration << "ms";
+    
+    return true;
+}
+
+bool ReDroidController::performRealisticType(const QString& instanceId, const QString& text) {
+    TimingAttackPrevention& timing = TimingAttackPrevention::instance();
+    
+    // Generate human-like think delay before typing
+    int thinkDelay = timing.generateHumanThinkDelay(instanceId, "type");
+    QThread::msleep(thinkDelay);
+    
+    // Type character by character with realistic delays
+    for (const QChar& ch : text) {
+        int charDelay = timing.generateTypingDelay(instanceId, 80);
+        QThread::msleep(charDelay);
+        
+        QString cmd = QString("input text '%1'").arg(ch);
+        executeShell(instanceId, cmd);
+    }
+    
+    qDebug() << "[RealisticTouch] Typed:" << text << "(" << text.length() << "chars)";
+    
+    return true;
 }
 
 } // namespace VirtualPhonePro
