@@ -126,6 +126,18 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/Android/SensorInjector.h
     ${PROJECT_INCLUDE_DIR}/Android/LocaleTimezoneManager.h
     ${PROJECT_INCLUDE_DIR}/Android/FileSystemRealism.h
+    # NEW: System App & Carrier Bloatware Simulation
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SystemAppSimulator.h
+    # NEW: Network Realism Enhancer
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/NetworkRealismEnhancer.h
+    # NEW: Device Behavior Manager
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceBehaviorManager.h
+    # NEW: Find My Device Manager
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/FindMyDeviceManager.h
+    # NEW: SSL Certificate Manager
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SSLCertificateManager.h
+    # NEW: Device Integrity Manager
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceIntegrityManager.h
 )
 
 set(REDCONTROLLER_SOURCES
@@ -156,6 +168,18 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/Android/SensorInjector.cpp
     ${PROJECT_SOURCE_DIR}/Android/LocaleTimezoneManager.cpp
     ${PROJECT_SOURCE_DIR}/Android/FileSystemRealism.cpp
+    # NEW: System App & Carrier Bloatware Simulation
+    ${PROJECT_SOURCE_DIR}/SystemAppSimulator.cpp
+    # NEW: Network Realism Enhancer
+    ${PROJECT_SOURCE_DIR}/NetworkRealismEnhancer.cpp
+    # NEW: Device Behavior Manager
+    ${PROJECT_SOURCE_DIR}/DeviceBehaviorManager.cpp
+    # NEW: Find My Device Manager
+    ${PROJECT_SOURCE_DIR}/FindMyDeviceManager.cpp
+    # NEW: SSL Certificate Manager
+    ${PROJECT_SOURCE_DIR}/SSLCertificateManager.cpp
+    # NEW: Device Integrity Manager
+    ${PROJECT_SOURCE_DIR}/DeviceIntegrityManager.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

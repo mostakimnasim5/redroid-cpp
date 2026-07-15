@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/Version-3.0.0-blue)
+![Version](https://img.shields.io/badge/Version-4.0.0-blue)
 ![C++](https://img.shields.io/badge/C++-17-green)
 ![Qt](https://img.shields.io/badge/Qt-6.5+-purple)
 ![License](https://img.shields.io/badge/License-Testing--Only-red)
@@ -92,18 +92,24 @@ Anti-Detection System
 │   ├── Play Integrity API
 │   ├── Root Detection Bypass
 │   ├── Hook Detection Bypass
-│   └── SSL Pinning Bypass
+│   ├── SSL Pinning Bypass
+│   └── Device Integrity Checks
 │
 ├── 🌐 Network Spoofing
 │   ├── TLS Fingerprinting (JA3/JA4)
 │   ├── DNS Configuration
-│   └── Proxy Support
+│   ├── Proxy Support
+│   ├── Wi-Fi Calling Configuration
+│   ├── VoLTE/VoWiFi Simulation
+│   ├── Carrier Aggregation (CA)
+│   └── Dual SIM Dual Standby
 │
 ├── 📱 Hardware Emulation
 │   ├── CPU Simulation (8-core)
 │   ├── GPU (Adreno 750)
 │   ├── Battery State
-│   └── Thermal Management
+│   ├── Thermal Management
+│   └── Power Profiles
 │
 ├── 👆 Touch Simulation
 │   ├── Tap/Double Tap
@@ -111,11 +117,30 @@ Anti-Detection System
 │   ├── Pinch-to-Zoom
 │   └── Pressure Sensitivity
 │
-└── 🏭 OEM Deep Spoofing
-    ├── Samsung Knox
-    ├── Huawei HMS
-    ├── Xiaomi MIUI
-    └── Qualcomm QSEE
+├── 🏭 OEM Deep Spoofing
+│   ├── Samsung Knox / Samsung Pay
+│   ├── Huawei HMS / AppGallery
+│   ├── Xiaomi MIUI / Mi Pay
+│   └── Google Mobile Services
+│
+├── 📦 System App Simulation
+│   ├── Carrier Bloatware (AT&T, Verizon, T-Mobile, etc.)
+│   ├── OEM Pre-installed Apps
+│   ├── App Hibernation Behavior
+│   ├── Battery Optimization
+│   └── Background Process Management
+│
+├── 🔑 SSL Certificate Management
+│   ├── Root CA Certificates
+│   ├── Intermediate CA Certificates
+│   ├── OEM-Specific Certificates
+│   └── Certificate Chain Validation
+│
+└── 📍 Device Services
+    ├── Find My Device Status
+    ├── Location Services
+    ├── Device Health Indicators
+    └── Remote Actions Simulation
 ```
 
 ## 📦 Supported Devices

@@ -35,7 +35,321 @@ QJsonObject state = sim.getCompleteState("instance-1");
 
 ---
 
-## 2. Battery & Power Management
+## 2. System App & Carrier Bloatware Simulation
+
+**Header:** `include/VirtualPhonePro/SystemAppSimulator.h`  
+**Implementation:** `src/ReDroidController/SystemAppSimulator.cpp`
+
+### Supported Carriers & Regions
+
+| Region | Carriers |
+|--------|----------|
+| US | AT&T, Verizon, T-Mobile, Sprint, US Cellular |
+| UK | EE, O2, Vodafone, Three |
+| Europe | Deutsche Telekom, Orange, Bouygues |
+| Asia | Jio, Airtel, SoftBank, NTT DOCOMO, SK Telecom, KT, LG Uplus |
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Carrier Bloatware | Pre-installed carrier apps |
+| Wi-Fi Calling | Carrier Wi-Fi calling packages |
+| VoLTE | Voice over LTE configuration |
+| VoWiFi | Voice over Wi-Fi settings |
+| OEM Apps | Samsung, Google, Xiaomi, Huawei pre-installed apps |
+| Background Processes | Carrier sync, system services |
+| App Updates | Update status tracking |
+
+### Usage
+
+```cpp
+SystemAppSimulator& simulator = SystemAppSimulator::instance();
+
+// Configure for carrier
+simulator.configureForCarrier("instance-1", CarrierProvider::ATT);
+
+// Configure for region
+simulator.configureForRegion("instance-1", CarrierRegion::US, "US");
+
+// Enable Wi-Fi Calling
+simulator.configureWiFiCalling("instance-1", true);
+
+// Enable VoLTE
+simulator.configureVoLTE("instance-1", true);
+
+// Generate realistic OEM app list
+simulator.generateRealisticAppList("instance-1", "Samsung");
+
+// Get all pre-installed apps
+QList<PreinstalledApp> apps = simulator.getPreinstalledApps("instance-1");
+```
+
+---
+
+## 3. Network Realism Enhancer
+
+**Header:** `include/VirtualPhonePro/NetworkRealismEnhancer.h`  
+**Implementation:** `src/ReDroidController/NetworkRealismEnhancer.cpp`
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Wi-Fi Calling | Enable/disable, mode selection |
+| VoLTE | Voice over LTE status |
+| VoWiFi | Voice over Wi-Fi configuration |
+| Carrier Aggregation | CA band combinations (2CA, 3CA, 4CA) |
+| Dual SIM | Dual SIM Dual Standby (DSDS) |
+| Signal Strength | RSRP, RSRQ, SINR simulation |
+| Network Bands | LTE bands (1-66), 5G NR bands |
+| Roaming | Data roaming configuration |
+
+### CA Band Combinations
+
+| Combination | Max Speed |
+|-------------|-----------|
+| B2+B12 | 150 Mbps |
+| B4+B66 | 400 Mbps |
+| n41+n78 | 1 Gbps |
+| n78+n257 | 2 Gbps |
+
+### Usage
+
+```cpp
+NetworkRealismEnhancer& network = NetworkRealismEnhancer::instance();
+
+// Configure single SIM
+network.configureSingleSIM("instance-1", "310410", "AT&T", NetworkTechnology::LTE_ADVANCED);
+
+// Configure dual SIM
+DualSIMConfig dsConfig;
+dsConfig.isDualSIMEnabled = true;
+dsConfig.sim1OperatorName = "T-Mobile";
+dsConfig.sim2OperatorName = "AT&T";
+network.configureDualSIM("instance-1", dsConfig);
+
+// Enable Wi-Fi Calling
+network.enableWiFiCalling("instance-1");
+
+// Enable VoLTE
+network.enableVoLTE("instance-1");
+
+// Enable Carrier Aggregation
+CABandCombination ca;
+ca.primaryBand = 66;
+ca.secondaryBand = 12;
+ca.maxSpeedMbps = 400;
+network.setCABandCombination("instance-1", ca);
+
+// Set signal strength
+network.setSignalStrength("instance-1", -85, -10);
+```
+
+---
+
+## 4. Device Behavior Manager
+
+**Header:** `include/VirtualPhonePro/DeviceBehaviorManager.h`  
+**Implementation:** `src/ReDroidController/DeviceBehaviorManager.cpp`
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Power Profiles | High Performance, Balanced, Power Saver, Adaptive |
+| App Hibernation | Background app suspension |
+| Battery Optimization | Unrestricted, Optimized, Restricted |
+| Data Usage | Per-app tracking, limits |
+| App Standby | Active, Working Set, Frequent, Rare buckets |
+| Background Limit | Max background apps configuration |
+
+### Usage
+
+```cpp
+DeviceBehaviorManager& behavior = DeviceBehaviorManager::instance();
+
+// Set power profile
+behavior.setPowerProfile("instance-1", PowerProfile::BALANCED);
+
+// Enable adaptive battery
+behavior.enableAdaptiveBattery("instance-1");
+
+// Configure app hibernation
+AppHibernationConfig config;
+config.packageName = "com.example.app";
+config.isHibernatable = true;
+config.batteryThreshold = 20;
+config.inactivityDays = 3;
+behavior.configureAppHibernation("instance-1", config);
+
+// Hibernate an app
+behavior.hibernateApp("instance-1", "com.unused.app");
+
+// Set battery optimization
+behavior.setBatteryOptimization("instance-1", "com.example.app", BatteryOptimizationLevel::UNRESTRICTED);
+
+// Set data limit
+behavior.setDataLimit("instance-1", 5ULL * 1024 * 1024 * 1024); // 5GB
+behavior.setDataLimitEnabled("instance-1", true);
+```
+
+---
+
+## 5. Find My Device Manager
+
+**Header:** `include/VirtualPhonePro/FindMyDeviceManager.h`  
+**Implementation:** `src/ReDroidController/FindMyDeviceManager.cpp`
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Device Status | Online/offline tracking |
+| Location | Last known location simulation |
+| Health Status | Device health indicators |
+| Owner Info | Account linking |
+| Remote Actions | Ring, locate, lock, wipe simulation |
+
+### Usage
+
+```cpp
+FindMyDeviceManager& fmd = FindMyDeviceManager::instance();
+
+// Enable Find My Device
+fmd.enable("instance-1");
+
+// Set device location
+DeviceLocation location;
+location.latitude = 37.7749;
+location.longitude = -122.4194;
+location.accuracy = 5.0;
+location.provider = "gps";
+fmd.setLocation("instance-1", location);
+
+// Link account
+fmd.linkAccount("instance-1", "user@gmail.com", "google");
+
+// Sync
+fmd.sync("instance-1");
+
+// Simulate remote actions
+fmd.simulateRing("instance-1");
+DeviceLocation loc = fmd.simulateLocate("instance-1");
+```
+
+---
+
+## 6. SSL Certificate Manager
+
+**Header:** `include/VirtualPhonePro/SSLCertificateManager.h`  
+**Implementation:** `src/ReDroidController/SSLCertificateManager.cpp`
+
+### Supported CA Providers
+
+| Provider | Certificates |
+|----------|--------------|
+| DigiCert | DigiCert Global Root G2 |
+| Comodo | COMODO RSA Certification Authority |
+| GoDaddy | Go Daddy Root CA |
+| GlobalSign | GlobalSign Root CA |
+| ISRG | ISRG Root X1 (Let's Encrypt) |
+| Amazon | Amazon Root CA 1 |
+| Microsoft | Microsoft RSA Root CA |
+| Google | GTS Root R1 |
+| Samsung | Samsung Root CA |
+| Huawei | Huawei Root CA |
+| Xiaomi | Xiaomi Root CA |
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| CA Certificates | Root and Intermediate CAs |
+| Certificate Chain | Full chain validation |
+| Trust Store | Trusted/untrusted management |
+| OEM Certs | Device-specific certificates |
+| Export | PEM format export |
+
+### Usage
+
+```cpp
+SSLCertificateManager& certs = SSLCertificateManager::instance();
+
+// Configure store
+certs.configure("instance-1");
+
+// Load all major CAs
+certs.loadAllMajorCAs("instance-1");
+
+// Load OEM certificates
+certs.loadOEMCertificates("instance-1", "Samsung");
+
+// Get trust store summary
+QJsonObject summary = certs.getTrustStoreSummary("instance-1");
+
+// Validate certificate
+CertificateStatus status = certs.validateCertificate("instance-1", certId);
+```
+
+---
+
+## 7. Device Integrity Manager
+
+**Header:** `include/VirtualPhonePro/DeviceIntegrityManager.h`  
+**Implementation:** `src/ReDroidController/DeviceIntegrityManager.cpp`
+
+### Integrity Levels
+
+| Level | Description |
+|-------|-------------|
+| BASIC | Basic integrity checks |
+| BASIC_HARDWARE | Hardware-backed integrity |
+| CERTIFIED | Full certification |
+| VERIFIED_BOOT | Verified boot with all checks |
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| Verified Boot | Green, Yellow, Orange, Red states |
+| Basic Integrity | CTS profile match |
+| Security Patch | Current patch level verification |
+| SELinux | Enforcing/Permissive mode |
+| Gatekeeper | Timeout and lock settings |
+| Encryption | FBE and FDE support |
+| Biometric | Fingerprint, face unlock |
+
+### Usage
+
+```cpp
+DeviceIntegrityManager& integrity = DeviceIntegrityManager::instance();
+
+// Configure for certification level
+integrity.configureForLevel("instance-1", IntegrityLevel::CERTIFIED);
+
+// Set verified boot state
+integrity.setVerifiedBootState("instance-1", VerifiedBootState::GREEN);
+
+// Set security patch
+integrity.setSecurityPatchLevel("instance-1", "2024-01-01");
+
+// Enable SELinux enforcing
+integrity.enableSELinuxEnforcing("instance-1");
+
+// Enable file-based encryption
+integrity.enableFileBasedEncryption("instance-1");
+
+// Run integrity checks
+IntegrityCheckResult result = integrity.runIntegrityCheck("instance-1", "basic_integrity");
+
+// Check if passes integrity
+bool passes = integrity.passesIntegrity("instance-1");
+```
+
+---
+
+## 8. Battery & Power Management
 
 **Header:** `include/VirtualPhonePro/BatteryPowerManager.h`  
 **Implementation:** `src/ReDroidController/BatteryPowerManager.cpp`
@@ -74,7 +388,7 @@ battery.setTemperature("instance-1", 35); // 35°C
 
 ---
 
-## 3. Carrier & Network Simulation
+## 9. Carrier & Network Simulation
 
 **Header:** `include/VirtualPhonePro/CarrierNetworkSimulator.h`  
 **Implementation:** `src/ReDroidController/CarrierNetworkSimulator.cpp`
@@ -124,7 +438,7 @@ carrier.simulateTravel("instance-1", "GB", 60000); // 1 min in UK
 
 ---
 
-## 4. Screen State & Brightness Management
+## 10. Screen State & Brightness Management
 
 **Header:** `include/VirtualPhonePro/ScreenStateManager.h`  
 **Implementation:** `src/ReDroidController/ScreenStateManager.cpp`
@@ -164,7 +478,7 @@ screen.enableNightMode("instance-1", 50); // 50% intensity
 
 ---
 
-## 5. SafetyNet/Play Integrity Spoofing
+## 11. SafetyNet/Play Integrity Spoofing
 
 **Header:** `include/VirtualPhonePro/SafetyNetSpoofer.h`  
 **Implementation:** `src/ReDroidController/SafetyNetSpoofer.cpp`
@@ -202,7 +516,7 @@ QJsonObject status = sniffer.getIntegrityStatus("instance-1");
 
 ---
 
-## 2. Multi-Instance Management
+## 12. Multi-Instance Management
 
 **Header:** `include/VirtualPhonePro/MultiInstanceManager.h`  
 **Implementation:** `src/ReDroidController/MultiInstanceManager.cpp`
