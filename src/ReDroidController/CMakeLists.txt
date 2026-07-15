@@ -117,6 +117,10 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/CarrierNetworkSimulator.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/ScreenStateManager.h
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/AdvancedRealisticSimulation.h
+    # Hardware-Level Security & HAL
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HardwareAttestation.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HALSimulation.h
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/OEMDeepSpoofing.h
 )
 
 set(REDCONTROLLER_SOURCES
@@ -138,6 +142,10 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/CarrierNetworkSimulator.cpp
     ${PROJECT_SOURCE_DIR}/ScreenStateManager.cpp
     ${PROJECT_SOURCE_DIR}/AdvancedRealisticSimulation.cpp
+    # Hardware-Level Security & HAL
+    ${PROJECT_SOURCE_DIR}/HardwareAttestation.cpp
+    ${PROJECT_SOURCE_DIR}/HALSimulation.cpp
+    ${PROJECT_SOURCE_DIR}/OEMDeepSpoofing.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
