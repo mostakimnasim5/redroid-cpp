@@ -1,211 +1,74 @@
 # ==============================================================================
-# VirtualPhonePro - Custom ReDroid Image
-# Optimized for Anti-Detection with Device Spoofing
-# Base: redroid/redroid:14.0.0-latest (google_64only variant)
+# VirtualPhonePro - ReDroid Docker Image
+# 
+# IMPORTANT: This is a thin wrapper around the official ReDroid image.
+# Device spoofing and anti-detection is handled by the C++ application
+# via ADB commands after the container starts.
+#
+# REQUIREMENTS:
+# - KVM (Kernel-based Virtual Machine) MUST be available
+# - /dev/kvm must be accessible
+# - Container must run in privileged mode
+#
+# Base: redroid/redroid (Remote Android - GPU accelerated Android in Docker)
 # ==============================================================================
 
-# Multi-stage build to ensure all tools are available
-# Stage 1: Builder - Install required tools
-# ==============================================================================
-FROM ubuntu:22.04 AS builder
-
-RUN apt-get update && apt-get install -y \
-    android-tools-adb \
-    android-tools-fastboot \
-    unzip \
-    wget \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# ==============================================================================
-# Stage 2: Runtime - ReDroid Base with Spoofing Support
-# ==============================================================================
-FROM ghcr.io/redroid/redroid:14.0.0-google_64only AS redroid-spoofed
+FROM redroid/redroid:latest
 
 # Metadata
 LABEL maintainer="VirtualPhonePro"
 LABEL version="1.0.0"
-LABEL description="VirtualPhonePro - Anti-Detect ReDroid with Device Spoofing"
+LABEL description="VirtualPhonePro - ReDroid with Device Spoofing Support"
 
 # ==============================================================================
-# Environment Variables for Device Configuration
-# These can be overridden at runtime
+# Default Device Configuration
+# These can be overridden at runtime via docker-compose environment or
+# by the C++ application via ADB commands
 # ==============================================================================
 
-# Device Identity
-ENV VPP_DEVICE_MANUFACTURER="Samsung"
-ENV VPP_DEVICE_BRAND="samsung"
-ENV VPP_DEVICE_MODEL="SM-S928B"
-ENV VPP_DEVICE_NAME="dm3q"
-ENV VPP_DEVICE="dm3q"
-ENV VPP_PRODUCT="dm3q"
+# GPU Mode: swiftshader (software), host (hardware GPU), auto (auto-detect)
+ENV REDROID_GPU_MODE=swiftshader
 
-# Build Properties
-ENV VPP_ANDROID_VERSION="14"
-ENV VPP_BUILD_ID="UP1A.231005.007"
-ENV VPP_BUILD_TYPE="userdebug"
-ENV VPP_SECURITY_PATCH="2024-01-01"
+# Memory Configuration: 512M minimum, 1G recommended
+ENV REDROID_MEM_SIZE=512M
 
-# Fingerprint
-ENV VPP_BOOTLOADER="S928BXXU1AXXX"
-ENV VPP_FINGERPRINT_PREFIX="samsung/dm3q/dm3q"
+# KVM Virtual GPU: KVM (hardware), empty (software only)
+# KVM is REQUIRED for ReDroid to run
+ENV REDROID_VGPU=KVM
 
-# Identity (can be set at runtime)
-ENV VPP_IMEI=""
-ENV VPP_IMEI2=""
-ENV VPP_SERIAL=""
-ENV VPP_ANDROID_ID=""
-ENV VPP_GSF_ID=""
-ENV VPP_ADVERTISING_ID=""
+# Network hostname
+ENV REDROID_NET_HOSTNAME=android-emulator
 
-# Network
-ENV VPP_WIFI_MAC=""
-ENV VPP_BLUETOOTH_MAC=""
-ENV VPP_HOSTNAME="android"
-
-# SIM
-ENV VPP_ICCID=""
-ENV VPP_IMSI=""
-ENV VPP_CARRIER="T-Mobile"
-ENV VPP_MCC="310"
-ENV VPP_MNC="260"
-
-# GPS
-ENV VPP_GPS_LAT="37.7749"
-ENV VPP_GPS_LON="-122.4194"
-
-# GPU Mode (swiftshader for software, auto for hardware with GPU)
-ENV REDROID_GPU_MODE="swiftshader"
-ENV REDROID_MEM_SIZE="512M"
-
-# ==============================================================================
-# Create Directory Structure
-# ==============================================================================
-RUN mkdir -p /opt/vpp/config /opt/vpp/scripts /data/device /data/logs && \
-    chmod 755 /opt /opt/vpp /data
-
-# ==============================================================================
-# Copy Tools from Builder
-# ==============================================================================
-COPY --from=builder /usr/bin/adb /opt/vpp/bin/adb
-COPY --from=builder /usr/bin/fastboot /opt/vpp/bin/fastboot
-COPY --from=builder /usr/bin/unzip /usr/bin/unzip
-
-RUN chmod +x /opt/vpp/bin/* /usr/bin/unzip
-
-# ==============================================================================
-# Copy Configuration Files
-# ==============================================================================
-COPY docker/configs/ /opt/vpp/config/
-
-# ==============================================================================
-# Create Property Override Script (Late Props)
-# This runs after boot to set device properties
-# ==============================================================================
-RUN cat > /system/bin/vpp_late_props.sh << 'LATEPROPS'
-#!/system/bin/sh
-# ============================================================
-# VirtualPhonePro - Late Property Override Script
-# Runs after boot to apply device spoofing properties
-# ============================================================
-
-LOG_FILE="/data/logs/vpp_props.log"
-PROPS_FILE="/opt/vpp/config/device.properties"
-DEFAULT_PROPS="/opt/vpp/config/default.properties"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
-}
-
-log "=== VirtualPhonePro Late Props Starting ==="
-
-# Wait for system to settle
-sleep 3
-
-# Select properties file
-if [ -f "$PROPS_FILE" ]; then
-    log "Using custom properties from $PROPS_FILE"
-    SOURCE_FILE="$PROPS_FILE"
-elif [ -f "$DEFAULT_PROPS" ]; then
-    log "Using default properties from $DEFAULT_PROPS"
-    SOURCE_FILE="$DEFAULT_PROPS"
-else
-    log "ERROR: No properties file found!"
-    exit 1
-fi
-
-# Source properties
-. "$SOURCE_FILE"
-
-# Apply Device Identity
-[ -n "$RO_PRODUCT_BRAND" ] && setprop ro.product.brand "$RO_PRODUCT_BRAND"
-[ -n "$RO_PRODUCT_MANUFACTURER" ] && setprop ro.product.manufacturer "$RO_PRODUCT_MANUFACTURER"
-[ -n "$RO_PRODUCT_MODEL" ] && setprop ro.product.model "$RO_PRODUCT_MODEL"
-[ -n "$RO_PRODUCT_DEVICE" ] && setprop ro.product.device "$RO_PRODUCT_DEVICE"
-[ -n "$RO_PRODUCT_NAME" ] && setprop ro.product.name "$RO_PRODUCT_NAME"
-
-# Apply Fingerprint
-[ -n "$RO_BUILD_FINGERPRINT" ] && setprop ro.build.fingerprint "$RO_BUILD_FINGERPRINT"
-[ -n "$RO_BUILD_DESCRIPTION" ] && setprop ro.build.description "$RO_BUILD_DESCRIPTION"
-
-# Apply Identity
-[ -n "$RO_SERIALNO" ] && setprop ro.serialno "$RO_SERIALNO"
-[ -n "$RO_GSM_DEVICE_IMEI" ] && setprop ro.gsm.device.imei "$RO_GSM_DEVICE_IMEI"
-[ -n "$RO_ANDROID_ID" ] && setprop ro.android_id "$RO_ANDROID_ID"
-[ -n "$RO_GSF_ID" ] && setprop ro.gsfid "$RO_GSF_ID"
-
-# Apply Network
-[ -n "$NET_HOSTNAME" ] && setprop net.hostname "$NET_HOSTNAME"
-[ -n "$WIFI_MAC" ] && setprop wifi.interface wlan0
-[ -n "$WIFI_MAC" ] && ip link set wlan0 address "$WIFI_MAC" 2>/dev/null
-
-# Apply Build Properties
-[ -n "$RO_BOOTLOADER" ] && setprop ro.bootloader "$RO_BOOTLOADER"
-[ -n "$RO_BUILD_ID" ] && setprop ro.build.id "$RO_BUILD_ID"
-[ -n "$RO_BUILD_VERSION_SECURITY_PATCH" ] && setprop ro.build.version.security_patch "$RO_BUILD_VERSION_SECURITY_PATCH"
-[ -n "$RO_BUILD_TYPE" ] && setprop ro.build.type "$RO_BUILD_TYPE"
-
-# Apply Verified Boot State
-setprop ro.boot.verifiedbootstate "green"
-setprop ro.boot.flash.locked "1"
-setprop ro.secure 1
-
-# Apply SIM Info
-[ -n "$RO_GSM_SIM_IMSI" ] && setprop ro.gsm.sim.imsi "$RO_GSM_SIM_IMSI"
-[ -n "$RO_GSM_SIM_OPERATOR" ] && setprop gsm.sim.operator.numeric "$RO_GSM_SIM_OPERATOR"
-
-log "=== VirtualPhonePro Late Props Completed ==="
-exit 0
-LATEPROPS
-
-RUN chmod 755 /system/bin/vpp_late_props.sh
-
-# ==============================================================================
-# Register Late Props Service
-# ==============================================================================
-RUN cat > /system/etc/init/vpp_late_props.rc << 'SERVICERC'
-# VirtualPhonePro Late Props Service
-service vpp_late_props /system/bin/vpp_late_props.sh
-    user root
-    group root
-    disabled
-    oneshot
-
-on property:sys.boot_completed=1
-    start vpp_late_props
-SERVICERC
-
-RUN chmod 644 /system/etc/init/vpp_late_props.rc
-
-# ==============================================================================
-# Entry Point
-# ==============================================================================
-WORKDIR /data
+# Expose ADB port
 EXPOSE 5555
 
-# Health Check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=10 \
+# Health Check - wait for Android boot completion
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=15 \
     CMD getprop sys.boot_completed 2>/dev/null | grep -q "1" || exit 1
 
-# Default command - start adb and stay alive
-CMD ["sh", "-c", "while true; do sleep 3600; done"]
+# ==============================================================================
+# USAGE INSTRUCTIONS
+# ==============================================================================
+#
+# 1. PREREQUISITES:
+#    - Linux host with KVM enabled
+#    - Docker with /dev/kvm access
+#    - Kernel modules: ashmen, binder, userfaultfd, vhost-vsock
+#
+# 2. RUN WITH DOCKER COMPOSE:
+#    cd docker
+#    docker compose up -d
+#
+# 3. VERIFY CONTAINER IS RUNNING:
+#    docker ps
+#    docker logs android-emulator
+#
+# 4. CONNECT VIA ADB:
+#    adb connect localhost:5555
+#    adb devices
+#
+# 5. DEVICE SPOOFING (handled by C++ application):
+#    The ReDroidController::applyCompleteRealism() method will apply
+#    all device spoofing via ADB commands automatically.
+#
+# ==============================================================================

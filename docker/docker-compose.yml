@@ -12,36 +12,25 @@ services:
     image: redroid-cpp/android-emulator:latest
     hostname: android-emulator
     
-    # Privileged mode required for ReDroid
+    # Privileged mode is REQUIRED for ReDroid - do not remove
     privileged: true
     
-    # KVM access for hardware acceleration
-    devices:
-      - /dev/kvm:/dev/kvm
-      - /dev/fuse:/dev/fuse
+    # KVM access for hardware acceleration (REQUIRED for production)
+    # On Linux with KVM: uncomment the devices section
+    # devices:
+    #   - /dev/kvm:/dev/kvm
+    #   - /dev/fuse:/dev/fuse
 
     environment:
-      # ReDroid GPU Mode (swiftshader for software, auto for hardware)
+      # GPU Mode: swiftshader (no GPU), host (hardware GPU), auto
       - REDROID_GPU_MODE=swiftshader
-      # ReDroid Memory Configuration
+      # Memory: 512M minimum, 1G recommended
       - REDROID_MEM_SIZE=512M
-      # Device Configuration (default values)
-      - VPP_DEVICE_MANUFACTURER=Samsung
-      - VPP_DEVICE_MODEL=SM-S928B
-      - VPP_ANDROID_VERSION=14
+      # KVM: set to 0 to disable if KVM not available
+      - REDROID_VGPU=KVM
 
     ports:
       - "5555:5555"  # ADB
-
-    volumes:
-      # Device profiles persistence
-      - ./configs:/opt/vpp/config:ro
-      - ./bin:/opt/vpp/scripts:ro
-      - device_data:/data
-
-    # KVM is required for ReDroid
-    cap_add:
-      - NET_ADMIN
 
     healthcheck:
       test: ["CMD", "getprop", "sys.boot_completed"]
@@ -50,7 +39,9 @@ services:
       retries: 15
       start_period: 60s
 
-    restart: unless-stopped
+    # Remove restart policy if KVM is not available
+    # In production with KVM, use: restart: unless-stopped
+    restart: "no"
 
 volumes:
   device_data:
