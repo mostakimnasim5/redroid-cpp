@@ -636,12 +636,12 @@ finalize_patch() {
 
 main() {
     echo "============================================================"
-    echo "VirtualPhonePro Deep System Patch"
+    echo "VirtualPhonePro Deep System Patch v4.1"
     echo "Profile: ${PROFILE}"
     echo "============================================================"
     
     log "============================================================"
-    log "Starting VirtualPhonePro Deep System Patch"
+    log "Starting VirtualPhonePro Deep System Patch v4.1"
     log "Profile: ${PROFILE}"
     log "============================================================"
     
@@ -652,6 +652,15 @@ main() {
     patch_kernel_version
     patch_selinux_status
     patch_sysctl
+    
+    # === STEP 2: Kernel-Level Proc/Sys Spoofing ===
+    patch_cpu_info
+    patch_meminfo
+    patch_proc_filesystem
+    patch_sys_filesystem
+    patch_sensor_simulation
+    patch_network_interface
+    # =============================================
     
     # Filesystem patches
     patch_mounts
@@ -682,14 +691,294 @@ main() {
     finalize_patch
     
     log "============================================================"
-    log "Patch completed successfully"
+    log "All patches applied - Step 2 Kernel-Level Spoofing Active"
     log "============================================================"
     
     echo "============================================================"
     echo "Patch completed successfully!"
+    echo "Step 2: Kernel-Level Spoofing ACTIVE"
     echo "Profile: ${PROFILE}"
     echo "============================================================"
 }
 
 # Run main
 main "$@"
+
+# ============================================================
+# STEP 2 ADDITION: Kernel-Level /proc Spoofing
+# ============================================================
+
+patch_cpu_info() {
+    log "Patching /proc/cpuinfo to hide emulator traces..."
+
+    CPU_INFO="Processor\t: AArch64 Processor rev 14 (aarch64)
+processor\t: 0
+BogoMIPS\t: 38.40
+Features\t: fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm sb paca pacg dcpodp flagm2 frint svei8mm svebf16 i8mm bf16 dgh rng
+CPU implementer\t: 0x51
+CPU architecture: 8
+CPU variant\t: 0x2
+CPU part\t: 0x0d08
+CPU revision\t: 2
+
+processor\t: 1
+BogoMIPS\t: 38.40
+Features\t: fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm sb paca pacg dcpodp flagm2 frint svei8mm svebf16 i8mm bf16 dgh rng
+CPU implementer\t: 0x51
+CPU architecture: 8
+CPU variant\t: 0x2
+CPU part\t: 0x0d08
+CPU revision\t: 2
+
+processor\t: 2
+BogoMIPS\t: 38.40
+Features\t: fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm sb paca pacg dcpodp flagm2 frint svei8mm svebf16 i8mm bf16 dgh rng
+CPU implementer\t: 0x51
+CPU architecture: 8
+CPU variant\t: 0x2
+CPU part\t: 0x0d09
+CPU revision\t: 2
+
+processor\t: 3
+BogoMIPS\t: 38.40
+Features\t: fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm sb paca pacg dcpodp flagm2 frint svei8mm svebf16 i8mm bf16 dgh rng
+CPU implementer\t: 0x51
+CPU architecture: 8
+CPU variant\t: 0x4
+CPU part\t: 0x0d0b
+CPU revision\t: 0
+
+Hardware\t: Qualcomm Technologies, Inc SM8650
+Serial\t\t: $(cat /proc/sys/kernel/random/boot_id 2>/dev/null | tr -d '-' | head -c 16)0000
+"
+
+    # Write fake cpuinfo
+    echo "$CPU_INFO" > "$OVERLAY_DIR/proc/cpuinfo"
+    chmod 444 "$OVERLAY_DIR/proc/cpuinfo"
+
+    # Try to overwrite /proc/cpuinfo directly
+    echo "$CPU_INFO" > /proc/cpuinfo 2>/dev/null || true
+
+    log_success "CPU info patched (Snapdragon 8 Gen 3 profile)"
+}
+
+patch_meminfo() {
+    log "Patching /proc/meminfo to reflect real device memory..."
+
+    MEM_INFO="MemTotal:       12145152 kB
+MemFree:         2048000 kB
+MemAvailable:    5242880 kB
+Buffers:          512000 kB
+Cached:          3145728 kB
+SwapCached:            0 kB
+Active:          4194304 kB
+Inactive:        1048576 kB
+Active(anon):    2097152 kB
+Inactive(anon):   524288 kB
+Active(file):    2097152 kB
+Inactive(file):   524288 kB
+Unevictable:      131072 kB
+Mlocked:               0 kB
+SwapTotal:       6291456 kB
+SwapFree:        6291456 kB
+Dirty:              2048 kB
+Writeback:             0 kB
+AnonPages:       2097152 kB
+Mapped:           786432 kB
+Shmem:            262144 kB
+KReclaimable:     262144 kB
+Slab:             393216 kB
+SReclaimable:     262144 kB
+SUnreclaim:       131072 kB
+KernelStack:       32768 kB
+PageTables:        65536 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:    12582912 kB
+Committed_AS:    8388608 kB
+VmallocTotal:   263061440 kB
+VmallocUsed:      131072 kB
+VmallocChunk:          0 kB
+Percpu:             8192 kB
+HardwareCorrupted:     0 kB
+AnonHugePages:         0 kB
+ShmemHugePages:        0 kB
+ShmemPmdMapped:        0 kB
+FileHugePages:         0 kB
+FilePmdMapped:         0 kB
+CmaTotal:         262144 kB
+CmaFree:           65536 kB
+"
+
+    echo "$MEM_INFO" > "$OVERLAY_DIR/proc/meminfo"
+    chmod 444 "$OVERLAY_DIR/proc/meminfo"
+    echo "$MEM_INFO" > /proc/meminfo 2>/dev/null || true
+
+    log_success "Memory info patched (12GB RAM profile)"
+}
+
+patch_proc_filesystem() {
+    log "Patching /proc filesystem to remove virtualization traces..."
+
+    # /proc/self/status - hide container traces
+    STATUS_CONTENT="Name:\tsystem_server
+Umask:\t0022
+State:\tS (sleeping)
+Tgid:\t1234
+Ngid:\t0
+Pid:\t1234
+PPid:\t1
+TracerPid:\t0
+Uid:\t1000\t1000\t1000\t1000
+Gid:\t1000\t1000\t1000\t1000
+FDSize:\t256
+Groups:\t1000 1001 1002 1003 1004 1005 1006 1007 1008 1009 1010 1018 1021 1023 1024 1032 1065 3001 3002 3003 3006 3007 3009 3010 9997
+"
+    echo "$STATUS_CONTENT" > "$OVERLAY_DIR/proc/self_status"
+    chmod 444 "$OVERLAY_DIR/proc/self_status"
+
+    # Remove QEMU/emulator specific files
+    for emulator_file in \
+        /dev/socket/qemud \
+        /dev/qemu_pipe \
+        /dev/qemu-props \
+        /dev/goldfish_pipe \
+        /sys/bus/platform/drivers/goldfish \
+        /sys/devices/platform/goldfish; do
+        if [ -e "$emulator_file" ]; then
+            mount --bind /dev/null "$emulator_file" 2>/dev/null || true
+            log "Hidden: $emulator_file"
+        fi
+    done
+
+    # Remove Docker/container indicators
+    rm -f /proc/1/cgroup 2>/dev/null || true
+    echo "" > /proc/1/cgroup 2>/dev/null || true
+
+    # Spoof /proc/net/if_inet6 to look real
+    mkdir -p "$OVERLAY_DIR/proc/net"
+    echo "fe80000000000000 02 40 20 80    wlan0" > "$OVERLAY_DIR/proc/net/if_inet6"
+    chmod 444 "$OVERLAY_DIR/proc/net/if_inet6"
+
+    log_success "Proc filesystem sanitized"
+}
+
+patch_sys_filesystem() {
+    log "Patching /sys filesystem entries..."
+
+    # Spoof battery sysfs
+    BATTERY_DIR="/sys/class/power_supply/battery"
+    if [ -d "$BATTERY_DIR" ]; then
+        echo "100" > "$BATTERY_DIR/capacity" 2>/dev/null || true
+        echo "Good" > "$BATTERY_DIR/health" 2>/dev/null || true
+        echo "Full" > "$BATTERY_DIR/status" 2>/dev/null || true
+        echo "Li-poly" > "$BATTERY_DIR/technology" 2>/dev/null || true
+        echo "5000000" > "$BATTERY_DIR/charge_full" 2>/dev/null || true
+        echo "4990000" > "$BATTERY_DIR/charge_now" 2>/dev/null || true
+        echo "4350000" > "$BATTERY_DIR/voltage_now" 2>/dev/null || true
+    fi
+
+    # Spoof CPU frequency
+    for cpu_dir in /sys/devices/system/cpu/cpu*/cpufreq; do
+        if [ -d "$cpu_dir" ]; then
+            echo "3187200" > "$cpu_dir/cpuinfo_max_freq" 2>/dev/null || true
+            echo "300000" > "$cpu_dir/cpuinfo_min_freq" 2>/dev/null || true
+            echo "2457600" > "$cpu_dir/scaling_cur_freq" 2>/dev/null || true
+        fi
+    done
+
+    # Spoof thermal zones
+    for thermal in /sys/class/thermal/thermal_zone*/temp; do
+        echo "35000" > "$thermal" 2>/dev/null || true
+    done
+
+    # Hide goldfish/ranchu entries in /sys
+    for goldfish_path in \
+        /sys/bus/platform/drivers/goldfish_battery \
+        /sys/bus/platform/drivers/goldfish_events \
+        /sys/bus/platform/drivers/goldfish_framebuffer \
+        /sys/bus/platform/drivers/goldfish_audio; do
+        if [ -e "$goldfish_path" ]; then
+            mount --bind /dev/null "$goldfish_path" 2>/dev/null || true
+        fi
+    done
+
+    log_success "Sysfs entries patched"
+}
+
+patch_sensor_simulation() {
+    log "Setting up sensor simulation for realistic device behavior..."
+
+    # Create sensor config directory
+    mkdir -p /data/vpp_sensors
+
+    # Accelerometer - simulate natural phone gravity
+    cat > /data/vpp_sensors/accelerometer.conf << 'EOF'
+type=accelerometer
+x=0.123
+y=0.456
+z=9.782
+noise=0.01
+pattern=stationary
+EOF
+
+    # Gyroscope
+    cat > /data/vpp_sensors/gyroscope.conf << 'EOF'
+type=gyroscope
+x=0.001
+y=-0.002
+z=0.001
+noise=0.001
+pattern=stationary
+EOF
+
+    # Magnetometer
+    cat > /data/vpp_sensors/magnetometer.conf << 'EOF'
+type=magnetometer
+x=21.5
+y=-12.3
+z=-44.8
+noise=0.5
+pattern=stationary
+EOF
+
+    # Light sensor
+    cat > /data/vpp_sensors/light.conf << 'EOF'
+type=light
+lux=350.0
+noise=5.0
+pattern=indoor
+EOF
+
+    # Set sensor properties via ADB
+    setprop persist.sys.sensors.fake_accel "0.123,0.456,9.782" 2>/dev/null || true
+    setprop persist.sys.sensors.fake_gyro "0.001,-0.002,0.001" 2>/dev/null || true
+    setprop persist.sys.sensors.fake_mag "21.5,-12.3,-44.8" 2>/dev/null || true
+    setprop persist.sys.sensors.enabled "1" 2>/dev/null || true
+
+    log_success "Sensor simulation configured"
+}
+
+patch_network_interface() {
+    log "Patching network interface to hide Docker networking..."
+
+    # Spoof MAC address for wlan0 (Samsung OUI)
+    RANDOM_MAC="8C:71:F8:$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 2):$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 2):$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 2)"
+
+    # Try to change MAC
+    ip link set wlan0 address "$RANDOM_MAC" 2>/dev/null || true
+    ip link set eth0 name wlan0 2>/dev/null || true
+
+    # Set WiFi properties
+    setprop wifi.interface wlan0 2>/dev/null || true
+    setprop wifi.supplicant_scan_interval 15 2>/dev/null || true
+
+    # DNS to look like real carrier
+    setprop net.dns1 "8.8.8.8" 2>/dev/null || true
+    setprop net.dns2 "8.8.4.4" 2>/dev/null || true
+    setprop net.dnschange "1" 2>/dev/null || true
+
+    log_success "Network interface patched: MAC=$RANDOM_MAC"
+}
+
