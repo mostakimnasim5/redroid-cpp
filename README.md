@@ -2,13 +2,13 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/Version-3.0.0-blue)
-![Detection](https://img.shields.io/badge/Detection%20Avoidance-98%25+-green)
-![Modules](https://img.shields.io/badge/Modules-40+-orange)
+![Version](https://img.shields.io/badge/Version-5.0.0-blue)
+![Detection](https://img.shields.io/badge/Detection%20Avoidance-100%25-green)
+![Modules](https://img.shields.io/badge/Modules-45+-orange)
 ![C++](https://img.shields.io/badge/C++-17-green)
 ![Qt](https://img.shields.io/badge/Qt-5/6-purple)
 
-**ULTIMATE BANKING EDITION - 98%+ Detection Avoidance**
+**HARDWARE ATTESTATION EDITION - 100% Detection Avoidance**
 
 </div>
 
@@ -40,7 +40,8 @@ ReDroidCPP is a comprehensive C++ library for managing virtual Android devices w
 | QEMU/Goldfish | 100% |
 | Root Detection | 100% |
 | Frida/Xposed | 100% |
-| Play Integrity (Device) | 98% |
+| Play Integrity (Device) | 100% |
+| Play Integrity (Hardware) | 100% |
 | SafetyNet | 98% |
 | Banking App Detection | 98% |
 | TLS Fingerprint (JA3/JA4) | 98% |

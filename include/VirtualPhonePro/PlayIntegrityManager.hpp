@@ -402,14 +402,12 @@ public:
      * @param keyId Key identifier
      * @return true if key is hardware-backed
      */
-    bool verifyHardwareBoundKey(const QString& instanceId, const QString& keyId);
     
     /**
      * @brief Generate Keymaster attestation certificate chain
      * @param instanceId Device instance ID
      * @return Certificate chain in PEM format
      */
-    QStringList generateAttestationCertificateChain(const QString& instanceId);
     
     /**
      * @brief Configure hardware attestation settings
@@ -620,6 +618,63 @@ private:
     // Keymaster helpers
     void initializeAttestationKey(const QString& instanceId);
     QString getKeymasterVersion(const QString& instanceId) const;
+    
+    // ========================================================================
+    // HARDWARE ATTESTATION - 100% BYPASS
+    // ========================================================================
+    
+    /**
+     * @brief Generate complete attestation certificate chain for hardware attestation
+     * @param instanceId Device instance ID
+     * @return Certificate chain in PEM format (Root CA → Intermediate CA → Device Cert)
+     */
+    QStringList generateAttestationCertificateChain(const QString& instanceId);
+    
+    /**
+     * @brief Verify hardware-bound key in KeyStore
+     * @param instanceId Device instance ID
+     * @param keyId Key identifier
+     * @return true if hardware-bound key exists and is valid
+     */
+    bool verifyHardwareBoundKey(const QString& instanceId, const QString& keyId);
+    
+    /**
+     * @brief Configure StrongBox Keymaster for hardware attestation
+     * @param instanceId Device instance ID
+     */
+    void configureStrongBox(const QString& instanceId);
+    
+    /**
+     * @brief Configure TEE (Trusted Execution Environment) for attestation
+     * @param instanceId Device instance ID
+     */
+    void configureTEE(const QString& instanceId);
+    
+    /**
+     * @brief Generate complete boot state information for attestation
+     * @param instanceId Device instance ID
+     * @return Boot state JSON with verified_boot_state, device_locked, boot_hash
+     */
+    QJsonObject generateBootStateInfo(const QString& instanceId);
+    
+    /**
+     * @brief Perform KeyStore interception for attestation
+     * @param instanceId Device instance ID
+     * @param challenge Challenge bytes from server
+     * @param keyAlias Key alias in KeyStore
+     * @return Attestation response bytes
+     */
+    QByteArray interceptKeyStoreAttestation(const QString& instanceId, 
+                                            const QByteArray& challenge,
+                                            const QString& keyAlias);
+    
+    /**
+     * @brief Generate complete hardware attestation response
+     * @param instanceId Device instance ID
+     * @param nonce Nonce/challenge from server
+     * @return Complete attestation response JSON
+     */
+    QJsonObject generateHardwareAttestationResponse(const QString& instanceId, const QString& nonce);
 };
 
 } // namespace VirtualPhonePro
