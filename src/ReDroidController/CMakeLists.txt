@@ -152,6 +152,8 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/TimingAttackPrevention.hpp
     # NEW: Play Integrity Manager
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/PlayIntegrityManager.hpp
+    # NEW: SELinux Enforcement Manager
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/SELinuxManager.hpp
     # NEW: Emulator Detection Bypass
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/EmulatorDetectionBypass.hpp
     # NEW: Network Stack Spoofer
@@ -240,6 +242,8 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/TimingAttackPrevention.cpp
     # NEW: Play Integrity Manager
     ${PROJECT_SOURCE_DIR}/PlayIntegrityManager.cpp
+    # NEW: SELinux Enforcement Manager
+    ${PROJECT_SOURCE_DIR}/SELinuxManager.cpp
     # NEW: Emulator Detection Bypass
     ${PROJECT_SOURCE_DIR}/EmulatorDetectionBypass.cpp
     # NEW: Network Stack Spoofer

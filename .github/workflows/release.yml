@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v3.1.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Create as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  BUILD_TYPE: Release
+  QT_VERSION: '6.5'
+
+jobs:
+  # ============================================================================
+  # Build Linux Release
+  # ============================================================================
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build g++ \
+            libgl1-mesa-dev libxcb-* libxkbcommon-dev \
+            libssl-dev
+            
+      - name: Setup Qt ${{ env.QT_VERSION }}
+        uses: jurplel/qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DBUILD_TESTS=ON \
+            -DENABLE_LOGGING=OFF
+            
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+        
+      - name: Package
+        run: |
+          mkdir -p release
+          tar -czf release/ReDroidCPP-Linux-x64-${{ inputs.version }}.tar.gz -C build/bin .
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: release/
+
+  # ============================================================================
+  # Build Windows Release
+  # ============================================================================
+  build-windows:
+    name: Build Windows
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+        
+      - name: Setup Qt ${{ env.QT_VERSION }}
+        uses: jurplel/qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: qtbase qttools
+          cached: true
+          
+      - name: Configure CMake
+        shell: bash
+        run: |
+          cmake -B build \
+            -G "Visual Studio 17 2022" -A x64 \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}/.." \
+            -DENABLE_LOGGING=OFF
+            
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
+        
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p release
+          cmake --install build --config ${{ env.BUILD_TYPE }} --prefix release/install
+          cd release
+          powershell -Command "Compress-Archive -Path install -DestinationPath ReDroidCPP-Windows-x64-${{ inputs.version }}.zip -Force"
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: release/
+
+  # ============================================================================
+  # Create GitHub Release
+  # ============================================================================
+  create-release:
+    name: Create Release
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          
+      - name: Prepare Release
+        run: |
+          mv artifacts/linux-release/*.tar.gz .
+          mv artifacts/windows-release/*.zip .
+          ls -la *.tar.gz *.zip 2>/dev/null || true
+          
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          CHANGELOG=$(git log --oneline -20 | head -20)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "## What's Changed" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/${{ inputs.version }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          body_path: ${{ github.outputs.changelog }}
+          draft: false
+          prerelease: ${{ inputs.prerelease }}
+          files: |
+            *.tar.gz
+            *.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

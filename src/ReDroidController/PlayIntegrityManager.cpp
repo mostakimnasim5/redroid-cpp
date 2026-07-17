@@ -68,7 +68,104 @@ QJsonObject IntegrityConfig::toJson() const {
     obj["securityPatchLevel"] = securityPatchLevel;
     obj["isGMSCertified"] = isGMSCertified;
     obj["isPlayServicesValid"] = isPlayServicesValid;
+    obj["attestation"] = attestation.toJson();
     return obj;
+}
+
+QJsonObject HardwareAttestationConfig::toJson() const {
+    QJsonObject obj;
+    obj["keyType"] = static_cast<int>(keyType);
+    obj["enableStrongBox"] = enableStrongBox;
+    obj["keymasterVersion"] = keymasterVersion;
+    obj["hasKeymaster4"] = hasKeymaster4;
+    obj["hasKeymaster41"] = hasKeymaster41;
+    obj["hasKeymaster43"] = hasKeymaster43;
+    obj["bootState"] = static_cast<int>(bootState);
+    obj["verifiedBootHash"] = verifiedBootHash;
+    obj["bootPatchLevel"] = bootPatchLevel;
+    obj["securityPatchLevel"] = securityPatchLevel;
+    obj["isSecurityPatchCurrent"] = isSecurityPatchCurrent;
+    obj["isDeviceLocked"] = isDeviceLocked;
+    obj["isRootHidden"] = isRootHidden;
+    obj["isSystemVerified"] = isSystemVerified;
+    obj["isMetaVerified"] = isMetaVerified;
+    obj["hasGooglePlayServices"] = hasGooglePlayServices;
+    obj["isGmsCoreInstalled"] = isGmsCoreInstalled;
+    obj["isPlayStoreInstalled"] = isPlayStoreInstalled;
+    return obj;
+}
+
+QJsonObject HardwareAttestationResult::toJson() const {
+    QJsonObject obj;
+    obj["success"] = success;
+    obj["attestationLevel"] = static_cast<int>(attestationLevel);
+    obj["category"] = static_cast<int>(category);
+    obj["bootState"] = static_cast<int>(bootState);
+    obj["bootStateString"] = bootStateString;
+    obj["verifiedBootKeyHash"] = verifiedBootKeyHash;
+    obj["deviceLocked"] = deviceLocked;
+    obj["basicIntegrity"] = basicIntegrity;
+    obj["ctsProfileMatch"] = ctsProfileMatch;
+    obj["ctsProfileMatchParallel"] = ctsProfileMatchParallel;
+    obj["basicMacAddressCheck"] = basicMacAddressCheck;
+    obj["systemSignatureValid"] = systemSignatureValid;
+    obj["platformSignatureValid"] = platformSignatureValid;
+    obj["bootSignatureValid"] = bootSignatureValid;
+    obj["deviceRecognitionVerdict"] = deviceRecognitionVerdict;
+    obj["deviceConfidenceLevel"] = deviceConfidenceLevel;
+    obj["timestampMs"] = timestampMs;
+    obj["timestampIso"] = timestampIso;
+    obj["nonce"] = nonce;
+    obj["packageName"] = packageName;
+    obj["packageVersionCode"] = packageVersionCode;
+    obj["errorMessage"] = errorMessage;
+    obj["errorCode"] = errorCode;
+    obj["advice"] = advice;
+    obj["tokenPayload"] = tokenPayload;
+    obj["tokenSignature"] = tokenSignature;
+    
+    QJsonArray warningsArray;
+    for (const QString& w : warnings) {
+        warningsArray.append(w);
+    }
+    obj["warnings"] = warningsArray;
+    
+    return obj;
+}
+
+QString HardwareAttestationResult::toJwt() const {
+    // Generate a mock JWT token
+    // Format: header.payload.signature
+    QJsonObject header;
+    header["alg"] = "RS256";
+    header["typ"] = "JWT";
+    
+    QJsonObject payload = toJson();
+    payload.remove("tokenPayload");
+    payload.remove("tokenSignature");
+    
+    QString headerB64 = QString::fromLatin1(QByteArray(QJsonDocument(header).toJson(QJsonDocument::Compact))
+        .toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+    QString payloadB64 = QString::fromLatin1(QByteArray(QJsonDocument(payload).toJson(QJsonDocument::Compact))
+        .toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+    
+    // Mock signature (in real implementation, this would be RSA signing)
+    QString mockSignature = "mock_signature_base64";
+    
+    return QString("%1.%2.%3").arg(headerB64, payloadB64, mockSignature);
+}
+
+QString HardwareAttestationResult::getSummary() const {
+    if (success) {
+        return QString("PASS - Attestation: %1, Boot: %2, CTS: %3")
+            .arg(bootStateString)
+            .arg(deviceLocked)
+            .arg(ctsProfileMatch ? "YES" : "NO");
+    } else {
+        return QString("FAIL - %1 (Code: %2)")
+            .arg(errorMessage)
+            .arg(errorCode);
+    }
 }
 
 QJsonObject IntegrityCheckResult::toJson() const {
@@ -801,6 +898,337 @@ bool PlayIntegrityManager::verifyMockResponse(const QString& response) {
     
     QJsonObject obj = doc.object();
     return obj["success"].toBool(false);
+}
+
+// ========================================================================
+// HARDWARE ATTESTATION IMPLEMENTATION
+// ========================================================================
+
+HardwareAttestationResult PlayIntegrityManager::performHardwareAttestation(
+    const QString& instanceId, const QString& nonce) {
+    
+    HardwareAttestationResult result;
+    QMutexLocker locker(&m_mutex);
+    
+    qDebug() << "[PlayIntegrity] Performing hardware attestation for:" << instanceId;
+    
+    // Get or create attestation config
+    HardwareAttestationConfig config;
+    if (m_attestationConfigs.contains(instanceId)) {
+        config = m_attestationConfigs[instanceId];
+    } else {
+        // Default configuration for strong attestation
+        config.keyType = AttestationKeyType::TRUSTED_ENVIRONMENT;
+        config.enableStrongBox = true;
+        config.keymasterVersion = 4;
+        config.bootState = VerifiedBootState::GREEN;
+        config.isDeviceLocked = true;
+        config.isRootHidden = true;
+        config.isSystemVerified = true;
+        config.securityPatchLevel = "2024-06-01";
+        m_attestationConfigs[instanceId] = config;
+    }
+    
+    // Initialize attestation key if not exists
+    if (!m_attestationKeys.contains(instanceId)) {
+        initializeAttestationKey(instanceId);
+    }
+    
+    // Generate timestamp
+    result.timestampMs = QDateTime::currentMSecsSinceEpoch();
+    result.timestampIso = QDateTime::currentDateTime().toString(Qt::ISODate);
+    result.nonce = nonce.isEmpty() ? generateNonce(instanceId) : nonce;
+    
+    // Check basic integrity requirements
+    if (!config.isRootHidden || config.isDeviceLocked == false) {
+        result.success = false;
+        result.errorMessage = "Device integrity compromised";
+        result.errorCode = 1;
+        return result;
+    }
+    
+    // Set success based on configuration
+    result.success = true;
+    result.attestationLevel = config.keyType;
+    
+    // Set verified boot state
+    result.bootState = config.bootState;
+    result.bootStateString = generateVerifiedBootStateString(config.bootState);
+    result.deviceLocked = config.isDeviceLocked ? "true" : "false";
+    
+    // Generate verified boot key hash
+    result.verifiedBootKeyHash = QString(QCryptographicHash::hash(
+        (instanceId + "verified_boot_key").toUtf8(), 
+        QCryptographicHash::Sha256).toHex()).left(64);
+    
+    // Set integrity flags
+    result.basicIntegrity = true;
+    result.ctsProfileMatch = true;
+    result.ctsProfileMatchParallel = true;
+    result.basicMacAddressCheck = true;
+    result.systemSignatureValid = true;
+    result.platformSignatureValid = true;
+    result.bootSignatureValid = (config.bootState == VerifiedBootState::GREEN);
+    
+    // Set device recognition
+    result.deviceRecognitionVerdict = "RECOGNIZED";
+    result.deviceConfidenceLevel = "CONFIDENCE_HIGH";
+    
+    // Set category based on attestation level
+    if (config.keyType == AttestationKeyType::STRONGBOX) {
+        result.category = DeviceIntegrityCategory::HARDWARE_BACKED;
+    } else if (config.keyType == AttestationKeyType::TRUSTED_ENVIRONMENT) {
+        result.category = DeviceIntegrityCategory::CTS_MATCH;
+    } else {
+        result.category = DeviceIntegrityCategory::BASIC;
+    }
+    
+    // Generate JWT token
+    result.tokenPayload = QJsonDocument(buildAttestationPayload(instanceId, nonce)).toJson(QJsonDocument::Compact);
+    result.tokenSignature = "attestation_signature";
+    
+    // Build advice based on configuration
+    if (result.success && result.ctsProfileMatch) {
+        result.advice = "Device integrity verified";
+    } else if (!result.ctsProfileMatch) {
+        result.advice = "RESOLVED";
+    }
+    
+    qDebug() << "[PlayIntegrity] Hardware attestation result:" << result.success 
+             << "boot:" << result.bootStateString << "locked:" << result.deviceLocked;
+    
+    return result;
+}
+
+QString PlayIntegrityManager::generateAttestationToken(const QString& instanceId, const QString& nonce) {
+    HardwareAttestationResult result = performHardwareAttestation(instanceId, nonce);
+    return result.toJwt();
+}
+
+bool PlayIntegrityManager::verifyHardwareBoundKey(const QString& instanceId, const QString& keyId) {
+    QMutexLocker locker(&m_mutex);
+    
+    HardwareAttestationConfig config = m_attestationConfigs.value(instanceId);
+    
+    // Hardware-bound keys are available with StrongBox or TEE
+    if (config.keyType == AttestationKeyType::STRONGBOX || 
+        config.keyType == AttestationKeyType::TRUSTED_ENVIRONMENT) {
+        qDebug() << "[PlayIntegrity] Key" << keyId << "is hardware-backed";
+        return true;
+    }
+    
+    qDebug() << "[PlayIntegrity] Key" << keyId << "is software-only";
+    return false;
+}
+
+QStringList PlayIntegrityManager::generateAttestationCertificateChain(const QString& instanceId) {
+    QStringList chain;
+    
+    // In a real implementation, this would generate actual attestation certificates
+    // For now, we generate mock certificate data
+    
+    // Root CA certificate (Google Attestation CA)
+    QString rootCa = "-----BEGIN CERTIFICATE-----\n"
+                     "MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYD\n"
+                     "VQQGEwJJUzESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJl\n"
+                     "clRydXN0MSIwIAYDVQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290\n"
+                     "MB4XDTAwMDUxMjE4NDYwMFoXDTIwMDUxMjIzNTkwMFowWjELMAkGA1UE\n"
+                     "BhMCSVMxEjAQBgNVBAoTCUJhbHRpbW9yZTETMBEGA1UECxMKQ3liZXJU\n"
+                     "cnVzdDEiMCAGA1UEAxMZQmFsdGltb3JlIEN5YmVyVHJ1c3QgUm9vdDCC\n"
+                     "ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKMEuyKrYmD7QU5\n"
+                     "EwBZw8P5fFhCv0xQmIlmWgz0xtZqPKIoJ2vK3QN8bXgkRyflQmvbmK\n"
+                     "-----END CERTIFICATE-----";
+    chain.append(rootCa);
+    
+    // Intermediate CA certificate (Google Play Services Attestation)
+    QString intermediateCa = "-----BEGIN CERTIFICATE-----\n"
+                              "MIIDkjCCAnqgAwIBAgIRAIldLrMFGC8GGi0J5D3F+powDQYJKoZI\n"
+                              "hvcNAQELBQAwPzELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRIw\n"
+                              "EAYDVQQHDAlTb21ld2hlcmUxGDAWBgNVBAMMD0dvb2dsZSBQbGF5\n"
+                              "IFNlcnZpY2VzMB4XDTI0MDEwMTAwMDAwMFoXDTI1MTIzMTIzNTk1\n"
+                              "OVowPzELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRIwEAYDVQQH\n"
+                              "DAlTb21ld2hlcmUxGDAWBgNVBAMMD0dvb2dsZSBQbGF5IFNlcnZp\n"
+                              "Y2VzMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Z3\n"
+                              "-----END CERTIFICATE-----";
+    chain.append(intermediateCa);
+    
+    // Device attestation certificate (per-device)
+    QString deviceCert = "-----BEGIN CERTIFICATE-----\n"
+                         "MIIDnzCCAoegAwIBAgIJALjW+qfFvBIMA0GCSqGSIb3DQEBCwUAMGkx\n"
+                         "CzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRQwEgYDVQQH\n"
+                         "DAtNb3VudGFpbiBWaWV3MQ4wDAYDVQQKDAVSZWRyb2lkMRowGAYDVQQD\n"
+                         "DBEzMjAwMDEyMzQ1Njc4OTFhYmNkMB4XDTI0MDQwMTAwMDAwMFoXDTI1\n"
+                         "-----END CERTIFICATE-----";
+    chain.append(deviceCert);
+    
+    qDebug() << "[PlayIntegrity] Generated certificate chain with" << chain.size() << "certificates";
+    
+    return chain;
+}
+
+void PlayIntegrityManager::configureHardwareAttestation(
+    const QString& instanceId, const HardwareAttestationConfig& config) {
+    QMutexLocker locker(&m_mutex);
+    
+    m_attestationConfigs[instanceId] = config;
+    
+    qDebug() << "[PlayIntegrity] Hardware attestation configured for:" << instanceId
+              << "keyType:" << static_cast<int>(config.keyType)
+              << "strongBox:" << config.enableStrongBox
+              << "bootState:" << static_cast<int>(config.bootState);
+}
+
+QJsonObject PlayIntegrityManager::getHardwareAttestationStatus(const QString& instanceId) const {
+    QJsonObject status;
+    
+    HardwareAttestationConfig config = m_attestationConfigs.value(instanceId);
+    
+    status["keyType"] = static_cast<int>(config.keyType);
+    status["keymasterVersion"] = config.keymasterVersion;
+    status["strongBoxEnabled"] = config.enableStrongBox;
+    status["bootState"] = generateVerifiedBootStateString(config.bootState);
+    status["deviceLocked"] = config.isDeviceLocked;
+    status["securityPatchLevel"] = config.securityPatchLevel;
+    status["hasAttestationKey"] = m_attestationKeys.contains(instanceId);
+    
+    return status;
+}
+
+// ========================================================================
+// ATTESTATION HELPER METHODS
+// ========================================================================
+
+QByteArray PlayIntegrityManager::generateAttestationChallenge(
+    const QString& instanceId, const QString& nonce) {
+    
+    ReDroidController& controller = ReDroidController::instance();
+    
+    // Build challenge data from device properties
+    QString challengeData = instanceId;
+    challengeData += controller.getProperty(instanceId, "ro.build.fingerprint");
+    challengeData += controller.getProperty(instanceId, "ro.bootloader");
+    challengeData += controller.getProperty(instanceId, "ro.product.model");
+    challengeData += nonce;
+    
+    // Add timestamp
+    challengeData += QString::number(QDateTime::currentMSecsSinceEpoch());
+    
+    // Generate SHA-256 hash
+    QByteArray hash = QCryptographicHash::hash(
+        challengeData.toUtf8(), QCryptographicHash::Sha256);
+    
+    return hash;
+}
+
+QJsonObject PlayIntegrityManager::buildAttestationPayload(
+    const QString& instanceId, const QString& nonce) {
+    
+    QJsonObject payload;
+    ReDroidController& controller = ReDroidController::instance();
+    
+    HardwareAttestationConfig config = m_attestationConfigs.value(instanceId);
+    
+    // Header
+    QJsonObject header;
+    header["alg"] = "RS256";
+    header["typ"] = "JWT";
+    payload["header"] = header;
+    
+    // Timestamp
+    payload["timestampMs"] = QDateTime::currentMSecsSinceEpoch();
+    payload["nonce"] = nonce.isEmpty() ? generateNonce(instanceId) : nonce;
+    
+    // Device integrity
+    QJsonObject deviceIntegrityStatus;
+    deviceIntegrityStatus["deviceRecognitionVerdict"] = "RECOGNIZED";
+    deviceIntegrityStatus["deviceConfidenceLevel"] = "CONFIDENCE_HIGH";
+    payload["deviceIntegrityStatus"] = deviceIntegrityStatus;
+    
+    // Basic integrity
+    QJsonObject basicIntegrity;
+    basicIntegrity["basicIntegrity"] = true;
+    basicIntegrity["ctsProfileMatch"] = true;
+    basicIntegrity["basicIntegrityDeviceCertificate"] = true;
+    basicIntegrity["basicIntegritySystemPartition"] = true;
+    payload["basicIntegrity"] = basicIntegrity;
+    
+    // Details
+    QJsonObject details;
+    details["deviceCategory"] = "PHYSICAL";
+    details["deviceModel"] = controller.getProperty(instanceId, "ro.product.model");
+    details["manufacturer"] = controller.getProperty(instanceId, "ro.product.manufacturer");
+    details["brand"] = controller.getProperty(instanceId, "ro.product.brand");
+    details["androidVersion"] = controller.getProperty(instanceId, "ro.build.version.release");
+    details["buildFingerprint"] = controller.getProperty(instanceId, "ro.build.fingerprint");
+    payload["details"] = details;
+    
+    // Request details
+    QJsonObject requestDetails;
+    requestDetails["packageName"] = "com.google.android.gms";
+    requestDetails["packageVersionCode"] = 242514000;
+    requestDetails["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    payload["requestDetails"] = requestDetails;
+    
+    return payload;
+}
+
+QString PlayIntegrityManager::generateVerifiedBootStateString(VerifiedBootState state) const {
+    switch (state) {
+        case VerifiedBootState::GREEN:    return "green";
+        case VerifiedBootState::YELLOW:    return "yellow";
+        case VerifiedBootState::ORANGE:    return "orange";
+        case VerifiedBootState::RED:      return "red";
+        case VerifiedBootState::UNLOCKED:  return "unlocked";
+        default:                          return "unknown";
+    }
+}
+
+QString PlayIntegrityManager::generateDeviceIntegrityVerdict(const QString& instanceId) {
+    HardwareAttestationConfig config = m_attestationConfigs.value(instanceId);
+    
+    if (config.keyType == AttestationKeyType::STRONGBOX && 
+        config.bootState == VerifiedBootState::GREEN) {
+        return "MEETS_DEVICE_INTEGRITY";
+    } else if (config.bootState == VerifiedBootState::GREEN) {
+        return "MEETS_BASIC_INTEGRITY";
+    }
+    
+    return "UNSATISFIED";
+}
+
+QByteArray PlayIntegrityManager::signAttestationPayload(
+    const QJsonObject& payload, const QString& instanceId) {
+    
+    // In a real implementation, this would use the attestation key
+    // to sign the payload with RSA-SHA256
+    
+    QByteArray data = QJsonDocument(payload).toJson(QJsonDocument::Compact);
+    QByteArray signature = QCryptographicHash::hash(
+        data + instanceId.toUtf8(), QCryptographicHash::Sha256);
+    
+    return signature.toBase64();
+}
+
+void PlayIntegrityManager::initializeAttestationKey(const QString& instanceId) {
+    // Generate a unique attestation key for this instance
+    QByteArray keyData = generateAttestationChallenge(instanceId, "attestation_key");
+    m_attestationKeys[instanceId] = keyData;
+    
+    qDebug() << "[PlayIntegrity] Initialized attestation key for:" << instanceId;
+}
+
+QString PlayIntegrityManager::getKeymasterVersion(const QString& instanceId) const {
+    HardwareAttestationConfig config = m_attestationConfigs.value(instanceId);
+    
+    if (config.hasKeymaster43) {
+        return "4.3";
+    } else if (config.hasKeymaster41) {
+        return "4.1";
+    } else if (config.hasKeymaster4) {
+        return "4.0";
+    }
+    
+    return "3.0";
 }
 
 } // namespace VirtualPhonePro

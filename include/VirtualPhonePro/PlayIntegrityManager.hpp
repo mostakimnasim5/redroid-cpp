@@ -5,8 +5,17 @@
  * This module handles Google Play Integrity API and SafetyNet attestation
  * responses. With proper KVM setup, ReDroid can pass many integrity checks.
  * 
+ * Features:
+ * - Device Integrity verification (MEETS_DEVICE_INTEGRITY)
+ * - Basic Integrity verification (MEETS_BASIC_INTEGRITY)
+ * - Hardware Attestation with Keymaster 4.0 spoofing
+ * - StrongBox/Keystore hardware-backed key simulation
+ * - GMS Certification spoofing
+ * - Verified Boot state (green) simulation
+ * - CTS Profile Match generation
+ * 
  * @author ReDroidCPP
- * @version 2.0.0
+ * @version 3.0.0
  */
 
 #ifndef VIRTUALPHONEPRO_PLAYINTEGRITYMANAGER_HPP
@@ -17,8 +26,45 @@
 #include <QMap>
 #include <QJsonObject>
 #include <QMutex>
+#include <QByteArray>
+#include <QVector>
 
 namespace VirtualPhonePro {
+
+// ========================================================================
+// HARDWARE ATTESTATION TYPES
+// ========================================================================
+
+/**
+ * @brief Hardware attestation key types
+ */
+enum class AttestationKeyType {
+    SOFTWARE,          // Software-only attestation
+    TRUSTED_ENVIRONMENT, // TEE-based attestation  
+    STRONGBOX         // Hardware-backed StrongBox
+};
+
+/**
+ * @brief Verified boot state enumeration
+ */
+enum class VerifiedBootState {
+    GREEN,             // Verified boot succeeded
+    YELLOW,           // Verified boot succeeded but with warnings
+    ORANGE,           // Verified boot failed but device may still boot
+    RED,              // Verified boot failed, device may not boot
+    UNLOCKED          // Device bootloader unlocked
+};
+
+/**
+ * @brief Device integrity category for Play Integrity API
+ */
+enum class DeviceIntegrityCategory {
+    EMPTY,             // No integrity verdict
+    BASIC,             // Basic integrity only
+    HARDWARE_BACKED,   // Hardware-backed attestation
+    CTS_MATCH,         // CTS profile match
+    PLAY_PROFILE_MATCH // Play profile match
+};
 
 // ========================================================================
 // INTEGRITY VERDICT LEVELS
@@ -45,6 +91,47 @@ enum class IntegrityVerdict {
 };
 
 // ========================================================================
+// HARDWARE ATTESTATION CONFIGURATION
+// ========================================================================
+
+struct HardwareAttestationConfig {
+    // Attestation level
+    AttestationKeyType keyType = AttestationKeyType::TRUSTED_ENVIRONMENT;
+    bool enableStrongBox = true;
+    
+    // Keymaster version (4.0 for Android 14)
+    int keymasterVersion = 4;
+    bool hasKeymaster4 = true;
+    bool hasKeymaster41 = true;
+    bool hasKeymaster43 = false;
+    
+    // Verified boot
+    VerifiedBootState bootState = VerifiedBootState::GREEN;
+    QString verifiedBootHash;  // 32-byte hex string
+    QString bootPatchLevel;     // YYYY-MM-DD format
+    
+    // Security patch
+    QString securityPatchLevel = "2024-06-01";
+    bool isSecurityPatchCurrent = true;
+    
+    // Device integrity
+    bool isDeviceLocked = true;
+    bool isRootHidden = true;
+    bool isSystemVerified = true;
+    bool isMetaVerified = false;
+    
+    // PCR (Platform Configuration Registers)
+    QStringList pcrValues;  // For measurement verification
+    
+    // Google services
+    bool hasGooglePlayServices = true;
+    bool isGmsCoreInstalled = true;
+    bool isPlayStoreInstalled = true;
+    
+    QJsonObject toJson() const;
+};
+
+// ========================================================================
 // INTEGRITY CONFIGURATION
 // ========================================================================
 
@@ -52,6 +139,9 @@ struct IntegrityConfig {
     // Target verdicts
     IntegrityVerdict targetVerdict = IntegrityVerdict::PLAY_INTEGRITY_DEVICE;
     bool requireHardwareAttestation = false;
+    
+    // Hardware attestation
+    HardwareAttestationConfig attestation;
     
     // Device integrity flags
     bool isDeviceRooted = false;
@@ -89,6 +179,68 @@ struct IntegrityConfig {
 };
 
 // ========================================================================
+// HARDWARE ATTESTATION RESULT
+// ========================================================================
+
+struct HardwareAttestationResult {
+    bool success = false;
+    
+    // Attestation level achieved
+    AttestationKeyType attestationLevel = AttestationKeyType::SOFTWARE;
+    
+    // Device integrity verdict
+    DeviceIntegrityCategory category = DeviceIntegrityCategory::EMPTY;
+    
+    // Verified boot
+    VerifiedBootState bootState = VerifiedBootState::GREEN;
+    QString bootStateString;  // "green", "yellow", "orange", "red"
+    QString verifiedBootKeyHash;
+    QString deviceLocked;  // "true" or "false"
+    
+    // Basic integrity flags
+    bool basicIntegrity = false;
+    bool ctsProfileMatch = false;
+    bool ctsProfileMatchParallel = false;
+    bool basicMacAddressCheck = false;
+    
+    // System signature status
+    bool systemSignatureValid = true;
+    bool platformSignatureValid = true;
+    bool bootSignatureValid = true;
+    
+    // Device recognition
+    QString deviceRecognitionVerdict;  // "RECOGNIZED", "UNRECOGNIZED", "UNAVAILABLE"
+    QString deviceConfidenceLevel;     // "CONFIDENCE_HIGH", "CONFIDENCE_LOW"
+    
+    // Timestamp
+    qint64 timestampMs = 0;
+    QString timestampIso;
+    
+    // Nonce (challenge from server)
+    QString nonce;
+    
+    // Package info (for app licensing)
+    QString packageName;
+    int packageVersionCode = 0;
+    
+    // Error handling
+    QString errorMessage;
+    int errorCode = 0;
+    
+    // Debug info
+    QString advice;
+    QVector<QString> warnings;
+    
+    // JSON Web Token (JWT) representation
+    QString tokenPayload;
+    QString tokenSignature;
+    
+    QJsonObject toJson() const;
+    QString toJwt() const;
+    QString getSummary() const;
+};
+
+// ========================================================================
 // INTEGRITY CHECK RESULT
 // ========================================================================
 
@@ -104,6 +256,9 @@ struct IntegrityCheckResult {
     bool isCtsProfileMatchParallel = false;
     bool isBasicMacAddressCheck = false;
     bool isRuntimeBit = false;
+    
+    // Hardware attestation result
+    HardwareAttestationResult attestation;
     
     // Device info
     QString deviceCategory;
@@ -219,6 +374,57 @@ public:
      * @brief Reset to default configuration
      */
     void resetConfig(const QString& instanceId);
+    
+    // ========================================================================
+    // HARDWARE ATTESTATION
+    // ========================================================================
+    
+    /**
+     * @brief Perform hardware attestation check
+     * @param instanceId Device instance ID
+     * @param nonce Optional nonce from server
+     * @return Hardware attestation result
+     */
+    HardwareAttestationResult performHardwareAttestation(const QString& instanceId, 
+                                                        const QString& nonce = QString());
+    
+    /**
+     * @brief Generate hardware attestation JWT token
+     * @param instanceId Device instance ID
+     * @param nonce Challenge nonce from server
+     * @return JWT-formatted attestation token
+     */
+    QString generateAttestationToken(const QString& instanceId, const QString& nonce);
+    
+    /**
+     * @brief Verify hardware-bound key
+     * @param instanceId Device instance ID
+     * @param keyId Key identifier
+     * @return true if key is hardware-backed
+     */
+    bool verifyHardwareBoundKey(const QString& instanceId, const QString& keyId);
+    
+    /**
+     * @brief Generate Keymaster attestation certificate chain
+     * @param instanceId Device instance ID
+     * @return Certificate chain in PEM format
+     */
+    QStringList generateAttestationCertificateChain(const QString& instanceId);
+    
+    /**
+     * @brief Configure hardware attestation settings
+     * @param instanceId Device instance ID
+     * @param config Attestation configuration
+     */
+    void configureHardwareAttestation(const QString& instanceId, 
+                                     const HardwareAttestationConfig& config);
+    
+    /**
+     * @brief Get hardware attestation status
+     * @param instanceId Device instance ID
+     * @return Attestation status JSON
+     */
+    QJsonObject getHardwareAttestationStatus(const QString& instanceId) const;
     
     // ========================================================================
     // INTEGRITY CHECKS
@@ -390,6 +596,8 @@ private:
     QMap<QString, IntegrityConfig> m_configs;
     QMap<QString, bool> m_kvmStatus;
     QMap<QString, bool> m_gmsCertified;
+    QMap<QString, HardwareAttestationConfig> m_attestationConfigs;
+    QMap<QString, QByteArray> m_attestationKeys;
     
     // Helper methods
     QString generateNonce(const QString& instanceId);
@@ -401,6 +609,17 @@ private:
     // Device-specific generation
     QString generateDeviceRecognitionVerdict(const QString& instanceId);
     QString generateDeviceCategory(const QString& instanceId);
+    
+    // Hardware attestation helpers
+    QByteArray generateAttestationChallenge(const QString& instanceId, const QString& nonce);
+    QJsonObject buildAttestationPayload(const QString& instanceId, const QString& nonce);
+    QString generateVerifiedBootStateString(VerifiedBootState state) const;
+    QString generateDeviceIntegrityVerdict(const QString& instanceId);
+    QByteArray signAttestationPayload(const QJsonObject& payload, const QString& instanceId);
+    
+    // Keymaster helpers
+    void initializeAttestationKey(const QString& instanceId);
+    QString getKeymasterVersion(const QString& instanceId) const;
 };
 
 } // namespace VirtualPhonePro
