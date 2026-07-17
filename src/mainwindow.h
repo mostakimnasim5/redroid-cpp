@@ -22,9 +22,15 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QTimer>
+#include <QProcess>
+#include <QPixmap>
+#include <QByteArray>
+#include <QBuffer>
 
 #include "VirtualPhonePro/DeviceProfile.h"
 #include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/ADBManager.hpp"
 
 namespace Ui {
     class MainWindow;
@@ -113,6 +119,13 @@ private:
     void setupDetailsPanel();
     void setupConnections();
     
+    // Screen Mirror
+    void setupScreenMirror();
+    void updateScreen();
+    void startScreenMirror();
+    void stopScreenMirror();
+    void onScreenProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    
     // Profile management
     void loadProfiles();
     void saveProfile(const DeviceProfile& profile);
@@ -167,6 +180,13 @@ private:
     QString m_selectedInstanceId;
     QMap<QString, InstanceInfo> m_instances;
     QMap<QString, DeviceProfile> m_profiles;
+    
+    // Screen Mirror Members
+    QTimer* m_screenTimer;
+    QLabel* m_screenLabel;
+    QProcess* m_adbScreenProcess;
+    QByteArray m_screenBuffer;
+    bool m_screenMirrorActive;
 };
 
 /**

@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QFileDialog>
+#include <QFile>
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
@@ -37,6 +38,10 @@ using namespace VirtualPhonePro;
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
+    , m_screenTimer(nullptr)
+    , m_screenLabel(nullptr)
+    , m_adbScreenProcess(nullptr)
+    , m_screenMirrorActive(false)
 {
     setupUI();
     setupMenuBar();
@@ -44,6 +49,7 @@ MainWindow::MainWindow(QWidget* parent)
     setupStatusBar();
     setupInstanceTable();
     setupDetailsPanel();
+    setupScreenMirror();
     setupConnections();
     
     // Load existing instances
@@ -51,6 +57,12 @@ MainWindow::MainWindow(QWidget* parent)
 }
 
 MainWindow::~MainWindow() {
+    stopScreenMirror();
+    if (m_adbScreenProcess) {
+        m_adbScreenProcess->kill();
+        m_adbScreenProcess->waitForFinished();
+        delete m_adbScreenProcess;
+    }
 }
 
 void MainWindow::setupUI() {
@@ -224,6 +236,40 @@ void MainWindow::setupInstanceTable() {
 void MainWindow::setupDetailsPanel() {
     QVBoxLayout* layout = new QVBoxLayout(m_detailsWidget);
     
+    // Screen Mirror group - Phone display
+    QGroupBox* screenGroup = new QGroupBox("📱 Phone Screen", m_detailsWidget);
+    QVBoxLayout* screenLayout = new QVBoxLayout(screenGroup);
+    
+    // Create screen label with placeholder
+    m_screenLabel = new QLabel(m_detailsWidget);
+    m_screenLabel->setMinimumSize(400, 700);
+    m_screenLabel->setMaximumSize(400, 700);
+    m_screenLabel->setAlignment(Qt::AlignCenter);
+    m_screenLabel->setStyleSheet(
+        "QLabel {"
+        "    background-color: #1a1a2e;"
+        "    border: 2px solid #333;"
+        "    border-radius: 20px;"
+        "    color: #666;"
+        "}"
+    );
+    m_screenLabel->setText("\n\n📱\nSelect a running instance\nto view screen");
+    m_screenLabel->setWordWrap(true);
+    
+    // Screen controls
+    QHBoxLayout* screenControls = new QHBoxLayout();
+    QPushButton* startMirrorBtn = new QPushButton("▶ Start Mirror", m_detailsWidget);
+    QPushButton* stopMirrorBtn = new QPushButton("⏹ Stop Mirror", m_detailsWidget);
+    
+    connect(startMirrorBtn, &QPushButton::clicked, this, &MainWindow::startScreenMirror);
+    connect(stopMirrorBtn, &QPushButton::clicked, this, &MainWindow::stopScreenMirror);
+    
+    screenControls->addWidget(startMirrorBtn);
+    screenControls->addWidget(stopMirrorBtn);
+    
+    screenLayout->addWidget(m_screenLabel, 0, Qt::AlignCenter);
+    screenLayout->addLayout(screenControls);
+    
     // Instance info group
     QGroupBox* infoGroup = new QGroupBox("Instance Information", m_detailsWidget);
     QFormLayout* infoLayout = new QFormLayout(infoGroup);
@@ -306,7 +352,8 @@ void MainWindow::setupDetailsPanel() {
     buttonLayout->addWidget(m_restartButton);
     buttonLayout->addWidget(m_deleteButton);
     
-    // Assemble layout
+    // Assemble layout - Screen at top
+    layout->addWidget(screenGroup);
     layout->addWidget(infoGroup);
     layout->addWidget(deviceGroup);
     layout->addWidget(gpsGroup);
@@ -327,6 +374,166 @@ void MainWindow::setupConnections() {
     
     connect(m_instanceTable, &QTableWidget::currentCellChanged,
             this, &MainWindow::on_instanceTable_currentCellChanged);
+}
+
+// ==============================================================================
+// Screen Mirror Implementation
+// ==============================================================================
+
+void MainWindow::setupScreenMirror() {
+    // Create ADB screen process
+    m_adbScreenProcess = new QProcess(this);
+    m_adbScreenProcess->setProcessChannelMode(QProcess::MergedChannels);
+    
+    // Connect process signals
+    connect(m_adbScreenProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, &MainWindow::onScreenProcessFinished);
+    
+    // Create screen timer (100ms interval for ~10fps)
+    m_screenTimer = new QTimer(this);
+    connect(m_screenTimer, &QTimer::timeout, this, &MainWindow::updateScreen);
+    
+    // Initially hidden - will be shown when instance is selected
+    if (m_screenLabel) {
+        m_screenLabel->hide();
+    }
+}
+
+void MainWindow::startScreenMirror() {
+    if (m_screenMirrorActive) {
+        return;
+    }
+    
+    // Get the ADB serial for the selected instance
+    ReDroidController& controller = ReDroidController::instance();
+    
+    if (!m_selectedInstanceId.isEmpty() && controller.instanceExists(m_selectedInstanceId)) {
+        QString adbSerial = QString("127.0.0.1:%1").arg(
+            controller.getInstanceInfo(m_selectedInstanceId).adbPort - 1
+        );
+        
+        qDebug() << "[ScreenMirror] Starting with ADB serial:" << adbSerial;
+        
+        // Start the screencap process
+        QString adbPath = "adb"; // Use system adb
+        
+        // Check if we have a custom ADB path from settings
+        DockerConfig config = controller.config();
+        if (!config.adbPath.isEmpty() && QFile::exists(config.adbPath)) {
+            adbPath = config.adbPath;
+        }
+        
+        QStringList args = {
+            "-s", adbSerial,
+            "exec-out",
+            "screencap",
+            "-p"
+        };
+        
+        m_adbScreenProcess->start(adbPath, args);
+        
+        if (m_adbScreenProcess->waitForStarted(1000)) {
+            m_screenMirrorActive = true;
+            m_screenTimer->start(100); // 100ms = 10fps
+            qDebug() << "[ScreenMirror] Started successfully";
+        } else {
+            qWarning() << "[ScreenMirror] Failed to start ADB process";
+        }
+    }
+}
+
+void MainWindow::stopScreenMirror() {
+    if (!m_screenMirrorActive) {
+        return;
+    }
+    
+    m_screenTimer->stop();
+    
+    if (m_adbScreenProcess && m_adbScreenProcess->state() != QProcess::NotRunning) {
+        m_adbScreenProcess->kill();
+        m_adbScreenProcess->waitForFinished(500);
+    }
+    
+    m_screenMirrorActive = false;
+    m_screenBuffer.clear();
+    
+    qDebug() << "[ScreenMirror] Stopped";
+}
+
+void MainWindow::updateScreen() {
+    if (!m_screenMirrorActive || !m_adbScreenProcess) {
+        return;
+    }
+    
+    // Read available data from process
+    QByteArray data = m_adbScreenProcess->readAllStandardOutput();
+    
+    if (data.isEmpty()) {
+        return;
+    }
+    
+    // Append to buffer
+    m_screenBuffer.append(data);
+    
+    // Try to find complete PNG image (starts with PNG signature: 89 50 4E 47 0D 0A 1A 0A)
+    static const QByteArray pngSignature("\x89PNG\r\n\x1A\n", 8);
+    
+    int startPos = m_screenBuffer.indexOf(pngSignature);
+    
+    if (startPos == -1) {
+        // No PNG signature found, clear buffer if too large
+        if (m_screenBuffer.size() > 10 * 1024 * 1024) { // 10MB limit
+            m_screenBuffer.clear();
+        }
+        return;
+    }
+    
+    // Look for end of PNG (IEND chunk: 49 45 4E 44 AE 42 60 82)
+    static const QByteArray pngEnd("\x49\x45\x4E\x44\xAE\x42\x60\x82", 8);
+    int endPos = m_screenBuffer.indexOf(pngEnd, startPos);
+    
+    if (endPos == -1) {
+        // Incomplete PNG, keep buffering
+        return;
+    }
+    
+    // Extract complete PNG data
+    endPos += 8; // Include the IEND signature
+    QByteArray pngData = m_screenBuffer.mid(startPos, endPos - startPos);
+    
+    // Clear processed data from buffer
+    m_screenBuffer.remove(0, endPos);
+    
+    // Convert to QPixmap
+    QPixmap pixmap;
+    if (pixmap.loadFromData(pngData, "PNG")) {
+        // Scale to portrait phone size (400x700)
+        QPixmap scaledPixmap = pixmap.scaled(
+            QSize(400, 700),
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+        
+        // Update the screen label
+        if (m_screenLabel) {
+            m_screenLabel->setPixmap(scaledPixmap);
+        }
+    } else {
+        qWarning() << "[ScreenMirror] Failed to load image from buffer";
+    }
+}
+
+void MainWindow::onScreenProcessFinished(int exitCode, QProcess::ExitStatus exitStatus) {
+    Q_UNUSED(exitCode);
+    
+    if (exitStatus == QProcess::CrashExit) {
+        qWarning() << "[ScreenMirror] ADB process crashed";
+        
+        // Try to restart if still active
+        if (m_screenMirrorActive) {
+            QTimer::singleShot(100, this, &MainWindow::startScreenMirror);
+        }
+    }
 }
 
 void MainWindow::refreshInstances() {
@@ -516,12 +723,46 @@ void MainWindow::on_newInstanceButton_clicked() {
 }
 
 void MainWindow::on_instanceTable_currentCellChanged(int row, int column) {
+    Q_UNUSED(column);
+    
     if (row >= 0 && row < m_instanceTable->rowCount()) {
         QTableWidgetItem* item = m_instanceTable->item(row, 0);
         if (item) {
-            m_selectedInstanceId = item->text();
+            QString newInstanceId = item->text();
+            
+            // Stop current screen mirror if running
+            if (m_selectedInstanceId != newInstanceId && m_screenMirrorActive) {
+                stopScreenMirror();
+            }
+            
+            m_selectedInstanceId = newInstanceId;
             updateInstanceDetails(m_selectedInstanceId);
             updateToolbarState();
+            
+            // Check if we should start screen mirror for new selection
+            ReDroidController& controller = ReDroidController::instance();
+            InstanceInfo info = controller.getInstanceInfo(m_selectedInstanceId);
+            
+            if (info.state == InstanceState::Running && info.adbConnected) {
+                qDebug() << "[ScreenMirror] Instance selected, starting mirror";
+                startScreenMirror();
+            } else if (info.state == InstanceState::Running) {
+                // Instance running but ADB not connected yet
+                if (m_screenLabel) {
+                    m_screenLabel->setText("\n\n📱\nADB connecting...\nPlease wait");
+                }
+            } else {
+                if (m_screenLabel) {
+                    m_screenLabel->setText("\n\n📱\nSelect a running instance\nto view screen");
+                }
+            }
+        }
+    } else {
+        // No selection
+        m_selectedInstanceId.clear();
+        stopScreenMirror();
+        if (m_screenLabel) {
+            m_screenLabel->setText("\n\n📱\nSelect a running instance\nto view screen");
         }
     }
 }
@@ -604,6 +845,27 @@ void MainWindow::handleInstanceStateChanged(const QString& instanceId, InstanceS
     updateInstanceTable();
     updateToolbarState();
     updateStatusBar();
+    
+    // Auto screen mirror: Start when instance is selected and running
+    if (instanceId == m_selectedInstanceId) {
+        if (state == InstanceState::Running) {
+            // Give ADB a moment to connect
+            QTimer::singleShot(1000, this, [this]() {
+                ReDroidController& controller = ReDroidController::instance();
+                InstanceInfo info = controller.getInstanceInfo(m_selectedInstanceId);
+                if (info.adbConnected) {
+                    qDebug() << "[ScreenMirror] Auto-starting for selected instance";
+                    startScreenMirror();
+                }
+            });
+        } else {
+            // Stop screen mirror when instance stops
+            stopScreenMirror();
+            if (m_screenLabel) {
+                m_screenLabel->setText("\n\n📱\nInstance stopped\nScreen unavailable");
+            }
+        }
+    }
 }
 
 void MainWindow::handleAdbConnectionChanged(const QString& instanceId, bool connected) {
@@ -617,6 +879,16 @@ void MainWindow::handleAdbConnectionChanged(const QString& instanceId, bool conn
     
     if (instanceId == m_selectedInstanceId) {
         m_adbStatusLabel->setText(connected ? "Connected" : "Disconnected");
+        
+        // Auto start screen mirror when ADB connects
+        if (connected && m_screenMirrorActive == false) {
+            ReDroidController& controller = ReDroidController::instance();
+            InstanceInfo info = controller.getInstanceInfo(instanceId);
+            if (info.state == InstanceState::Running) {
+                qDebug() << "[ScreenMirror] ADB connected, starting mirror";
+                startScreenMirror();
+            }
+        }
     }
 }
 
