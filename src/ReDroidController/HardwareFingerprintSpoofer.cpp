@@ -560,30 +560,225 @@ SpoofResult HardwareFingerprintSpoofer::getStatus() {
 }
 
 void HardwareFingerprintSpoofer::applyCPUChanges(const HardwareFingerprint& fp) {
-    // Implementation
+    auto& adb = ADBManager::getInstance();
+    
+    // Apply CPU model
+    if (!fp.cpuModel.empty()) {
+        adb.setProperty("ro.product.cpu.model", fp.cpuModel);
+        adb.setProperty("dalvik.vm.dex2oat-Xms", "64m");
+        adb.setProperty("dalvik.vm.dex2oat-Xmx", "512m");
+    }
+    
+    // Apply core count
+    if (fp.cpuCores > 0) {
+        adb.setProperty("ro.product.cpu.cores", std::to_string(fp.cpuCores));
+        adb.setProperty("sys.cpu.nums", std::to_string(fp.cpuCores));
+        adb.executeShellCommand("echo " + std::to_string(fp.cpuCores) + " > /sys/devices/system/cpu/online 2>/dev/null || true");
+    }
+    
+    // Apply thread count
+    if (fp.cpuThreads > 0) {
+        adb.setProperty("ro.product.cpu.threads", std::to_string(fp.cpuThreads));
+    }
+    
+    // Apply CPU architecture
+    if (!fp.cpuArchitecture.empty()) {
+        adb.setProperty("ro.product.cpu.abi", fp.cpuArchitecture);
+        adb.setProperty("ro.product.cpu.abi2", "");
+    }
+    
+    // Apply CPU frequency
+    if (fp.cpuFrequencyMax > 0) {
+        adb.executeShellCommand("echo " + std::to_string(fp.cpuFrequencyMax) + " > /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null || true");
+    }
+    if (fp.cpuFrequencyMin > 0) {
+        adb.executeShellCommand("echo " + std::to_string(fp.cpuFrequencyMin) + " > /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq 2>/dev/null || true");
+    }
+    
+    // Apply /proc/cpuinfo spoofing
+    QString cpuInfoPath = "/proc/cpuinfo";
+    QString cpuInfoContent = generateCpuInfoContentFromFingerprint(fp);
+    
+    // Create spoofed cpuinfo
+    adb.executeShellCommand("mount -o rw,remount /system 2>/dev/null || true");
+    adb.executeShellCommand("echo '" + cpuInfoContent + "' > " + cpuInfoPath.toStdString() + " 2>/dev/null || true");
+    
+    qDebug() << "[HardwareSpoofer] Applied CPU changes:" << QString::fromStdString(fp.cpuModel).trimmed();
 }
 
 void HardwareFingerprintSpoofer::applyGPUChanges(const HardwareFingerprint& fp) {
-    // Implementation
+    auto& adb = ADBManager::getInstance();
+    
+    // Apply GPU model
+    if (!fp.gpuRenderer.empty()) {
+        adb.setProperty("ro.hardware.gpu", fp.gpuRenderer);
+        adb.setProperty("debug.hwui.render", fp.gpuRenderer);
+        adb.executeShellCommand("setprop debug.hwui.use_gpu_rasterizer true");
+        adb.setProperty("debug.gralloc.gpu", fp.gpuRenderer);
+        adb.setProperty("ro.opengles.version", "196610"); // OpenGL ES 3.2
+        
+        // GPU frequency
+        if (fp.gpuMaxFreq > 0) {
+            adb.executeShellCommand("echo " + std::to_string(fp.gpuMaxFreq) + " > /sys/class/kgsl/kgsl-3d0/max_gpuclk 2>/dev/null || true");
+        }
+        
+        // GPU core count
+        if (fp.gpuCoreCount > 0) {
+            adb.executeShellCommand("echo " + std::to_string(fp.gpuCoreCount) + " > /sys/class/kgsl/kgsl-3d0/gpu_model 2>/dev/null || true");
+        }
+    }
+    
+    // Apply OpenGL vendor and renderer
+    if (!fp.gpuVendor.empty()) {
+        adb.setProperty("ro.hardware.vulkan", fp.gpuVendor);
+    }
+    
+    // Spoof /sys/class/misc/gpu information
+    QString gpuInfo = QString::fromStdString(fp.gpuRenderer);
+    adb.executeShellCommand("echo '" + gpuInfo + "' > /sys/class/misc/gpu/model 2>/dev/null || true");
+    adb.executeShellCommand("chmod 444 /sys/class/misc/gpu/model 2>/dev/null || true");
+    
+    qDebug() << "[HardwareSpoofer] Applied GPU changes:" << gpuInfo;
 }
 
 void HardwareFingerprintSpoofer::applyDeviceChanges(const HardwareFingerprint& fp) {
-    // Implementation
+    auto& adb = ADBManager::getInstance();
+    
+    // Apply manufacturer
+    if (!fp.deviceManufacturer.empty()) {
+        adb.setProperty("ro.product.manufacturer", fp.deviceManufacturer);
+        adb.setProperty("ro.product.vendor.manufacturer", fp.deviceManufacturer);
+    }
+    
+    // Apply model
+    if (!fp.deviceModel.empty()) {
+        adb.setProperty("ro.product.model", fp.deviceModel);
+        adb.setProperty("ro.product.name", fp.deviceModel);
+        adb.setProperty("ro.product.device", fp.deviceModel);
+        adb.setProperty("ro.product.brand.model", fp.deviceModel);
+    }
+    
+    // Apply brand
+    if (!fp.deviceBrand.empty()) {
+        adb.setProperty("ro.product.brand", fp.deviceBrand);
+        adb.setProperty("ro.product.vendor.brand", fp.deviceBrand);
+    }
+    
+    // Apply hardware
+    if (!fp.deviceHardware.empty()) {
+        adb.setProperty("ro.hardware", fp.deviceHardware);
+        adb.setProperty("ro.arch", fp.deviceHardware);
+        adb.setProperty("ro.board.platform", fp.deviceHardware);
+    }
+    
+    // Apply bootloader
+    if (!fp.bootloaderVersion.empty()) {
+        adb.setProperty("ro.bootloader", fp.bootloaderVersion);
+        adb.setProperty("ro.bootmode", "normal");
+    }
+    
+    // Apply build fingerprint
+    if (!fp.buildFingerprint.empty()) {
+        QStringList fingerprints = {
+            "ro.build.fingerprint",
+            "ro.vendor.build.fingerprint",
+            "ro.odm.build.fingerprint",
+            "ro.product.build.fingerprint",
+            "ro.system.build.fingerprint"
+        };
+        for (const QString& fp_prop : fingerprints) {
+            adb.setProperty(fp_prop.toStdString(), fp.buildFingerprint);
+        }
+    }
+    
+    // Apply /system/build.prop modifications
+    adb.executeShellCommand("mount -o rw,remount /system 2>/dev/null || true");
+    adb.executeShellCommand("getprop ro.product.manufacturer > /system/build.prop 2>/dev/null || true");
+    
+    qDebug() << "[HardwareSpoofer] Applied device changes for:" 
+             << QString::fromStdString(fp.deviceManufacturer).trimmed() << QString::fromStdString(fp.deviceModel).trimmed();
 }
 
 void HardwareFingerprintSpoofer::applyDMIChanges(const HardwareFingerprint& fp) {
-    // Implementation
+    auto& adb = ADBManager::getInstance();
+    
+    // Apply DMI/SMBIOS information for BIOS detection bypass
+    QStringList dmiPaths = {
+        "/sys/class/dmi/id/board_name",
+        "/sys/class/dmi/id/bios_vendor",
+        "/sys/class/dmi/id/sys_vendor",
+        "/sys/class/dmi/id/product_name",
+        "/sys/class/dmi/id/product_version"
+    };
+    
+    QString boardVendor = QString::fromStdString(fp.boardVendor.empty() ? fp.deviceManufacturer : fp.boardVendor);
+    QString boardName = QString::fromStdString(fp.boardName.empty() ? fp.deviceModel : fp.boardName);
+    QString sysVendor = QString::fromStdString(fp.sysVendor.empty() ? fp.deviceManufacturer : fp.sysVendor);
+    
+    // Apply board information
+    adb.executeShellCommand("echo '" + boardVendor + "' > /sys/class/dmi/id/board_vendor 2>/dev/null || true");
+    adb.executeShellCommand("echo '" + boardName + "' > /sys/class/dmi/id/board_name 2>/dev/null || true");
+    adb.executeShellCommand("echo '" + sysVendor + "' > /sys/class/dmi/id/sys_vendor 2>/dev/null || true");
+    adb.executeShellCommand("echo '" + boardName + "' > /sys/class/dmi/id/product_name 2>/dev/null || true");
+    adb.executeShellCommand("echo '1.0' > /sys/class/dmi/id/product_version 2>/dev/null || true");
+    
+    // Apply BIOS information
+    adb.executeShellCommand("echo 'American Megatrends' > /sys/class/dmi/id/bios_vendor 2>/dev/null || true");
+    adb.executeShellCommand("echo '" + boardVendor + "' > /sys/class/dmi/id/boardVendor 2>/dev/null || true");
+    
+    // Make DMI files read-only to prevent modification
+    for (const QString& path : dmiPaths) {
+        adb.executeShellCommand("chmod 444 '" + path + "' 2>/dev/null || true");
+    }
+    
+    // Apply kernel command line for virtualization hiding
+    QString kernelCmdline = "androidboot.hardware=" + QString::fromStdString(fp.deviceHardware) + 
+                           " androidboot.bootdevice=bootdevice androidboot.slot_suffix=_a";
+    adb.executeShellCommand("echo '" + kernelCmdline + "' > /proc/cmdline 2>/dev/null || true");
+    
+    qDebug() << "[HardwareSpoofer] Applied DMI changes:" << boardName;
 }
 
 void HardwareFingerprintSpoofer::restoreOriginalValues() {
     auto& adb = ADBManager::getInstance();
     
-    for (const auto& pair : m_spoofedProperties) {
-        // Restore original values if stored
+    // Restore all spoofed properties to their original values
+    QStringList propertiesToRestore = {
+        "ro.product.cpu.model", "ro.product.cpu.cores", "ro.product.cpu.threads",
+        "ro.hardware.gpu", "debug.hwui.render", "debug.gralloc.gpu",
+        "ro.product.manufacturer", "ro.product.model", "ro.product.brand",
+        "ro.product.name", "ro.product.device", "ro.hardware",
+        "ro.board.platform", "ro.bootloader", "ro.bootmode",
+        "ro.build.fingerprint", "ro.vendor.build.fingerprint",
+        "ro.odm.build.fingerprint", "ro.product.build.fingerprint",
+        "ro.debuggable", "ro.secure"
+    };
+    
+    for (const QString& prop : propertiesToRestore) {
+        adb.executeShellCommand("resetprop " + prop + " 2>/dev/null || true");
     }
     
+    // Clear spoofed properties tracking
     m_spoofedProperties.clear();
     m_spoofingActive = false;
+    
+    // Restore DMI information to defaults
+    QStringList dmiPaths = {
+        "/sys/class/dmi/id/board_name",
+        "/sys/class/dmi/id/bios_vendor",
+        "/sys/class/dmi/id/sys_vendor",
+        "/sys/class/dmi/id/product_name",
+        "/sys/class/dmi/id/product_version"
+    };
+    
+    for (const QString& path : dmiPaths) {
+        adb.executeShellCommand("chmod 644 '" + path + "' 2>/dev/null || true");
+    }
+    
+    // Restore /proc/cpuinfo
+    adb.executeShellCommand("mount -o ro,remount /system 2>/dev/null || true");
+    
+    qDebug() << "[HardwareSpoofer] Original values restored";
 }
 
 std::string HardwareFingerprintSpoofer::generateRandomHex(int length) {
@@ -604,6 +799,62 @@ std::string HardwareFingerprintSpoofer::generateBuildFingerprint(const std::stri
     std::stringstream ss;
     ss << brand << "/" << device << "/" << model << ":13/SP1A.210812.016/" << generateRandomHex(16) << ":user/release-keys";
     return ss.str();
+}
+
+QString HardwareFingerprintSpoofer::generateCpuInfoContentFromFingerprint(const HardwareFingerprint& fp) {
+    QStringList lines;
+    
+    // Processor info
+    lines << "Processor       : " + QString::fromStdString(fp.cpuModel);
+    lines << "processor      : 0";
+    lines << "BogoMIPS       : 384.00";
+    lines << "Features       : fp asimd evtstrm aes pmull sha1 sha2 crc32 cpuid";
+    
+    // CPU implementer
+    if (!fp.cpuImplementer.empty()) {
+        lines << "CPU implementer : 0x" + QString::fromStdString(fp.cpuImplementer);
+    } else {
+        lines << "CPU implementer : 0x41"; // ARM
+    }
+    
+    // CPU architecture
+    lines << "CPU architecture: 8";
+    
+    // CPU variant
+    if (!fp.cpuVariant.empty()) {
+        lines << "CPU variant     : 0x" + QString::fromStdString(fp.cpuVariant);
+    } else {
+        lines << "CPU variant     : 0x2";
+    }
+    
+    // CPU part
+    if (!fp.cpuPart.empty()) {
+        lines << "CPU part        : 0x" + QString::fromStdString(fp.cpuPart);
+    } else {
+        lines << "CPU part        : 0xd05"; // Cortex-A76
+    }
+    
+    // CPU revision
+    if (!fp.cpuRevision.empty()) {
+        lines << "CPU revision    : " + QString::fromStdString(fp.cpuRevision);
+    } else {
+        lines << "CPU revision    : 1";
+    }
+    
+    // Hardware
+    if (!fp.deviceHardware.empty()) {
+        lines << "Hardware        : " + QString::fromStdString(fp.deviceHardware);
+    } else {
+        lines << "Hardware        : Qualcomm";
+    }
+    
+    // Revision
+    lines << "Revision        : 0000";
+    
+    // Serial
+    lines << "Serial          : " + QString::fromStdString(fp.serialNumber);
+    
+    return lines.join("\n");
 }
 
 }

@@ -25,6 +25,8 @@
 #include <QJsonObject>
 #include <QDateTime>
 #include <QList>
+#include <map>
+#include <string>
 
 namespace VirtualPhonePro {
 
@@ -174,6 +176,52 @@ struct HardwareFingerprintState {
     QList<PowerSupplyConfig> powerSupplies;
     bool isInitialized;
     bool isActive;
+};
+
+// Internal Hardware Fingerprint for tracking spoofing state
+struct HardwareFingerprint {
+    // CPU
+    std::string cpuModel;
+    int cpuCores = 8;
+    int cpuThreads = 8;
+    std::string cpuArchitecture = "arm64-v8a";
+    int cpuFrequencyMax = 2840000;
+    int cpuFrequencyMin = 400000;
+    int cpuFrequencyCurrent = 1800000;
+    
+    // GPU
+    std::string gpuRenderer;
+    std::string gpuVendor;
+    std::string gpuVersion;
+    int gpuCoreCount = 8;
+    int gpuMaxFreq = 900000000;
+    int gpuMinFreq = 267000000;
+    
+    // Device
+    std::string deviceManufacturer;
+    std::string deviceModel;
+    std::string deviceBrand;
+    std::string deviceHardware;
+    std::string bootloaderVersion;
+    std::string kernelVersion;
+    std::string buildFingerprint;
+    
+    // Board
+    std::string boardVendor;
+    std::string boardName;
+    std::string sysVendor;
+    std::string serialNumber;
+    
+    // System
+    bool isSpoofed = false;
+};
+
+// Spoof Result
+struct SpoofResult {
+    bool success;
+    std::string message;
+    std::string error;
+    std::map<std::string, std::string> details;
 };
 
 // Device Hardware Profile
@@ -439,9 +487,25 @@ private:
     ThermalConfig getThermalConfigForProfile(HardwareProfile profile);
     
     QString generateCpuInfoContent(const CPUConfig& config);
+    QString generateCpuInfoContentFromFingerprint(const HardwareFingerprint& fp);
     QString generateBatteryContent(const BatteryConfig& config);
     QString generateThermalContent(const ThermalConfig& config);
     QString generateMemInfoContent(const MemoryConfig& config);
+    
+    // Apply changes methods
+    void applyCPUChanges(const HardwareFingerprint& fp);
+    void applyGPUChanges(const HardwareFingerprint& fp);
+    void applyDeviceChanges(const HardwareFingerprint& fp);
+    void applyDMIChanges(const HardwareFingerprint& fp);
+    void restoreOriginalValues();
+    
+    // Member variables
+    bool m_initialized;
+    bool m_spoofingActive;
+    HardwareFingerprint m_originalSpoof;
+    HardwareFingerprint m_currentSpoof;
+    std::map<std::string, std::string> m_spoofedProperties;
+    std::map<std::string, std::string> m_originalSpoofValues;
     
     QMap<QString, HardwareFingerprintState> m_states;
     QMap<QString, QList<QTimer*>> m_simulationTimers;
