@@ -27,6 +27,9 @@
 #include <QPixmap>
 #include <QByteArray>
 #include <QBuffer>
+#include <QMouseEvent>
+#include <QKeyEvent>
+#include <QPoint>
 
 #include "VirtualPhonePro/DeviceProfile.h"
 #include "VirtualPhonePro/ReDroidController.h"
@@ -50,6 +53,13 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
+    
+protected:
+    // Touch Input Events
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 
 public slots:
     // Instance Management
@@ -126,6 +136,12 @@ private:
     void stopScreenMirror();
     void onScreenProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
     
+    // ADB Helper Functions
+    void sendAdbTap(int x, int y);
+    void sendAdbSwipe(int x1, int y1, int x2, int y2, int duration);
+    void sendAdbKeyEvent(int keyCode);
+    void sendAdbText(const QString& text);
+    
     // Profile management
     void loadProfiles();
     void saveProfile(const DeviceProfile& profile);
@@ -187,6 +203,13 @@ private:
     QProcess* m_adbScreenProcess;
     QByteArray m_screenBuffer;
     bool m_screenMirrorActive;
+    
+    // Touch Input Members
+    QPoint m_touchStartPos;
+    bool m_isDragging;
+    QPushButton* m_backButton;
+    QPushButton* m_homeButton;
+    QPushButton* m_appsButton;
 };
 
 /**

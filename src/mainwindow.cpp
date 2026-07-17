@@ -42,6 +42,10 @@ MainWindow::MainWindow(QWidget* parent)
     , m_screenLabel(nullptr)
     , m_adbScreenProcess(nullptr)
     , m_screenMirrorActive(false)
+    , m_isDragging(false)
+    , m_backButton(nullptr)
+    , m_homeButton(nullptr)
+    , m_appsButton(nullptr)
 {
     setupUI();
     setupMenuBar();
@@ -267,8 +271,37 @@ void MainWindow::setupDetailsPanel() {
     screenControls->addWidget(startMirrorBtn);
     screenControls->addWidget(stopMirrorBtn);
     
+    // Hardware buttons below screen
+    QHBoxLayout* hardwareButtons = new QHBoxLayout();
+    
+    m_backButton = new QPushButton("◀ Back", m_detailsWidget);
+    m_homeButton = new QPushButton("⬤ Home", m_detailsWidget);
+    m_appsButton = new QPushButton("▣ Apps", m_detailsWidget);
+    
+    // Style hardware buttons
+    QString buttonStyle = "QPushButton { padding: 8px 16px; font-weight: bold; }";
+    m_backButton->setStyleSheet(buttonStyle);
+    m_homeButton->setStyleSheet(buttonStyle);
+    m_appsButton->setStyleSheet(buttonStyle);
+    
+    // Connect hardware buttons
+    connect(m_backButton, &QPushButton::clicked, [this]() {
+        sendAdbKeyEvent(4); // KEYCODE_BACK
+    });
+    connect(m_homeButton, &QPushButton::clicked, [this]() {
+        sendAdbKeyEvent(3); // KEYCODE_HOME
+    });
+    connect(m_appsButton, &QPushButton::clicked, [this]() {
+        sendAdbKeyEvent(187); // KEYCODE_APP_SWITCH (recent apps)
+    });
+    
+    hardwareButtons->addWidget(m_backButton);
+    hardwareButtons->addWidget(m_homeButton);
+    hardwareButtons->addWidget(m_appsButton);
+    
     screenLayout->addWidget(m_screenLabel, 0, Qt::AlignCenter);
     screenLayout->addLayout(screenControls);
+    screenLayout->addLayout(hardwareButtons);
     
     // Instance info group
     QGroupBox* infoGroup = new QGroupBox("Instance Information", m_detailsWidget);
@@ -534,6 +567,258 @@ void MainWindow::onScreenProcessFinished(int exitCode, QProcess::ExitStatus exit
             QTimer::singleShot(100, this, &MainWindow::startScreenMirror);
         }
     }
+}
+
+// ==============================================================================
+// Touch Input Event Handlers
+// ==============================================================================
+
+void MainWindow::mousePressEvent(QMouseEvent* event) {
+    // Check if click is on the screen label
+    if (m_screenLabel && m_screenMirrorActive) {
+        QPoint pos = m_screenLabel->mapFrom(this, event->pos());
+        
+        if (m_screenLabel->rect().contains(pos)) {
+            m_touchStartPos = pos;
+            m_isDragging = false;
+            event->accept();
+            return;
+        }
+    }
+    
+    QMainWindow::mousePressEvent(event);
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent* event) {
+    if (m_screenLabel && m_screenMirrorActive && m_touchStartPos != QPoint(0, 0)) {
+        QPoint pos = m_screenLabel->mapFrom(this, event->pos());
+        
+        if (m_screenLabel->rect().contains(pos)) {
+            // Detect if it's a drag (moved more than 10 pixels)
+            if ((pos - m_touchStartPos).manhattanLength() > 10) {
+                m_isDragging = true;
+            }
+            event->accept();
+            return;
+        }
+    }
+    
+    QMainWindow::mouseMoveEvent(event);
+}
+
+void MainWindow::mouseReleaseEvent(QMouseEvent* event) {
+    if (m_screenLabel && m_screenMirrorActive) {
+        QPoint pos = m_screenLabel->mapFrom(this, event->pos());
+        
+        if (m_screenLabel->rect().contains(pos)) {
+            if (m_isDragging) {
+                // Perform swipe
+                int startX = m_touchStartPos.x() * 1080 / m_screenLabel->width();
+                int startY = m_touchStartPos.y() * 1920 / m_screenLabel->height();
+                int endX = pos.x() * 1080 / m_screenLabel->width();
+                int endY = pos.y() * 1920 / m_screenLabel->height();
+                
+                sendAdbSwipe(startX, startY, endX, endY, 300);
+                qDebug() << "[TouchInput] Swipe:" << startX << "," << startY << "->" << endX << "," << endY;
+            } else {
+                // Perform tap
+                int androidX = pos.x() * 1080 / m_screenLabel->width();
+                int androidY = pos.y() * 1920 / m_screenLabel->height();
+                
+                sendAdbTap(androidX, androidY);
+                qDebug() << "[TouchInput] Tap:" << androidX << "," << androidY;
+            }
+            
+            m_touchStartPos = QPoint(0, 0);
+            m_isDragging = false;
+            event->accept();
+            return;
+        }
+    }
+    
+    QMainWindow::mouseReleaseEvent(event);
+}
+
+void MainWindow::keyPressEvent(QKeyEvent* event) {
+    if (!m_selectedInstanceId.isEmpty()) {
+        int key = event->key();
+        
+        // Special keys mapping
+        switch (key) {
+            case Qt::Key_Back:
+                sendAdbKeyEvent(4); // KEYCODE_BACK
+                event->accept();
+                return;
+            case Qt::Key_Home:
+                sendAdbKeyEvent(3); // KEYCODE_HOME
+                event->accept();
+                return;
+            case Qt::Key_Menu:
+                sendAdbKeyEvent(82); // KEYCODE_MENU
+                event->accept();
+                return;
+            case Qt::Key_Enter:
+            case Qt::Key_Return:
+                sendAdbKeyEvent(66); // KEYCODE_ENTER
+                event->accept();
+                return;
+            case Qt::Key_Backspace:
+                sendAdbKeyEvent(67); // KEYCODE_DEL
+                event->accept();
+                return;
+            case Qt::Key_Delete:
+                sendAdbKeyEvent(67); // KEYCODE_DEL
+                event->accept();
+                return;
+            case Qt::Key_Escape:
+                sendAdbKeyEvent(4); // KEYCODE_BACK
+                event->accept();
+                return;
+            default:
+                break;
+        }
+        
+        // Regular text input
+        QString text = event->text();
+        if (!text.isEmpty() && text.at(0).isPrint()) {
+            sendAdbText(text);
+            qDebug() << "[KeyInput] Text:" << text;
+            event->accept();
+            return;
+        }
+    }
+    
+    QMainWindow::keyPressEvent(event);
+}
+
+// ==============================================================================
+// ADB Helper Functions
+// ==============================================================================
+
+void MainWindow::sendAdbTap(int x, int y) {
+    if (m_selectedInstanceId.isEmpty()) return;
+    
+    ReDroidController& controller = ReDroidController::instance();
+    InstanceInfo info = controller.getInstanceInfo(m_selectedInstanceId);
+    
+    if (info.state != InstanceState::Running || !info.adbConnected) {
+        return;
+    }
+    
+    QString adbSerial = QString("127.0.0.1:%1").arg(info.adbPort - 1);
+    QString adbPath = "adb";
+    
+    DockerConfig config = controller.config();
+    if (!config.adbPath.isEmpty() && QFile::exists(config.adbPath)) {
+        adbPath = config.adbPath;
+    }
+    
+    QProcess* process = new QProcess(this);
+    QStringList args = {
+        "-s", adbSerial,
+        "shell", "input", "tap",
+        QString::number(x), QString::number(y)
+    };
+    
+    process->start(adbPath, args);
+    process->waitForFinished(1000);
+    process->deleteLater();
+}
+
+void MainWindow::sendAdbSwipe(int x1, int y1, int x2, int y2, int duration) {
+    if (m_selectedInstanceId.isEmpty()) return;
+    
+    ReDroidController& controller = ReDroidController::instance();
+    InstanceInfo info = controller.getInstanceInfo(m_selectedInstanceId);
+    
+    if (info.state != InstanceState::Running || !info.adbConnected) {
+        return;
+    }
+    
+    QString adbSerial = QString("127.0.0.1:%1").arg(info.adbPort - 1);
+    QString adbPath = "adb";
+    
+    DockerConfig config = controller.config();
+    if (!config.adbPath.isEmpty() && QFile::exists(config.adbPath)) {
+        adbPath = config.adbPath;
+    }
+    
+    QProcess* process = new QProcess(this);
+    QStringList args = {
+        "-s", adbSerial,
+        "shell", "input", "swipe",
+        QString::number(x1), QString::number(y1),
+        QString::number(x2), QString::number(y2),
+        QString::number(duration)
+    };
+    
+    process->start(adbPath, args);
+    process->waitForFinished(1000);
+    process->deleteLater();
+}
+
+void MainWindow::sendAdbKeyEvent(int keyCode) {
+    if (m_selectedInstanceId.isEmpty()) return;
+    
+    ReDroidController& controller = ReDroidController::instance();
+    InstanceInfo info = controller.getInstanceInfo(m_selectedInstanceId);
+    
+    if (info.state != InstanceState::Running || !info.adbConnected) {
+        return;
+    }
+    
+    QString adbSerial = QString("127.0.0.1:%1").arg(info.adbPort - 1);
+    QString adbPath = "adb";
+    
+    DockerConfig config = controller.config();
+    if (!config.adbPath.isEmpty() && QFile::exists(config.adbPath)) {
+        adbPath = config.adbPath;
+    }
+    
+    QProcess* process = new QProcess(this);
+    QStringList args = {
+        "-s", adbSerial,
+        "shell", "input", "keyevent",
+        QString::number(keyCode)
+    };
+    
+    process->start(adbPath, args);
+    process->waitForFinished(1000);
+    process->deleteLater();
+}
+
+void MainWindow::sendAdbText(const QString& text) {
+    if (m_selectedInstanceId.isEmpty() || text.isEmpty()) return;
+    
+    ReDroidController& controller = ReDroidController::instance();
+    InstanceInfo info = controller.getInstanceInfo(m_selectedInstanceId);
+    
+    if (info.state != InstanceState::Running || !info.adbConnected) {
+        return;
+    }
+    
+    QString adbSerial = QString("127.0.0.1:%1").arg(info.adbPort - 1);
+    QString adbPath = "adb";
+    
+    DockerConfig config = controller.config();
+    if (!config.adbPath.isEmpty() && QFile::exists(config.adbPath)) {
+        adbPath = config.adbPath;
+    }
+    
+    // Escape special characters for shell
+    QString escapedText = text;
+    escapedText.replace(" ", "%s");
+    escapedText.replace("'", "'\\''");
+    
+    QProcess* process = new QProcess(this);
+    QStringList args = {
+        "-s", adbSerial,
+        "shell", "input", "text", escapedText
+    };
+    
+    process->start(adbPath, args);
+    process->waitForFinished(1000);
+    process->deleteLater();
 }
 
 void MainWindow::refreshInstances() {
