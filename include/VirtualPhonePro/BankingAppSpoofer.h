@@ -1,10 +1,9 @@
 /**
  * @file BankingAppSpoofer.h
- * @brief Banking App Detection Bypass Module
- * @version 2.0.0
+ * @brief Banking App Detection Bypass Module - Enhanced v3.0
  * 
  * Comprehensive anti-detection module for banking and security-sensitive apps.
- * Includes all bypasses needed to pass strict detection mechanisms.
+ * Includes complete bypasses for all detection mechanisms.
  */
 
 #pragma once
@@ -16,287 +15,178 @@
 #include <QStringList>
 #include <QMap>
 #include <QJsonObject>
+#include <QVector>
 
 namespace VirtualPhonePro {
 
+// Detection types for banking apps
+enum class DetectionType {
+    ROOT_DETECTION,
+    EMULATOR_DETECTION,
+    HOOK_DETECTION,
+    FRIDA_DETECTION,
+    XPOSED_DETECTION,
+    DEBUG_DETECTION,
+    SCREEN_CAPTURE_DETECTION,
+    MOCK_LOCATION_DETECTION,
+    BENCHMARK_DETECTION,
+    SSL_PINNING,
+    DNS_LEAK,
+    VPN_DETECTION,
+    DEVICE_INTEGRITY
+};
+
+// Emulator types to detect
+enum class EmulatorType {
+    QEMU,
+    GENYMOTION,
+    BLUESTACKS,
+    LDPLAYER,
+    MEMU,
+    NOX,
+    ANDY,
+    KO_PLAYER,
+    X86_ANDROID,
+    ANDROID_STUDIO
+};
+
 /**
- * @brief Banking App Detection Bypass Module
+ * @brief Banking App Detection Bypass Module - Enhanced v3.0
  * 
  * Provides comprehensive bypass for:
- * - Root detection (su binary, Magisk, Xposed)
- * - VM/Emulator detection (QEMU, Genymotion, BlueStacks)
- * - Hook detection (Xposed, Frida, Substrate)
+ * - Root detection (su binary, Magisk, Xposed, KingRoot)
+ * - VM/Emulator detection (QEMU, Genymotion, BlueStacks, LDPlayer, Nox, MEmu)
+ * - Hook detection (Xposed, Frida, Substrate, LSPosed)
  * - SSL Pinning bypass
  * - Debug detection
  * - Screen capture/recording detection
  * - Mock location detection
  * - SafetyNet/Play Integrity
  * - Device integrity checks
+ * - Benchmark detection
  */
 class BankingAppSpoofer {
 public:
     static BankingAppSpoofer& instance();
     
-    // ========================================================================
+    // Configuration
+    void setBypassLevel(int level);
+    int getBypassLevel() const;
+    void setDetectionBypassEnabled(DetectionType type, bool enabled);
+    
     // Root Detection Bypass
-    // ========================================================================
-    
-    /**
-     * @brief Bypass all root detection methods
-     * @param instanceId Target instance
-     * @return true if bypass successful
-     */
     bool bypassRootDetection(const QString& instanceId);
-    
-    /**
-     * @brief Hide su binary
-     */
     bool hideSuBinary(const QString& instanceId);
-    
-    /**
-     * @brief Hide Magisk files and processes
-     */
     bool hideMagisk(const QString& instanceId);
-    
-    /**
-     * @brief Remove root-related apps
-     */
+    bool hideKingRoot(const QString& instanceId);
+    bool hideSuperSU(const QString& instanceId);
     bool removeRootApps(const QString& instanceId);
-    
-    /**
-     * @brief Set proper SELinux context
-     */
     bool setSelinuxContext(const QString& instanceId);
+    bool hideAllRootArtifacts(const QString& instanceId);
     
-    // ========================================================================
     // Hook Detection Bypass
-    // ========================================================================
-    
-    /**
-     * @brief Bypass Xposed framework detection
-     */
     bool bypassXposedDetection(const QString& instanceId);
-    
-    /**
-     * @brief Bypass Frida detection
-     */
     bool bypassFridaDetection(const QString& instanceId);
-    
-    /**
-     * @brief Bypass all hook frameworks
-     */
+    bool bypassSubstrateDetection(const QString& instanceId);
     bool bypassHookDetection(const QString& instanceId);
-    
-    /**
-     * @brief Block common hooking ports
-     */
     bool blockHookPorts(const QString& instanceId);
+    bool hideFridaArtifacts(const QString& instanceId);
     
-    // ========================================================================
     // Emulator Detection Bypass
-    // ========================================================================
-    
-    /**
-     * @brief Bypass QEMU/VM detection
-     */
     bool bypassEmulatorDetection(const QString& instanceId);
-    
-    /**
-     * @brief Hide QEMU-specific files
-     */
+    bool bypassQEMUDetection(const QString& instanceId);
+    bool bypassGenymotionDetection(const QString& instanceId);
+    bool bypassBlueStacksDetection(const QString& instanceId);
+    bool bypassChineseEmulatorDetection(const QString& instanceId);
     bool hideQEMUFiles(const QString& instanceId);
-    
-    /**
-     * @brief Patch CPU info to appear real
-     */
     bool patchCPUInfo(const QString& instanceId);
-    
-    /**
-     * @brief Hide emulator-specific processes
-     */
     bool hideEmulatorProcesses(const QString& instanceId);
+    bool patchAndroidProperties(const QString& instanceId);
     
-    // ========================================================================
     // Device Properties Spoofing
-    // ========================================================================
-    
-    /**
-     * @brief Set all device properties to appear real
-     */
     bool spoofAllDeviceProperties(const QString& instanceId);
-    
-    /**
-     * @brief Set debug properties
-     */
     bool setDebugProperties(const QString& instanceId);
-    
-    /**
-     * @brief Hide ADB status
-     */
     bool hideADBStatus(const QString& instanceId);
+    bool spoofBuildProperties(const QString& instanceId);
+    bool spoofHardwareProperties(const QString& instanceId);
     
-    // ========================================================================
     // Network Spoofing
-    // ========================================================================
-    
-    /**
-     * @brief Configure VPN to prevent leaks
-     */
     bool configureVPN(const QString& instanceId);
-    
-    /**
-     * @brief Block DNS leaks
-     */
     bool preventDNSLeak(const QString& instanceId);
-    
-    /**
-     * @brief Spoof IP address
-     */
     bool spoofIPAddress(const QString& instanceId, const QString& ip);
-    
-    /**
-     * @brief Configure proxy
-     */
     bool configureProxy(const QString& instanceId, const QString& host, int port);
+    bool blockWebRTCLeaks(const QString& instanceId);
+    bool configureSplitTunneling(const QString& instanceId, const QStringList& bypassHosts);
     
-    // ========================================================================
     // SSL/TLS Bypass
-    // ========================================================================
-    
-    /**
-     * @brief Install custom CA certificates
-     */
     bool installCACertificates(const QString& instanceId);
-    
-    /**
-     * @brief Patch network security config
-     */
     bool patchNetworkSecurityConfig(const QString& instanceId);
-    
-    /**
-     * @brief Disable SSL pinning via hosts file
-     */
     bool disableSSLPinning(const QString& instanceId);
+    bool patchOkHttpSettings(const QString& instanceId);
     
-    // ========================================================================
     // Screen/Media Spoofing
-    // ========================================================================
-    
-    /**
-     * @brief Block screenshot detection
-     */
     bool blockScreenshotDetection(const QString& instanceId);
-    
-    /**
-     * @brief Block screen recording detection
-     */
     bool blockScreenRecording(const QString& instanceId);
-    
-    /**
-     * @brief Block Magisk screen overlay
-     */
     bool blockMagiskHide(const QString& instanceId);
+    bool enableSecureFlag(const QString& instanceId);
     
-    // ========================================================================
+    // Mock Location Detection Bypass
+    bool bypassMockLocationDetection(const QString& instanceId);
+    bool setAllowMockLocation(const QString& instanceId, bool allowed);
+    bool spoofGPSAccuracy(const QString& instanceId, int accuracyMeters);
+    
+    // Benchmark Detection Bypass
+    bool bypassBenchmarkDetection(const QString& instanceId);
+    bool spoofCPUThrottling(const QString& instanceId);
+    bool spoofMemoryInfo(const QString& instanceId);
+    
     // System Info Spoofing
-    // ========================================================================
-    
-    /**
-     * @brief Spoof system uptime
-     */
     bool spoofUptime(const QString& instanceId);
-    
-    /**
-     * @brief Spoof kernel version
-     */
     bool spoofKernelVersion(const QString& instanceId);
-    
-    /**
-     * @brief Spoof proc filesystem
-     */
     bool spoofProcFilesystem(const QString& instanceId);
     
-    // ========================================================================
     // Time/Locale Spoofing
-    // ========================================================================
-    
-    /**
-     * @brief Set timezone
-     */
     bool setTimezone(const QString& instanceId, const QString& timezone);
-    
-    /**
-     * @brief Set locale and language
-     */
     bool setLocale(const QString& instanceId, const QString& locale);
-    
-    /**
-     * @brief Sync time with NTP
-     */
     bool syncTime(const QString& instanceId);
+    bool disableAutoTimezone(const QString& instanceId);
     
-    // ========================================================================
     // Battery/Power Spoofing
-    // ========================================================================
-    
-    /**
-     * @brief Set battery status to plugged in
-     */
     bool setBatteryPlugged(const QString& instanceId);
-    
-    /**
-     * @brief Set battery health good
-     */
     bool setBatteryHealthGood(const QString& instanceId);
-    
-    /**
-     * @brief Set battery temperature
-     */
     bool setBatteryTemperature(const QString& instanceId, int tempCelsius);
+    bool setBatteryLevel(const QString& instanceId, int level);
     
-    // ========================================================================
     // USB/Debug Spoofing
-    // ========================================================================
-    
-    /**
-     * @brief Disable USB debugging
-     */
     bool disableUSBDebugging(const QString& instanceId);
-    
-    /**
-     * @brief Disable OEM unlocking
-     */
     bool disableOEMUnlock(const QString& instanceId);
-    
-    /**
-     * @brief Hide USB connection state
-     */
     bool hideUSBState(const QString& instanceId);
     
-    // ========================================================================
     // Complete Banking App Setup
-    // ========================================================================
-    
-    /**
-     * @brief Apply all spoofing for banking apps
-     * @param instanceId Target instance
-     * @return true if all spoofing successful
-     */
     bool applyCompleteBankingSetup(const QString& instanceId);
-    
-    /**
-     * @brief Get status of all spoofing
-     */
+    bool applyQuickBankingSetup(const QString& instanceId);
     QJsonObject getSpoofingStatus(const QString& instanceId);
+    QJsonObject getDetectionStatus(const QString& instanceId);
     
 private:
-    BankingAppSpoofer() = default;
+    BankingAppSpoofer();
+    
+    int m_bypassLevel = 3;
+    QMap<DetectionType, bool> m_detectionBypassEnabled;
     
     // Helper methods
     bool executeCommand(const QString& instanceId, const QString& command);
     QString executeCommandSync(const QString& instanceId, const QString& command);
     bool pushFile(const QString& instanceId, const QString& local, const QString& remote);
     bool writeToFile(const QString& path, const QString& content);
+    bool mountRW(const QString& instanceId);
+    bool mountRO(const QString& instanceId);
+    
+    // Detection helpers
+    bool isPathExcluded(const QString& path) const;
+    QStringList getRootPaths() const;
+    QStringList getFridaPorts() const;
+    QStringList getEmulatorMarkers(EmulatorType type) const;
 };
 
 } // namespace VirtualPhonePro

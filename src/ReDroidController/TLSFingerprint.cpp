@@ -1,7 +1,12 @@
 /**
  * @file TLSFingerprint.cpp
- * @brief Advanced TLS/SSL Fingerprinting Implementation
- * @version 2.0.0
+ * @brief Advanced TLS/SSL Fingerprinting Implementation - Enhanced v3.0
+ * 
+ * Complete TLS fingerprinting with:
+ * - JA3/JA4/JA3H hash generation
+ * - Multiple device profiles (Samsung, Pixel, Xiaomi, OnePlus, etc.)
+ * - TLS 1.3 cipher suites and extensions
+ * - HTTP/2 settings for JA3H
  */
 
 #include "VirtualPhonePro/TLSFingerprint.hpp"
@@ -10,8 +15,26 @@
 #include <QDebug>
 #include <QCryptographicHash>
 #include <QRandomGenerator>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
+
+// ========================================================================
+// STATIC HELPER FUNCTIONS
+// ========================================================================
+
+static QString joinInts(const QVector<quint16>& values, const QString& delimiter) {
+    QStringList strList;
+    for (quint16 v : values) {
+        strList << QString::number(v);
+    }
+    return strList.join(delimiter);
+}
+
+// ========================================================================
+// SINGLETON INITIALIZATION
+// ========================================================================
 
 TLSFingerprint* TLSFingerprint::s_instance = nullptr;
 
@@ -24,34 +47,110 @@ TLSFingerprint& TLSFingerprint::instance() {
 
 TLSFingerprint::TLSFingerprint() {
     m_config = getAndroidTLSConfig();
-    m_currentJA3 = generateJA3Hash(m_config.cipherSuites,
-                                   QVector<quint8>::fromVector(QVector<quint8>() << 23 << 10 << 13 << 11),
-                                   m_config.ellipticCurves,
-                                   m_config.maxVersion);
-    m_currentJA4 = generateJA4Fingerprint(m_config.maxVersion,
-                                         m_config.cipherSuites,
-                                         QVector<quint8>::fromVector(QVector<quint8>() << 16 << 23));
+    initializeAllProfiles();
+    
+    // Generate fingerprints
+    m_currentJA3 = generateJA3Hash();
+    m_currentJA4 = generateJA4Fingerprint();
+    m_currentJA3H = generateJA3HHash(m_config.cipherSuites, 
+                                       m_config.extensions, 
+                                       m_config.http2Settings);
+    
+    qDebug() << "[TLSFingerprint] Initialized with Android TLS config";
 }
 
 bool TLSFingerprint::initialize(const QString& deviceModel) {
-    if (deviceModel.contains("samsung", Qt::CaseInsensitive)) {
-        m_config = getSamsungTLSConfig();
-    } else if (deviceModel.contains("chrome", Qt::CaseInsensitive)) {
-        m_config = getChromeTLSConfig();
-    } else {
-        m_config = getAndroidTLSConfig();
+    DeviceProfile profile = DeviceProfile::ANDROID_DEFAULT;
+    QString model = deviceModel.toLower();
+    
+    if (model.contains("samsung") || model.contains("galaxy")) {
+        profile = DeviceProfile::SAMSUNG_GALAXY;
+    } else if (model.contains("pixel")) {
+        profile = DeviceProfile::GOOGLE_PIXEL;
+    } else if (model.contains("xiaomi") || model.contains("redmi") || model.contains("poco")) {
+        profile = DeviceProfile::XIAOMI;
+    } else if (model.contains("oneplus")) {
+        profile = DeviceProfile::ONEPLUS;
+    } else if (model.contains("huawei") || model.contains("honor")) {
+        profile = DeviceProfile::HUAWEI;
+    } else if (model.contains("oppo") || model.contains("realme")) {
+        profile = DeviceProfile::OPPO;
+    } else if (model.contains("vivo")) {
+        profile = DeviceProfile::VIVO;
+    } else if (model.contains("moto") || model.contains("motorola")) {
+        profile = DeviceProfile::MOTOROLA;
+    } else if (model.contains("chrome")) {
+        profile = DeviceProfile::CHROME_DESKTOP;
     }
     
-    m_currentJA3 = generateJA3Hash(m_config.cipherSuites,
-                                   QVector<quint8>::fromVector(QVector<quint8>() << 23 << 10 << 13 << 11),
-                                   m_config.ellipticCurves,
-                                   m_config.maxVersion);
-    m_currentJA4 = generateJA4Fingerprint(m_config.maxVersion,
-                                         m_config.cipherSuites,
-                                         QVector<quint8>::fromVector(QVector<quint8>() << 16 << 23));
+    return initializeWithProfile(profile);
+}
+
+bool TLSFingerprint::initializeWithProfile(DeviceProfile profile) {
+    // Check cache first
+    if (m_profileCache.contains(profile)) {
+        m_config = m_profileCache[profile];
+    } else {
+        m_config = getConfigForProfile(profile);
+        cacheProfile(profile);
+    }
+    
+    // Generate fingerprints
+    m_currentJA3 = generateJA3Hash();
+    m_currentJA4 = generateJA4Fingerprint();
+    m_currentJA3H = generateJA3HHash(m_config.cipherSuites,
+                                      m_config.extensions,
+                                      m_config.http2Settings);
+    
+    qDebug() << "[TLSFingerprint] Initialized with profile:" << static_cast<int>(profile)
+             << "JA3:" << m_currentJA3.left(16) << "..."
+             << "JA4:" << m_currentJA4;
     
     return true;
 }
+
+void TLSFingerprint::resetToDefault() {
+    initializeWithProfile(DeviceProfile::ANDROID_DEFAULT);
+}
+
+void TLSFingerprint::setTLSConfig(const OSTLSConfig& config) {
+    m_config = config;
+    m_currentJA3 = generateJA3Hash();
+    m_currentJA4 = generateJA4Fingerprint();
+    m_currentJA3H = generateJA3HHash(m_config.cipherSuites,
+                                      m_config.extensions,
+                                      m_config.http2Settings);
+}
+
+OSTLSConfig TLSFingerprint::getTLSConfig() const {
+    return m_config;
+}
+
+QString TLSFingerprint::getCurrentJA3() const {
+    return m_currentJA3;
+}
+
+QString TLSFingerprint::getCurrentJA4() const {
+    return m_currentJA4;
+}
+
+QString TLSFingerprint::getCurrentJA3H() const {
+    return m_currentJA3H;
+}
+
+void TLSFingerprint::setJA3Hash(const QString& hash) {
+    m_currentJA3 = hash;
+    qDebug() << "[TLSFingerprint] JA3 hash spoofed to:" << hash;
+}
+
+void TLSFingerprint::setJA4Fingerprint(const QString& fingerprint) {
+    m_currentJA4 = fingerprint;
+    qDebug() << "[TLSFingerprint] JA4 fingerprint spoofed to:" << fingerprint;
+}
+
+// ========================================================================
+// JA3/JA4/JA3H GENERATION
+// ========================================================================
 
 QString TLSFingerprint::cipherSuitesToString(const QVector<quint16>& suites) {
     QStringList list;
@@ -61,9 +160,17 @@ QString TLSFingerprint::cipherSuitesToString(const QVector<quint16>& suites) {
     return list.join(",");
 }
 
-QString TLSFingerprint::extensionsToString(const QVector<quint8>& exts) {
+QString TLSFingerprint::cipherSuitesToHex(const QVector<quint16>& suites) {
     QStringList list;
-    for (quint8 e : exts) {
+    for (quint16 s : suites) {
+        list << QString("%1").arg(s, 4, 16, QChar('0'));
+    }
+    return list.join("-");
+}
+
+QString TLSFingerprint::extensionsToString(const QVector<quint16>& exts) {
+    QStringList list;
+    for (quint16 e : exts) {
         list << QString::number(e);
     }
     return list.join(",");
@@ -77,36 +184,44 @@ QString TLSFingerprint::ellipticCurvesToString(const QVector<quint16>& curves) {
     return list.join(",");
 }
 
-QString TLSFingerprint::generateJA3Hash(const QVector<quint16>& cipherSuites,
-                                       const QVector<quint8>& extensions,
-                                       const QVector<quint16>& ellipticCurves,
-                                       quint16 tlsVersion) {
+QString TLSFingerprint::buildJA3String(quint16 tlsVersion,
+                                       const QVector<quint16>& cipherSuites,
+                                       const QVector<quint16>& extensions,
+                                       const QVector<quint16>& ellipticCurves) {
     // JA3 format: TLSVersion,Random,SessionID,CipherSuites,Extensions,EllipticCurves,ECPointFormats
     
     QStringList components;
     
-    // TLS Version
-    components << QString::number(tlsVersion);
+    // TLS Version (hex)
+    components << QString::number(tlsVersion, 16).toUpper();
     
-    // Random (32 bytes) - we'll use a placeholder
-    components << "0303" + QString("00").repeated(64);
+    // Random (32 bytes as hex) - normally from ClientHello
+    // Using placeholder that will be replaced at runtime
+    components << "random-placeholder";
     
-    // Session ID (empty for now)
+    // Session ID (empty for new connections)
     components << "";
     
-    // Cipher Suites
+    // Cipher Suites (comma-separated)
     components << cipherSuitesToString(cipherSuites);
     
-    // Extensions
+    // Extensions (comma-separated)
     components << extensionsToString(extensions);
     
     // Elliptic Curves
     components << ellipticCurvesToString(ellipticCurves);
     
-    // EC Point Formats
-    components << "01"; // uncompressed
+    // EC Point Formats (uncompressed only)
+    components << "0";
     
-    QString ja3String = components.join(",");
+    return components.join(",");
+}
+
+QString TLSFingerprint::generateJA3Hash(const QVector<quint16>& cipherSuites,
+                                       const QVector<quint16>& extensions,
+                                       const QVector<quint16>& ellipticCurves,
+                                       quint16 tlsVersion) {
+    QString ja3String = buildJA3String(tlsVersion, cipherSuites, extensions, ellipticCurves);
     
     // Calculate MD5 hash
     QByteArray hash = QCryptographicHash::hash(
@@ -115,60 +230,117 @@ QString TLSFingerprint::generateJA3Hash(const QVector<quint16>& cipherSuites,
     return hash.toHex();
 }
 
+QString TLSFingerprint::generateJA3Hash() {
+    return generateJA3Hash(m_config.cipherSuites, 
+                          m_config.extensions, 
+                          m_config.ellipticCurves, 
+                          m_config.maxVersion);
+}
+
 QString TLSFingerprint::generateJA4Fingerprint(quint16 tlsVersion,
                                               const QVector<quint16>& cipherSuites,
-                                              const QVector<quint8>& extensions) {
+                                              const QVector<quint16>& extensions) {
     // JA4 format: t13d1516h2_8d65c997c30c_02
-    // t<version>_<first 2 ciphers>_<last 2 ciphers>_<alpn>_<sni>_<extension count>_<a>,<b>_<extension list>
+    // Components: protocol_tls_version + cipher_count + first_cipher + last_cipher
+    //           _sni_ + alpn_ + extension_count_ + first_extension + last_extension
     
     QString ja4;
     
-    // Protocol version
+    // Protocol type (t = TLS, q = QUIC)
+    ja4 = "t";
+    
+    // TLS version (13 = TLS 1.3, 12 = TLS 1.2)
     if (tlsVersion == 0x0304) {
-        ja4 = "t13";
+        ja4 += "13";
+    } else if (tlsVersion == 0x0303) {
+        ja4 += "12";
     } else {
-        ja4 = "t12";
+        ja4 += "11";  // TLS 1.0/1.1 (legacy)
     }
     
-    // Version + cipher count + first cipher (first 2 bytes)
+    // Cipher count (2 digits)
     ja4 += "d";
     ja4 += QString::number(cipherSuites.size()).rightJustified(2, '0');
+    
+    // First cipher suite (first 2 bytes, in hex)
     if (!cipherSuites.isEmpty()) {
-        ja4 += QString::number(cipherSuites.first()).rightJustified(4, '0').left(2);
+        QString cipherHex = QString::number(cipherSuites.first(), 16).toUpper();
+        ja4 += cipherHex.rightJustified(4, '0').left(2);
     }
     
-    // Last cipher (first 2 bytes)
+    // Last cipher suite (first 2 bytes)
     if (cipherSuites.size() > 1) {
         ja4 += "h";
-        ja4 += QString::number(cipherSuites.last()).rightJustified(4, '0').left(2);
+        QString cipherHex = QString::number(cipherSuites.last(), 16).toUpper();
+        ja4 += cipherHex.rightJustified(4, '0').left(2);
+    } else {
+        ja4 += "h_";  // No second cipher
     }
     
-    // SNI present (s) or not (i)
+    // SNI indicator (s = present, i = not present)
     ja4 += "_";
-    ja4 += "s";
+    ja4 += m_config.sniPattern.isEmpty() ? "i" : "s";
     
-    // ALPN count (2 chars)
+    // ALPN count (2 chars, lowercase = 2 protocols)
     ja4 += "_";
-    ja4 += "00";
+    if (m_config.alpnProtocols.isEmpty()) {
+        ja4 += "00";
+    } else {
+        ja4 += "0" + QString::number(m_config.alpnProtocols.size());
+    }
     
     // Extension count (2 digits)
     ja4 += "_";
     ja4 += QString::number(extensions.size()).rightJustified(2, '0');
     
-    // First and last extension (first 2 bytes each)
+    // First and last extension codes
     if (!extensions.isEmpty()) {
         ja4 += "_";
-        ja4 += QString::number(extensions.first()).rightJustified(4, '0').left(2);
+        ja4 += QString::number(extensions.first(), 16).toUpper().rightJustified(2, '0');
         if (extensions.size() > 1) {
-            ja4 += QString::number(extensions.last()).rightJustified(4, '0').left(2);
+            ja4 += QString::number(extensions.last(), 16).toUpper().rightJustified(2, '0');
         }
     }
     
     return ja4;
 }
 
-OSTLSConfig TLSFingerprint::getTLSConfig() {
-    return m_config;
+QString TLSFingerprint::generateJA4Fingerprint() {
+    return generateJA4Fingerprint(m_config.maxVersion, 
+                                m_config.cipherSuites, 
+                                m_config.extensions);
+}
+
+QString TLSFingerprint::generateJA3HHash(const QVector<quint16>& http2Ciphers,
+                                       const QVector<quint16>& extensions,
+                                       const HTTP2Settings& settings) {
+    // JA3H format: HTTP/2 settings + window updates + frame size
+    
+    QStringList components;
+    
+    // HTTP/2 SETTINGS frame
+    // Format: settings_option:value,settings_option:value,...
+    QStringList settingsList;
+    settingsList << QString("1:%1").arg(settings.headerTableSize);
+    settingsList << QString("3:%1").arg(settings.maxConcurrentStreams);
+    settingsList << QString("4:%1").arg(settings.initialWindowSize);
+    settingsList << QString("5:%1").arg(settings.maxFrameSize);
+    
+    components << settingsList.join(",");
+    
+    // HTTP/2 Window Update frames (in first 3 packets)
+    components << "0";  // Number of window updates in first 3 packets
+    
+    // Frame size limit
+    components << QString::number(settings.maxFrameSize);
+    
+    QString ja3hString = components.join(",");
+    
+    // Calculate MD5 hash
+    QByteArray hash = QCryptographicHash::hash(
+        ja3hString.toUtf8(), QCryptographicHash::Md5);
+    
+    return hash.toHex();
 }
 
 OSTLSConfig TLSFingerprint::getAndroidTLSConfig() {
