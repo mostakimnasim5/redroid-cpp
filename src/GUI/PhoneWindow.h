@@ -8,6 +8,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QTimer>
+#include "AntiDetectionPanel.h"
 #include <QProcess>
 #include <QLabel>
 #include <QPushButton>
@@ -49,6 +50,7 @@ public:
     ~AppManagerDialog();
 
 private slots:
+    void onAntiDetectionClicked();
     void onRefreshClicked();
     void onLaunchClicked();
     void onUninstallClicked();
@@ -101,6 +103,7 @@ public slots:
     void refreshInstance();
 
 private slots:
+    void onAntiDetectionClicked();
     // Screen mirror
     void updateScreen();
     void onScreenProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
@@ -195,6 +198,7 @@ private:
     QPushButton* m_homeButton;
     QPushButton* m_appsButton;
     QPushButton* m_powerButton;
+    QPushButton* m_antiDetectionButton;
     
     // Control buttons
     QPushButton* m_startMirrorButton;

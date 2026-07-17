@@ -104,11 +104,13 @@ if(BUILD_QT6_GUI)
     set(QT6_GUI_SOURCES
         src/GUI/DashboardWindow.cpp
         src/GUI/PhoneWindow.cpp
+        src/GUI/AntiDetectionPanel.cpp
     )
     
     set(QT6_GUI_HEADERS
         src/GUI/DashboardWindow.h
         src/GUI/PhoneWindow.h
+        src/GUI/AntiDetectionPanel.h
     )
     
     # Core Modules

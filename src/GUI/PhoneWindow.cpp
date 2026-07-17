@@ -213,6 +213,7 @@ PhoneWindow::PhoneWindow(const QString& instanceId,
     , m_isDragging(false)
     , m_installProcess(nullptr)
     , m_installProgress(nullptr)
+    , m_isAntiDetectionApplied(false)
 {
     setWindowTitle(QString("%1 - %2").arg(m_instanceId).arg(profile.name));
     setMinimumSize(480, 950);
@@ -312,9 +313,19 @@ void PhoneWindow::setupUI() {
     
     m_powerButton = new QPushButton("⏻", this);
     m_powerButton->setMinimumSize(50, 40);
+    
+    m_antiDetectionButton = new QPushButton("🛡️ Anti-Detection", this);
+    m_antiDetectionButton->setMinimumSize(130, 40);
+    m_antiDetectionButton->setStyleSheet(
+        "QPushButton { background-color: #27ae60; color: white; border: none; "
+        "border-radius: 8px; font-weight: bold; }"
+        "QPushButton:hover { background-color: #2ecc71; }"
+    );
+    connect(m_antiDetectionButton, &QPushButton::clicked, this, &PhoneWindow::onAntiDetectionClicked);
     m_powerButton->setStyleSheet("QPushButton { background-color: #34495e; color: white; border: none; border-radius: 8px; font-weight: bold; } QPushButton:hover { background-color: #4a6278; }");
     connect(m_powerButton, &QPushButton::clicked, this, &PhoneWindow::onHomeClicked);
     hardwareLayout->addWidget(m_powerButton);
+    hardwareLayout->addWidget(m_antiDetectionButton);
     
     hardwareLayout->addStretch();
     m_mainLayout->addLayout(hardwareLayout);
@@ -811,6 +822,28 @@ void PhoneWindow::sendAdbText(const QString& text) {
     p->start(getAdbPath(), {"-s", getAdbSerial(), "shell", "input", "text", escText});
     p->waitForFinished(1000);
     p->deleteLater();
+}
+
+void PhoneWindow::onAntiDetectionClicked() {
+    qDebug() << "[PhoneWindow] Anti-Detection button clicked for:" << m_instanceId;
+    
+    AntiDetectionPanel* panel = new AntiDetectionPanel(m_instanceId, this);
+    panel->setAttribute(Qt::WA_DeleteOnClose);
+    panel->show();
+    
+    // Auto-apply protection if not already applied
+    if (!m_isAntiDetectionApplied) {
+        // Apply protection in background
+        AntiDetectionManager::instance().applyCompleteProtection(m_instanceId, m_profile);
+        m_isAntiDetectionApplied = true;
+        
+        // Update button appearance
+        m_antiDetectionButton->setStyleSheet(
+            "QPushButton { background-color: #27ae60; color: white; border: none; "
+            "border-radius: 8px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #2ecc71; }"
+        );
+    }
 }
 
 } // namespace VirtualPhonePro

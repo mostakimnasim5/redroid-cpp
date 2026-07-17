@@ -43,6 +43,7 @@ public:
     ~NewPhoneDialog();
     
     QString getInstanceId() const { return m_instanceId; }
+    bool isProtected() const { return m_isProtected; }
     DeviceProfile getProfile() const { return m_profile; }
     QString getManufacturer() const { return m_manufacturer; }
     QString getAndroidVersion() const { return m_androidVersion; }
@@ -87,8 +88,10 @@ public:
     void setProfile(const DeviceProfile& profile);
     void setScreenshot(const QPixmap& pixmap);
     void updateStatus();
+    void setProtectionStatus(bool isProtected);
     
     QString getInstanceId() const { return m_instanceId; }
+    bool isProtected() const { return m_isProtected; }
 
 signals:
     void openRequested(const QString& instanceId);
@@ -104,9 +107,11 @@ private slots:
 
 private:
     void updateUI();
+    void updateProtectionIcon();
     
     QString m_instanceId;
     InstanceInfo m_info;
+    bool m_isProtected;
     DeviceProfile m_profile;
     
     QLabel* m_nameLabel;
@@ -114,6 +119,7 @@ private:
     QLabel* m_portLabel;
     QLabel* m_screenshotLabel;
     QLabel* m_modelLabel;
+    QLabel* m_shieldLabel;
     QPushButton* m_openButton;
     QPushButton* m_startButton;
     QPushButton* m_stopButton;

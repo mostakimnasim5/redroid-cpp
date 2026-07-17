@@ -204,6 +204,7 @@ void NewPhoneDialog::onOk() {
 PhoneCard::PhoneCard(const QString& instanceId, QWidget* parent)
     : QFrame(parent)
     , m_instanceId(instanceId)
+    , m_isProtected(false)
 {
     setMinimumSize(280, 380);
     setMaximumSize(320, 420);
@@ -251,6 +252,12 @@ void PhoneCard::setupUI() {
     m_modelLabel = new QLabel("Samsung Galaxy S24", this);
     m_modelLabel->setStyleSheet("font-size: 11px; color: #888888;");
     layout->addWidget(m_modelLabel);
+    
+    // Shield icon for protection status
+    m_shieldLabel = new QLabel("⚠️", this);
+    m_shieldLabel->setStyleSheet("font-size: 16px;");
+    m_shieldLabel->setToolTip("Protection: Not Protected");
+    layout->addWidget(m_shieldLabel, 0, Qt::AlignRight);
     
     // Status row
     QHBoxLayout* statusLayout = new QHBoxLayout();
@@ -365,6 +372,23 @@ void PhoneCard::setScreenshot(const QPixmap& pixmap) {
 
 void PhoneCard::updateStatus() {
     updateUI();
+}
+
+void PhoneCard::setProtectionStatus(bool isProtected) {
+    m_isProtected = isProtected;
+    updateProtectionIcon();
+}
+
+void PhoneCard::updateProtectionIcon() {
+    if (m_isProtected) {
+        m_shieldLabel->setText("🛡️");
+        m_shieldLabel->setStyleSheet("font-size: 16px; color: #27ae60;");
+        m_shieldLabel->setToolTip("Protection: Fully Protected");
+    } else {
+        m_shieldLabel->setText("⚠️");
+        m_shieldLabel->setStyleSheet("font-size: 16px; color: #e74c3c;");
+        m_shieldLabel->setToolTip("Protection: Not Protected");
+    }
 }
 
 void PhoneCard::updateUI() {
