@@ -43,8 +43,8 @@ bool HypervisorBypass::initialize() {
     
     auto& adb = ADBManager::getInstance();
     if (!adb.isConnected()) {
-        Logger::getInstance().error("ADB not connected - cannot initialize Hypervisor Bypass");
-        return false;
+        Logger::getInstance().warning("ADB not connected - Hypervisor Bypass will use cached mode");
+        // Continue in cached mode - apply bypass when ADB connects
     }
     
     // Detect current hypervisor

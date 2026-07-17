@@ -17,6 +17,11 @@
 #include <QJsonObject>
 #include <QTimer>
 #include <QUrl>
+#include <QFile>
+#include <QDir>
+#include <QDateTime>
+#include <QJsonArray>
+#include <QStandardPaths>
 
 namespace VirtualPhonePro {
 
@@ -190,15 +195,85 @@ void WebhookManager::scheduleRetry(const WebhookConfig& webhook, const QString& 
 }
 
 void WebhookManager::loadWebhooks() {
-    // Load webhooks from settings/config file
-    // This is a placeholder implementation
-    qDebug() << "[WebhookManager] Loading webhooks...";
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) 
+                         + "/webhooks.json";
+    QFile file(configPath);
+    
+    if (!file.exists()) {
+        qDebug() << "[WebhookManager] No webhook config found, starting fresh";
+        return;
+    }
+    
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "[WebhookManager] Cannot open webhook config:" << file.errorString();
+        return;
+    }
+    
+    QByteArray data = file.readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    
+    if (!doc.isObject()) {
+        qWarning() << "[WebhookManager] Invalid webhook config format";
+        return;
+    }
+    
+    QJsonObject root = doc.object();
+    QJsonArray webhooksArray = root["webhooks"].toArray();
+    
+    for (const QJsonValue& val : webhooksArray) {
+        QJsonObject obj = val.toObject();
+        WebhookConfig webhook;
+        webhook.id     = obj["id"].toString();
+        webhook.url    = obj["url"].toString();
+        webhook.secret = obj["secret"].toString();
+        webhook.enabled = obj["enabled"].toBool(true);
+        
+        QJsonArray eventsArray = obj["events"].toArray();
+        for (const QJsonValue& ev : eventsArray) {
+            webhook.events.append(ev.toString());
+        }
+        
+        if (!webhook.id.isEmpty() && !webhook.url.isEmpty()) {
+            m_webhooks[webhook.id] = webhook;
+        }
+    }
+    
+    qDebug() << "[WebhookManager] Loaded" << m_webhooks.size() << "webhooks";
 }
 
 void WebhookManager::saveWebhooks() {
-    // Save webhooks to settings/config file
-    // This is a placeholder implementation
-    qDebug() << "[WebhookManager] Saving webhooks...";
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(configDir);
+    QString configPath = configDir + "/webhooks.json";
+    
+    QJsonArray webhooksArray;
+    for (const WebhookConfig& webhook : m_webhooks) {
+        QJsonObject obj;
+        obj["id"]      = webhook.id;
+        obj["url"]     = webhook.url;
+        obj["secret"]  = webhook.secret;
+        obj["enabled"] = webhook.enabled;
+        
+        QJsonArray eventsArray;
+        for (const QString& event : webhook.events) {
+            eventsArray.append(event);
+        }
+        obj["events"] = eventsArray;
+        webhooksArray.append(obj);
+    }
+    
+    QJsonObject root;
+    root["webhooks"] = webhooksArray;
+    root["savedAt"]  = QDateTime::currentDateTime().toString(Qt::ISODate);
+    
+    QFile file(configPath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qWarning() << "[WebhookManager] Cannot save webhooks:" << file.errorString();
+        return;
+    }
+    
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    qDebug() << "[WebhookManager] Saved" << m_webhooks.size() << "webhooks to" << configPath;
 }
 
 void WebhookManager::testWebhook(const QString& webhookId) {

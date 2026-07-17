@@ -158,16 +158,22 @@ bool DeviceIntegrityManager::applyToInstance(const QString& instanceId) {
     
     // Basic Integrity
     commands += {
-        QString("setprop ro.build.version CTS %1").arg(state.isCtsProfileMatch ? "true" : "false"),
-        "setprop ro. CTS true",
-        "setprop ro.build.tags release-keys",
+        QString("setprop vendor.cts.match %1").arg(state.isCtsProfileMatch ? "true" : "false"),
+        QString("setprop ro.build.tags %1").arg(state.isRooted ? "test-keys" : "release-keys"),
+        "setprop ro.build.type user",
+        "setprop ro.build.version.release 14",
+        "setprop ro.build.version.sdk 34",
+        "setprop ro.build.version.security_patch 2024-01-01",
     };
     
     // Emulator/Root Detection
     if (!state.isEmulatorDetected) {
         commands += {
             "setprop ro.kernel.qemu 0",
-            "setprop ro.hardware sensors",
+            "setprop ro.boot.qemu false",
+            "setprop ro.hardware qcom",
+            "setprop ro.board.platform taro",
+            "setprop ro.arch arm64",
         };
     }
     
@@ -280,7 +286,8 @@ bool DeviceIntegrityManager::setCtsProfileMatch(const QString& instanceId, bool 
     m_states[instanceId].isCtsProfileMatch = match;
     
     ReDroidController& ctrl = ReDroidController::instance();
-    ctrl.executeShell(instanceId, QString("setprop ro. CTS %1").arg(match ? "true" : "false"));
+    ctrl.executeShell(instanceId, QString("setprop vendor.cts.match %1").arg(match ? "true" : "false"));
+    ctrl.executeShell(instanceId, QString("setprop ro.build.tags %1").arg(match ? "release-keys" : "test-keys"));
     
     return true;
 }
