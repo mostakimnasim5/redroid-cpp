@@ -7,9 +7,8 @@
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QTimer>
-#include "AntiDetectionPanel.h"
-#include <QProcess>
 #include <QLabel>
 #include <QPushButton>
 #include <QMouseEvent>
@@ -26,22 +25,44 @@
 #include <QTableWidgetItem>
 #include <QMimeData>
 #include <QDragEnterEvent>
+#include <QProcess>
+#include <QFrame>
+#include <QSlider>
+#include <QGroupBox>
+#include <QCheckBox>
+#include <QSpinBox>
+#include <QSlider>
+#include <QToolButton>
+#include <QStatusBar>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QSystemTrayIcon>
+#include <QResizeEvent>
+#include <QSplitter>
+#include <QScrollArea>
+#include <QStackedWidget>
+#include <QLineEdit>
+#include <QTextEdit>
+#include <QComboBox>
+#include <QTabWidget>
 
 #include "VirtualPhonePro/ReDroidController.h"
 #include "VirtualPhonePro/DeviceProfile.h"
 
 namespace VirtualPhonePro {
 
-// Forward declaration
-struct AppInfo {
-    QString packageName;
-    QString appName;
-    QString version;
-};
+// ========================================================================
+// Forward Declarations
+// ========================================================================
 
-/**
- * @brief App Manager Dialog - Lists and manages installed apps
- */
+struct DeviceProfile;
+struct AppInfo;
+
+// ========================================================================
+// App Manager Dialog
+// ========================================================================
+
 class AppManagerDialog : public QDialog {
     Q_OBJECT
 
@@ -67,24 +88,28 @@ private:
     QList<AppInfo> m_apps;
 };
 
+// ========================================================================
+// PROFESSIONAL PHONE WINDOW - Ultra Realistic Emulator UI
+// ========================================================================
+
 /**
- * @brief PhoneWindow - Individual phone instance window
+ * @brief PhoneWindow - Professional Emulator with Realistic Phone UI
  * 
- * Each instance gets its own window with:
- * - Live screen mirror (screenshot updates)
- * - Touch input (tap, swipe)
- * - Keyboard input
- * - Hardware buttons (Back, Home, Apps)
- * - APK installation
- * - App management
- * - Device info display
+ * Features:
+ * - Ultra-realistic phone frame with rounded corners and dark bezel
+ * - Camera notch at top
+ * - Hardware buttons (Back, Home, Recent)
+ * - Live screen mirror via VNC/ADB
+ * - Touch input support
+ * - Real-time status bar
+ * - Dark theme professional UI
  */
 class PhoneWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     /**
-     * @brief Construct a new Phone Window
+     * @brief Construct a new Professional Phone Window
      * @param instanceId Unique instance identifier
      * @param profile Device profile for this instance
      * @param parent Parent widget
@@ -98,116 +123,228 @@ public:
     DeviceProfile getProfile() const { return m_profile; }
 
 public slots:
+    // Screen operations
     void startScreenMirror();
     void stopScreenMirror();
     void refreshInstance();
+    void updateScreen();
+    
+    // Control operations
+    void onPowerClicked();
+    void onVolumeUp();
+    void onVolumeDown();
+    void onRotateScreen();
+    void onScreenshotsClicked();
+    void onRecordScreenClicked();
+    
+    // APK operations
+    void onInstallApkClicked();
+    void onOpenAppsClicked();
+    
+    // Settings
+    void onSettingsClicked();
+    void onAntiDetectionClicked();
+    
+    // Connection status
+    void onInstanceStateChanged(const QString& instanceId, InstanceState state);
+    void onAdbConnectionChanged(const QString& instanceId, bool connected);
 
 private slots:
-    void onAntiDetectionClicked();
-    // Screen mirror
-    void updateScreen();
+    // Screen capture
     void onScreenProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
     
     // Touch input
     void onScreenMousePress(QMouseEvent* event);
     void onScreenMouseMove(QMouseEvent* event);
     void onScreenMouseRelease(QMouseEvent* event);
+    void onScreenDoubleClick(QMouseEvent* event);
     
     // Hardware buttons
     void onBackClicked();
     void onHomeClicked();
-    void onAppsClicked();
+    void onRecentClicked();
     
-    // APK Management
-    void onInstallApkClicked();
-    void onAppsClicked_Open();
-    void onScreenshotClicked();
+    // Navigation buttons from phone frame
+    void onPhoneBackClicked();
+    void onPhoneHomeClicked();
+    void onPhoneRecentClicked();
     
-    // Status updates
-    void onInstanceStateChanged(const QString& instanceId, InstanceState state);
-    void onAdbConnectionChanged(const QString& instanceId, bool connected);
+    // Status bar updates
+    void updateStatusBar();
+    void updateFPS();
+    
+    // Window controls
+    void onMinimizeClicked();
+    void onMaximizeClicked();
+    void onCloseClicked();
+    void onAlwaysOnTopToggled(bool checked);
 
 protected:
-    // Keyboard events
+    // Event handlers
     void keyPressEvent(QKeyEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
-    
-    // Drag and drop
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dropEvent(QDropEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private:
-    // Helper functions
+    // ====================================================================
+    // UI SETUP METHODS
+    // ====================================================================
     void setupUI();
-    void setupScreenMirror();
-    void setupConnections();
+    void setupPhoneFrame();
     void setupToolbar();
+    void setupStatusBar();
+    void setupScreenArea();
+    void setupNavigationBar();
+    void setupConnections();
+    void applyProfessionalStyle();
+    
+    // ====================================================================
+    // HELPER METHODS
+    // ====================================================================
     
     // ADB commands
     void sendAdbTap(int x, int y);
-    void sendAdbSwipe(int x1, int y1, int x2, int y2, int duration);
+    void sendAdbSwipe(int x1, int y1, int x2, int y2, int duration = 100);
     void sendAdbKeyEvent(int keyCode);
     void sendAdbText(const QString& text);
     QString executeAdbCommandSync(const QStringList& args, int timeoutMs = 10000);
     
     // APK Installation
     void installApk(const QString& apkPath);
-    void onInstallProgress(int progress);
-    void onInstallFinished(int exitCode, QProcess::ExitStatus exitStatus);
     
+    // Coordinate transformation
+    int toAndroidX(int labelX) const;
+    int toAndroidY(int labelY) const;
+    
+    // Get ADB serial/path
     QString getAdbSerial() const;
     QString getAdbPath() const;
     
-    // Calculate Android coordinates from label coordinates
-    int toAndroidX(int labelX) const;
-    int toAndroidY(int labelY) const;
+    // Update UI state
+    void updateWindowTitle();
+    void setConnected(bool connected);
+    
+    // ====================================================================
+    // MEMBER VARIABLES
+    // ====================================================================
     
     // Instance data
     QString m_instanceId;
     DeviceProfile m_profile;
+    QString m_deviceName;
+    int m_instanceNumber;
     
-    // Screen mirror members
+    // Screen mirror
     QTimer* m_screenTimer;
+    QTimer* m_fpsTimer;
     QLabel* m_screenLabel;
     QProcess* m_adbScreenProcess;
     QByteArray m_screenBuffer;
     bool m_screenMirrorActive;
+    int m_currentFPS;
+    int m_frameCount;
     
-    // Touch input members
+    // Touch input
     QPoint m_touchStartPos;
     bool m_isDragging;
+    bool m_isSwiping;
+    QList<QPair<int, int>> m_swipePath;
     
     // APK Installation
     QProcess* m_installProcess;
     QProgressDialog* m_installProgress;
     
-    // UI Components
+    // ====================================================================
+    // UI COMPONENTS - Phone Frame
+    // ====================================================================
+    
     QWidget* m_centralWidget;
     QVBoxLayout* m_mainLayout;
+    
+    // === TOOLBAR ===
+    QWidget* m_toolbarWidget;
+    QHBoxLayout* m_toolbarLayout;
+    QToolButton* m_minimizeBtn;
+    QToolButton* m_maximizeBtn;
+    QToolButton* m_closeBtn;
     QLabel* m_titleLabel;
-    QLabel* m_statusLabel;
+    QLabel* m_instanceLabel;
     
-    // Toolbar
-    QToolBar* m_toolbar;
-    QAction* m_installApkAction;
-    QAction* m_appsAction;
-    QAction* m_screenshotAction;
+    // === PHONE FRAME ===
+    QWidget* m_phoneFrame;
+    QWidget* m_phoneBezel;
+    QWidget* m_cameraNotch;
+    QLabel* m_cameraLens;
+    QLabel* m_cameraSensor;
     
-    // Hardware buttons
-    QPushButton* m_backButton;
-    QPushButton* m_homeButton;
-    QPushButton* m_appsButton;
-    QPushButton* m_powerButton;
-    QPushButton* m_antiDetectionButton;
+    // === SCREEN AREA ===
+    QWidget* m_screenContainer;
+    QLabel* m_screenDisplay;
+    QFrame* m_screenFrame;
     
-    // Control buttons
-    QPushButton* m_startMirrorButton;
-    QPushButton* m_stopMirrorButton;
+    // === NAVIGATION BAR ===
+    QWidget* m_navigationBar;
+    QHBoxLayout* m_navLayout;
+    QPushButton* m_backBtn;
+    QPushButton* m_homeBtn;
+    QPushButton* m_recentBtn;
     
-    // Device info
-    QLabel* m_androidVersionLabel;
-    QLabel* m_resolutionLabel;
-    QLabel* m_imeiLabel;
+    // === STATUS BAR ===
+    QWidget* m_statusBarWidget;
+    QHBoxLayout* m_statusLayout;
+    QLabel* m_connectionStatus;
+    QLabel* m_portLabel;
+    QLabel* m_protectionStatus;
+    QLabel* m_fpsLabel;
+    QLabel* m_batteryLabel;
+    QLabel* m_timeLabel;
+    
+    // === CONTROL BUTTONS ===
+    QWidget* m_controlPanel;
+    QHBoxLayout* m_controlLayout;
+    QPushButton* m_powerBtn;
+    QPushButton* m_volumeUpBtn;
+    QPushButton* m_volumeDownBtn;
+    QPushButton* m_rotateBtn;
+    QPushButton* m_screenshotBtn;
+    QPushButton* m_recordBtn;
+    
+    // === ACTION BUTTONS ===
+    QWidget* m_actionPanel;
+    QHBoxLayout* m_actionLayout;
+    QPushButton* m_installApkBtn;
+    QPushButton* m_appsBtn;
+    QPushButton* m_settingsBtn;
+    QPushButton* m_antiDetectBtn;
+    
+    // ====================================================================
+    // STYLE DEFINITIONS
+    // ====================================================================
+    
+    // Colors
+    static const QString COLOR_BACKGROUND;
+    static const QString COLOR_PHONE_FRAME;
+    static const QString COLOR_BEZEL;
+    static const QString COLOR_ACCENT;
+    static const QString COLOR_ACCENT_DIM;
+    static const QString COLOR_TEXT;
+    static const QString COLOR_TEXT_DIM;
+    static const QString COLOR_SUCCESS;
+    static const QString COLOR_WARNING;
+    static const QString COLOR_ERROR;
+    static const QString COLOR_BUTTON_BG;
+    static const QString COLOR_BUTTON_HOVER;
+    
+    // Phone dimensions
+    static const int PHONE_WIDTH;
+    static const int PHONE_HEIGHT;
+    static const int SCREEN_WIDTH;
+    static const int SCREEN_HEIGHT;
+    static const int BEZEL_WIDTH;
+    static const int CORNER_RADIUS;
+    static const int NAV_BAR_HEIGHT;
 };
 
 } // namespace VirtualPhonePro

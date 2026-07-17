@@ -1,12 +1,18 @@
-# ReDroidCPP GUI Module
+# ReDroidCPP GUI Module - Professional Emulator UI
 
 set(GUI_SOURCES
     main.cpp
     MainWindow.cpp
+    PhoneWindow.cpp
+    DashboardWindow.cpp
+    AntiDetectionPanel.cpp
 )
 
 set(GUI_HEADERS
     MainWindow.h
+    PhoneWindow.h
+    DashboardWindow.h
+    AntiDetectionPanel.h
 )
 
 # Create GUI executable
@@ -25,7 +31,9 @@ target_link_libraries(redroid-gui
 
 # Include directories
 target_include_directories(redroid-gui
-    PRIVATE ${CMAKE_SOURCE_DIR}/src/GUI
+    PRIVATE 
+        ${CMAKE_SOURCE_DIR}/src/GUI
+        ${CMAKE_SOURCE_DIR}/include
 )
 
 # Install target
