@@ -2,214 +2,155 @@
 
 ## Overview
 
-ReDroidCPP is a professional-grade Android emulator controller written in C++/Qt6. This guide will help you build the project on Windows.
+ReDroidCPP v3.0 is a professional-grade Android emulator controller with ultra-realistic phone UI, written in C++/Qt6.
 
 ## Prerequisites
 
 ### Required Software
 
-1. **Visual Studio 2022** or **MSVC Build Tools**
+1. **Visual Studio 2022** (Community, Professional, or Enterprise)
    - Download: https://visualstudio.microsoft.com/downloads/
    - Install: "Desktop development with C++"
 
-2. **CMake 3.20+**
+2. **Qt 6.5+** with MSVC 2022 64-bit
+   - Download: https://www.qt.io/download-qt-installer
+   - Components needed:
+     - Qt 6.5.x
+     - Qt Core, Qt Gui, Qt Widgets, Qt Network
+
+3. **CMake 3.20+**
    - Download: https://cmake.org/download/
    - Add to PATH during installation
 
-3. **Qt6 SDK**
-   - Download: https://www.qt.io/download-qt-installer
-   - Install Qt 6.5+ with MSVC 2022 64-bit
-   - Components needed:
-     - Qt 6.5.x
-     - Qt Core
-     - Qt Gui
-     - Qt Widgets
-     - Qt Network
-
-4. **Git for Windows**
+4. **Git for Windows** (optional)
    - Download: https://git-scm.com/download/win
 
-## Build Instructions
+## Quick Build (Recommended)
 
-### Method 1: Using CMake GUI
+### Step 1: Run the build script
 
-1. Open CMake GUI
-2. Set source code directory to: `C:\path\to\redroid-cpp`
-3. Set build directory to: `C:\path\to\redroid-cpp\build`
-4. Click "Configure"
-5. Select generator: "Visual Studio 17 2022" or "Visual Studio 17 2022 Win64"
-6. Check option: `BUILD_QT6_GUI`
-7. Click "Generate"
-8. Click "Open Project"
-9. Build in Visual Studio
-
-### Method 2: Using Command Line
+Double-click `build-release.bat` or run from command prompt:
 
 ```batch
-@echo off
-REM ReDroidCPP Windows Build Script
+build-release.bat
+```
 
-echo ========================================
-echo  ReDroidCPP - Windows Build
-echo ========================================
-echo.
+This script will:
+- Auto-detect Visual Studio and Qt6 installations
+- Build the complete project with all modules
+- Create a portable release folder `ReDroidCPP_v3/`
+- Copy all required DLLs and dependencies
 
-REM Check for CMake
-where cmake >nul 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: CMake not found. Please install CMake 3.20+
-    pause
-    exit /b 1
-)
+### Step 2: Run the application
 
-REM Check for Qt6
-if not exist "C:\Qt\6.5\msvc2022_64\bin\qmake.exe" (
-    echo WARNING: Qt6 not found in default location.
-    echo Please install Qt6 from https://www.qt.io/download
-    echo.
-)
+```batch
+cd ReDroidCPP_v3
+start.bat
+```
 
-REM Create build directory
-if not exist build mkdir build
+## Manual Build
+
+### Step 1: Open Developer Command Prompt
+
+Open **x64 Native Tools Command Prompt for VS 2022**
+
+### Step 2: Configure CMake
+
+```batch
+cd path\to\redroid-cpp
+mkdir build
 cd build
 
-REM Configure with CMake
-echo Configuring project...
-cmake .. -G "Visual Studio 17 2022" -A x64 ^
-    -DBUILD_QT6_GUI=ON ^
+cmake .. ^
+    -G "Visual Studio 17 2022" ^
+    -A x64 ^
     -DCMAKE_BUILD_TYPE=Release ^
-    -DCMAKE_PREFIX_PATH="C:\Qt\6.5\msvc2022_64"
-
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: CMake configuration failed
-    pause
-    exit /b 1
-)
-
-REM Build
-echo.
-echo Building project...
-cmake --build . --config Release
-
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Build failed
-    pause
-    exit /b 1
-)
-
-echo.
-echo ========================================
-echo  Build completed successfully!
-echo  Executable location: build\Release\virtualphonepro-qt.exe
-echo ========================================
-pause
+    -DBUILD_QT6_GUI=ON ^
+    -DCMAKE_PREFIX_PATH="C:\Qt\6.5.3\msvc2022_64"
 ```
 
-### Method 3: Using Qt Creator
+### Step 3: Build
 
-1. Open Qt Creator
-2. File → Open File or Project
-3. Select `CMakeLists.txt`
-4. Configure kit: Desktop Qt 6.5.x MSVC2022 64bit
-5. Run → Build All
-6. Run → Execute
+```batch
+cmake --build . --config Release --parallel
+```
 
-## Project Structure
+### Step 4: Run
+
+```batch
+.\bin\ReDroidCPP.exe
+```
+
+## Release Folder Structure
+
+After running `build-release.bat`:
 
 ```
-redroid-cpp/
-├── CMakeLists.txt              # Main build configuration
-├── src/
-│   ├── main.cpp                # CLI entry point
-│   ├── mainwindow.cpp/h        # Qt6 main window
-│   ├── qtmain.cpp              # Qt6 Windows entry
-│   ├── AutoStartDialog.cpp/h   # Docker auto-start dialog
-│   └── ReDroidController/       # Core controller library
-│       ├── ReDroidController.cpp
-│       ├── MultiInstanceManager.cpp
-│       ├── SafetyNetSpoofer.cpp
-│       ├── BankingAppSpoofer.cpp
-│       ├── DeepDeviceSpoofer.cpp
-│       ├── GoogleFacebookSpoofer.cpp
-│       ├── UniqueDeviceGenerator.cpp
-│       ├── AdvancedAntiDetection.cpp
-│       ├── TLSFingerprint.cpp
-│       ├── HyperRealisticTouchEmulator.cpp
-│       ├── EnhancedDeviceProfile.cpp
-│       └── DeviceProfile.cpp
-├── include/VirtualPhonePro/     # Public headers
-├── docker/                     # Docker configuration
-└── profiles/                   # Device profiles
+ReDroidCPP_v3/
+├── ReDroidCPP.exe              # Main application
+├── Qt6Core.dll                # Qt runtime
+├── Qt6Gui.dll
+├── Qt6Widgets.dll
+├── Qt6Network.dll
+├── plugins/
+│   └── platforms/
+│       └── qwindows.dll       # Windows platform
+├── docker/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── entrypoint.sh
+├── profiles/
+│   ├── samsung_s24_ultra.json
+│   ├── google_pixel_8_pro.json
+│   └── ...
+├── start.bat                  # Launcher script
+├── adb-connect.bat           # ADB helper
+└── README.txt
 ```
 
 ## Features
 
-### Core Features
-- **Device Profile Generation**: Samsung, Google Pixel, Xiaomi, Huawei, OnePlus, etc.
-- **Multi-Instance Management**: Run multiple Android instances simultaneously
-- **SafetyNet Bypass**: Hardware attestation spoofing
-- **Banking App Support**: Root/Hook/Emulator detection bypass
+### Professional UI
+- Ultra-realistic phone frame with rounded corners
+- Camera notch simulation
+- Hardware navigation buttons
+- Real-time status bar (FPS, Connection, Battery)
 
-### Anti-Detection Features
-- **Behavioral Analysis Prevention**: Human typing patterns, touch simulation
-- **TLS Fingerprinting**: JA3/JA4 SSL fingerprint spoofing
-- **Hardware Emulation**: CPU, GPU, Battery, Thermal simulation
-- **OEM Deep Spoofing**: Samsung Knox, Huawei HMS, Xiaomi MIUI
+### Anti-Detection (40+ modules)
+- SafetyNet/Play Integrity bypass
+- TLS Fingerprinting (JA3/JA4)
+- Hardware spoofing (CPU, GPU, RAM)
+- Root/Frida/Xposed detection bypass
+- Banking app optimization
 
-### Windows-Specific
-- **Native Qt6 GUI**: Modern Windows application
-- **Windows Defender Compatible**: No special permissions required
-- **x64 Native**: Optimized for modern Windows PCs
-
-## Usage
-
-### Running the Application
-
-1. Launch `virtualphonepro-qt.exe`
-2. Click "New Instance" to create an Android device
-3. Select device profile (Samsung S24 Ultra recommended)
-4. Click "Create"
-5. Connect via VNC or ADB
-
-### CLI Usage
-
-```bash
-# Create instance
-redroid-cli create --manufacturer samsung --model "SM-S928B"
-
-# List instances
-redroid-cli list
-
-# Apply spoofing
-redroid-cli spoof --instance 0 --profile banking
-
-# Start instance
-redroid-cli start --instance 0
-
-# Stop instance
-redroid-cli stop --instance 0
-```
+### Multi-Instance Support
+- Run multiple Android devices simultaneously
+- Unique device identity per instance
+- Isolated network per instance
 
 ## Troubleshooting
 
-### CMake not found
-```
-set PATH=C:\Program Files\CMake\bin;%PATH%
+### "Qt6 not found"
+```batch
+cmake .. -DCMAKE_PREFIX_PATH="C:\Qt\6.5.3\msvc2022_64"
 ```
 
-### Qt6 not found
-```
-set Qt6_DIR=C:\Qt\6.5\msvc2022_64\lib\cmake\Qt6
-set CMAKE_PREFIX_PATH=C:\Qt\6.5\msvc2022_64
+### "Visual Studio not found"
+Run from **x64 Native Tools Command Prompt for VS 2022**
+
+### Application crashes on start
+```batch
+set QT_PLUGIN_PATH=plugins
+ReDroidCPP.exe
 ```
 
 ### Build errors
-```
-# Clean build directory
+```batch
 rmdir /s /q build
 mkdir build
 cd build
 cmake .. -G "Visual Studio 17 2022" -A x64
+cmake --build . --config Release
 ```
 
 ## Dependencies
@@ -218,15 +159,19 @@ cmake .. -G "Visual Studio 17 2022" -A x64
 |-----------|---------|----------|
 | C++ Standard | C++17 | Yes |
 | CMake | 3.20+ | Yes |
-| Qt6 | 6.5+ | Yes (for GUI) |
-| MSVC | 2022 | Yes (Windows) |
-| OpenSSL | 1.1+ | Optional |
+| Qt6 | 6.5+ | Yes |
+| MSVC | 2022 | Yes |
+| Docker | 20.10+ | Optional |
 
-## License
+## Build Options
 
-This project is for authorized testing purposes only.
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-DBUILD_QT6_GUI=ON` | Build Qt6 GUI | ON |
+| `-DCMAKE_BUILD_TYPE=Release` | Build type | Release |
+| `-DCMAKE_PREFIX_PATH` | Qt installation path | Auto |
 
 ## Support
 
-- GitHub Issues: https://github.com/mostakimnasim5/redroid-cpp/issues
+- GitHub: https://github.com/mostakimnasim5/redroid-cpp
 - Documentation: See README.md

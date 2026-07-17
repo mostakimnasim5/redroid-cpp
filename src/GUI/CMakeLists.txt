@@ -1,49 +1,18 @@
-# ReDroidCPP GUI Module - Professional Emulator UI
+# ReDroidCPP GUI Module - Standalone Build (for development)
+# For full build, use the main CMakeLists.txt
 
-set(GUI_SOURCES
-    main.cpp
-    MainWindow.cpp
-    PhoneWindow.cpp
-    DashboardWindow.cpp
-    AntiDetectionPanel.cpp
-)
+cmake_minimum_required(VERSION 3.20)
 
-set(GUI_HEADERS
-    MainWindow.h
-    PhoneWindow.h
-    DashboardWindow.h
-    AntiDetectionPanel.h
-)
+# Standalone GUI build configuration
+# This is used when building just the GUI module separately
 
-# Create GUI executable
-add_executable(redroid-gui
-    ${GUI_SOURCES}
-    ${GUI_HEADERS}
-)
+# Note: For production builds, use the main CMakeLists.txt
+# which includes all modules and creates ReDroidCPP.exe
 
-# Link Qt6 libraries
-target_link_libraries(redroid-gui
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
-    Qt6::Network
-)
-
-# Include directories
-target_include_directories(redroid-gui
-    PRIVATE 
-        ${CMAKE_SOURCE_DIR}/src/GUI
-        ${CMAKE_SOURCE_DIR}/include
-)
-
-# Install target
-install(TARGETS redroid-gui
-    RUNTIME DESTINATION bin
-)
-
-# Qt6 macOS specific
-if(APPLE)
-    set_target_properties(redroid-gui PROPERTIES
-        MACOSX_BUNDLE TRUE
-    )
-endif()
+message(STATUS "")
+message(STATUS "============================================")
+message(STATUS "  GUI Standalone Build Configuration")
+message(STATUS "============================================")
+message(STATUS "  For full build, use the root CMakeLists.txt")
+message(STATUS "============================================")
+message(STATUS "")
