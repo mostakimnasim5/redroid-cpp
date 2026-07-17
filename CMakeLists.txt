@@ -100,14 +100,15 @@ option(BUILD_QT6_GUI "Build Qt6 GUI application" ON)
 if(BUILD_QT6_GUI)
     find_package(Qt6 COMPONENTS Core Gui Widgets Network REQUIRED)
     
-    # New GUI Module
+    # New GUI Module - Dashboard and Phone Windows
     set(QT6_GUI_SOURCES
-        src/GUI/main.cpp
-        src/GUI/MainWindow.cpp
+        src/GUI/DashboardWindow.cpp
+        src/GUI/PhoneWindow.cpp
     )
     
     set(QT6_GUI_HEADERS
-        src/GUI/MainWindow.h
+        src/GUI/DashboardWindow.h
+        src/GUI/PhoneWindow.h
     )
     
     # Core Modules
@@ -145,6 +146,7 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/HyperRealisticTouchEmulator.h
         include/VirtualPhonePro/NetworkProfileManager.h
         include/VirtualPhonePro/RealisticDeviceProfile.hpp
+        include/VirtualPhonePro/MultiInstanceManager.h
     )
     
     # Main GUI Executable

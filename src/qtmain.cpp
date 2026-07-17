@@ -18,7 +18,7 @@
 #include <QPixmap>
 #include <QIcon>
 
-#include "mainwindow.h"
+#include "GUI/DashboardWindow.h"
 #include "VirtualPhonePro/ReDroidController.h"
 #include "VirtualPhonePro/MultiInstanceManager.h"
 
@@ -235,8 +235,8 @@ int main(int argc, char *argv[]) {
         qDebug() << "[Startup] Docker validated:" << dockerResult.data.value("version").toString();
     }
     
-    // Create and show main window
-    MainWindow window;
+    // Create and show Dashboard window (Multi-Instance Manager)
+    DashboardWindow window;
     
     // Try to load icon, but don't fail if it's missing
     QIcon appIcon(":/icons/app.png");
