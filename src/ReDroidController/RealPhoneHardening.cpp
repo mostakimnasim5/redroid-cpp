@@ -502,10 +502,29 @@ bool RealPhoneHardening::randomizeCanvasFingerprint() {
     
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(1000, 9999);
     
-    std::string pattern = "canvas_" + std::to_string(dis(gen));
-    adb.setProperty("persist.sys.canvas.pattern", pattern);
+    // Real canvas noise: ±1 pixel RGB variation per session
+    // This changes the canvas fingerprint hash each session
+    std::uniform_int_distribution<> noise(-1, 1);
+    std::uniform_int_distribution<> seed(100000, 999999);
+    
+    int r_noise = noise(gen);
+    int g_noise = noise(gen);
+    int b_noise = noise(gen);
+    int session_seed = seed(gen);
+    
+    // Set noise values as properties (picked up by canvas hook)
+    adb.setProperty("persist.sys.canvas.noise.r", std::to_string(r_noise));
+    adb.setProperty("persist.sys.canvas.noise.g", std::to_string(g_noise));
+    adb.setProperty("persist.sys.canvas.noise.b", std::to_string(b_noise));
+    adb.setProperty("persist.sys.canvas.seed", std::to_string(session_seed));
+    adb.setProperty("persist.sys.canvas.mode", "2"); // mode 2 = pixel noise
+    
+    // Also inject via settings for WebView
+    adb.executeShellCommand(
+        "settings put global canvas_fingerprint_noise " + 
+        std::to_string(session_seed)
+    );
     
     return true;
 }
@@ -536,15 +555,69 @@ bool RealPhoneHardening::spoofWebGLVersion(const std::string& version) {
 }
 
 bool RealPhoneHardening::applyWebGLHardening() {
+    auto& adb = ADBManager::getInstance();
+    
+    // Samsung Galaxy S24 uses Snapdragon 8 Gen 3 → Adreno 750
     if (m_webglConfig.renderer.empty()) {
-        spoofWebGLRenderer("Mali-G78");
+        spoofWebGLRenderer("Adreno (TM) 750");
     }
     if (m_webglConfig.vendor.empty()) {
-        spoofWebGLVendor("ARM");
+        spoofWebGLVendor("Qualcomm");
     }
     if (m_webglConfig.version.empty()) {
-        spoofWebGLVersion("WebGL 2.0");
+        spoofWebGLVersion("WebGL 2.0 (OpenGL ES 3.2)");
     }
+    
+    // Remove SwiftShader/emulator traces from WebGL
+    adb.setProperty("persist.sys.webgl.unmasked_renderer", 
+                    m_webglConfig.renderer.empty() ? "Adreno (TM) 750" : m_webglConfig.renderer);
+    adb.setProperty("persist.sys.webgl.unmasked_vendor", "Qualcomm");
+    
+    // Hide emulator renderer strings
+    adb.executeShellCommand("setprop debug.egl.hw 1");
+    adb.executeShellCommand("setprop debug.sf.hw 1");
+    adb.executeShellCommand("setprop ro.hardware.egl adreno");
+    adb.executeShellCommand("setprop ro.hardware.vulkan adreno");
+    
+    // Remove WEBGL_debug_renderer_info extension visibility
+    // (prevents apps from reading actual renderer string)
+    adb.setProperty("persist.sys.webgl.hide_debug_info", "1");
+    
+    // Set real extensions list matching Adreno 750
+    std::vector<std::string> extensions = {
+        "GL_OES_EGL_image",
+        "GL_OES_EGL_image_external",
+        "GL_OES_depth24",
+        "GL_OES_depth32",
+        "GL_OES_element_index_uint",
+        "GL_OES_texture_float",
+        "GL_OES_texture_float_linear",
+        "GL_OES_packed_depth_stencil",
+        "GL_OES_rgb8_rgba8",
+        "GL_OES_standard_derivatives",
+        "GL_OES_vertex_half_float",
+        "GL_OES_EGL_sync",
+        "GL_OES_mapbuffer",
+        "GL_OES_vertex_array_object",
+        "GL_QCOM_tiled_rendering",
+        "GL_QCOM_extended_get",
+        "GL_QCOM_extended_get2",
+        "GL_EXT_blend_minmax",
+        "GL_EXT_discard_framebuffer",
+        "GL_EXT_multisampled_render_to_texture",
+        "GL_EXT_robustness",
+        "GL_EXT_shader_texture_lod",
+        "GL_EXT_texture_filter_anisotropic",
+        "GL_EXT_texture_format_BGRA8888",
+        "GL_EXT_read_format_bgra"
+    };
+    
+    std::string extList = "";
+    for (const auto& ext : extensions) {
+        extList += ext + " ";
+    }
+    adb.setProperty("persist.sys.webgl.extensions", extList);
+    
     return true;
 }
 

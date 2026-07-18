@@ -192,27 +192,43 @@ QString TLSFingerprint::buildJA3String(quint16 tlsVersion,
     
     QStringList components;
     
-    // TLS Version (hex)
-    components << QString::number(tlsVersion, 16).toUpper();
+    // Real JA3 format (5 fields only):
+    // SSLVersion,CipherSuites,Extensions,EllipticCurves,EllipticCurvePointFormats
+    // Source: https://github.com/salesforce/ja3
     
-    // Random (32 bytes as hex) - normally from ClientHello
-    // Using placeholder that will be replaced at runtime
-    components << "random-placeholder";
+    // Field 1: TLS Version (decimal)
+    components << QString::number(tlsVersion);
     
-    // Session ID (empty for new connections)
-    components << "";
+    // Field 2: Cipher Suites (dash-separated decimal, no GREASE)
+    QVector<quint16> filteredCiphers;
+    for (quint16 c : cipherSuites) {
+        // Skip GREASE values (0xXaXa pattern)
+        if ((c & 0x0f0f) != 0x0a0a) {
+            filteredCiphers.append(c);
+        }
+    }
+    components << joinInts(filteredCiphers, "-");
     
-    // Cipher Suites (comma-separated)
-    components << cipherSuitesToString(cipherSuites);
+    // Field 3: Extensions (dash-separated decimal, no GREASE)
+    QVector<quint16> filteredExts;
+    for (quint16 e : extensions) {
+        if ((e & 0x0f0f) != 0x0a0a) {
+            filteredExts.append(e);
+        }
+    }
+    components << joinInts(filteredExts, "-");
     
-    // Extensions (comma-separated)
-    components << extensionsToString(extensions);
+    // Field 4: Elliptic Curves (dash-separated decimal, no GREASE)
+    QVector<quint16> filteredCurves;
+    for (quint16 c : ellipticCurves) {
+        if ((c & 0x0f0f) != 0x0a0a) {
+            filteredCurves.append(c);
+        }
+    }
+    components << joinInts(filteredCurves, "-");
     
-    // Elliptic Curves
-    components << ellipticCurvesToString(ellipticCurves);
-    
-    // EC Point Formats (uncompressed only)
-    components << "0";
+    // Field 5: EC Point Formats (dash-separated decimal)
+    components << "0"; // uncompressed only
     
     return components.join(",");
 }
@@ -374,18 +390,86 @@ OSTLSConfig TLSFingerprint::getAndroidTLSConfig() {
         0x003F  // RSA_AES_128_CBC_SHA
     };
     
-    config.extensions = {23, 43, 45, 16};
-    config.ellipticCurves = {29, 23, 30, 25, 24};
-    config.ecPointFormats = {0};
+    // Real Android Chrome 120+ extension list
+    config.extensions = {
+        0,      // server_name (SNI)
+        5,      // status_request (OCSP)
+        10,     // supported_groups (elliptic curves)
+        11,     // ec_point_formats
+        13,     // signature_algorithms
+        16,     // application_layer_protocol_negotiation (ALPN)
+        17,     // status_request_v2
+        18,     // signed_certificate_timestamp
+        21,     // padding
+        23,     // extended_master_secret
+        27,     // compress_certificate
+        34,     // delegated_credentials
+        35,     // session_ticket
+        43,     // supported_versions
+        44,     // cookie
+        45,     // psk_key_exchange_modes
+        51,     // key_share
+        17513,  // applications_settings (ALPS - Chrome specific)
+        65281,  // renegotiation_info
+        30032   // encrypted_client_hello
+    };
+    config.ellipticCurves = {
+        29,  // x25519
+        23,  // secp256r1
+        30,  // x448
+        25,  // secp521r1
+        24   // secp384r1
+    };
+    config.ecPointFormats = {0}; // uncompressed
     
     return config;
 }
 
 OSTLSConfig TLSFingerprint::getSamsungTLSConfig() {
-    OSTLSConfig config = getAndroidTLSConfig();
+    OSTLSConfig config;
     config.osName = "Samsung";
     config.browser = "Samsung Internet";
-    config.version = "22.0";
+    config.version = "23.0";
+    
+    // TLS 1.3
+    config.maxVersion = 0x0304;
+    config.minVersion = 0x0303;
+    
+    // Samsung Internet cipher suites (real device capture)
+    config.cipherSuites = {
+        0x1301, // TLS_AES_128_GCM_SHA256
+        0x1302, // TLS_AES_256_GCM_SHA384
+        0x1303, // TLS_CHACHA20_POLY1305_SHA256
+        0xC02B, // ECDHE_ECDSA_AES_128_GCM_SHA256
+        0xC02C, // ECDHE_ECDSA_AES_256_GCM_SHA384
+        0xCCA9, // ECDHE_ECDSA_CHACHA20_POLY1305
+        0xC02F, // ECDHE_RSA_AES_128_GCM_SHA256
+        0xC030, // ECDHE_RSA_AES_256_GCM_SHA384
+        0xCCA8, // ECDHE_RSA_CHACHA20_POLY1305
+        0xC013, // ECDHE_RSA_AES_128_CBC_SHA
+        0xC014, // ECDHE_RSA_AES_256_CBC_SHA
+        0x002F, // RSA_AES_128_CBC_SHA
+        0x0035  // RSA_AES_256_CBC_SHA
+    };
+    
+    // Samsung Internet extensions
+    config.extensions = {
+        0,     // SNI
+        5,     // status_request
+        10,    // supported_groups
+        11,    // ec_point_formats
+        13,    // signature_algorithms
+        16,    // ALPN
+        23,    // extended_master_secret
+        35,    // session_ticket
+        43,    // supported_versions
+        45,    // psk_key_exchange_modes
+        51,    // key_share
+        65281  // renegotiation_info
+    };
+    config.ellipticCurves = {29, 23, 24};
+    config.ecPointFormats = {0};
+    
     return config;
 }
 

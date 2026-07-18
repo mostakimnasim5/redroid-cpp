@@ -653,13 +653,14 @@ main() {
     patch_selinux_status
     patch_sysctl
     
-    # === STEP 2: Kernel-Level Proc/Sys Spoofing ===
+    # === STEP 2 + STEP 5: Kernel-Level & WebGL Spoofing ===
     patch_cpu_info
     patch_meminfo
     patch_proc_filesystem
     patch_sys_filesystem
     patch_sensor_simulation
     patch_network_interface
+    patch_webgl_renderer
     # =============================================
     
     # Filesystem patches
@@ -905,6 +906,31 @@ patch_sys_filesystem() {
     done
 
     log_success "Sysfs entries patched"
+}
+
+patch_webgl_renderer() {
+    log "Patching WebGL/EGL renderer to hide SwiftShader..."
+
+    # Remove SwiftShader/emulator GPU traces
+    setprop debug.egl.hw 1 2>/dev/null || true
+    setprop debug.sf.hw 1 2>/dev/null || true
+    setprop ro.hardware.egl adreno 2>/dev/null || true
+    setprop ro.hardware.vulkan adreno 2>/dev/null || true
+    setprop ro.hardware.gralloc adreno 2>/dev/null || true
+
+    # Set Adreno 750 GPU (Snapdragon 8 Gen 3)
+    setprop ro.gfx.driver.1 com.qualcomm.qti.gpudrivers.taro.api32 2>/dev/null || true
+    setprop vendor.gpu.available_frequencies "850000000 710000000 644000000" 2>/dev/null || true
+
+    # Hide SwiftShader from OpenGL strings  
+    setprop ro.vendor.extension_library libqti_enhancement.so 2>/dev/null || true
+
+    # Canvas noise seed (changes per boot)
+    CANVAS_SEED=$(cat /proc/sys/kernel/random/boot_id | tr -d '-' | cut -c1-6)
+    setprop persist.sys.canvas.seed "$CANVAS_SEED" 2>/dev/null || true
+    setprop persist.sys.canvas.mode "2" 2>/dev/null || true
+
+    log_success "WebGL/Canvas renderer patched (Adreno 750)"
 }
 
 patch_sensor_simulation() {
