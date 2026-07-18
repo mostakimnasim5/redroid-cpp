@@ -100,16 +100,16 @@ if(BUILD_QT6_GUI)
             "$ENV{QT_DIR}/msvc2022_64"
         )
         
-        find_package(Qt6 COMPONENTS Core Gui Widgets Network REQUIRED
+        find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED
             PATHS ${Qt6_SEARCH_PATHS}
             NO_DEFAULT_PATH
         )
         
         if(NOT Qt6_FOUND)
-            find_package(Qt6 COMPONENTS Core Gui Widgets Network REQUIRED)
+            find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED)
         endif()
     else()
-        find_package(Qt6 COMPONENTS Core Gui Widgets Network REQUIRED)
+        find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED)
     endif()
     
     message(STATUS "Found Qt6: ${Qt6_DIR}")
@@ -182,6 +182,7 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/SystemAppSimulator.cpp
         
         # Utilities
+        src/ReDroidController/MultiInstanceManager.cpp
         src/ReDroidController/ADBManager.cpp
         src/ReDroidController/APIServer.cpp
         src/ReDroidController/AppCloner.cpp
@@ -224,9 +225,9 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/GoogleFacebookSpoofer.h
         include/VirtualPhonePro/DeepDeviceSpoofer.h
         include/VirtualPhonePro/UniqueDeviceGenerator.h
-        include/VirtualPhonePro/AdvancedAntiDetection.h
-        include/VirtualPhonePro/TLSFingerprint.h
-        include/VirtualPhonePro/HyperRealisticTouchEmulator.h
+        include/VirtualPhonePro/AdvancedAntiDetection.hpp
+        include/VirtualPhonePro/TLSFingerprint.hpp
+        include/VirtualPhonePro/HyperRealisticTouchEmulator.hpp
         include/VirtualPhonePro/NetworkProfileManager.h
         include/VirtualPhonePro/RealisticDeviceProfile.hpp
         include/VirtualPhonePro/MultiInstanceManager.h
@@ -283,6 +284,9 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/openssl_stub.h
     )
     
+    # Threads
+    find_package(Threads REQUIRED)
+
     # =========================================================================
     # Main Executable - WIN32 for no console
     # =========================================================================
@@ -307,6 +311,7 @@ if(BUILD_QT6_GUI)
         Qt6::Gui
         Qt6::Widgets
         Qt6::Network
+        Qt6::Concurrent
         Threads::Threads
     )
     
@@ -331,6 +336,25 @@ if(BUILD_QT6_GUI)
         # Bundle Qt if enabled
         if(BUNDLE_QT)
             if(WIN32)
+                find_program(WINDEPLOYQT_EXECUTABLE windeployqt
+                    HINTS "${Qt6_DIR}/../../../bin"
+                    "$ENV{QTDIR}/bin"
+                )
+                if(WINDEPLOYQT_EXECUTABLE)
+                    add_custom_command(TARGET ReDroidCPP POST_BUILD
+                        COMMAND ${WINDEPLOYQT_EXECUTABLE}
+                            --no-translations
+                            --no-opengl-sw
+                            --release
+                            "$<TARGET_FILE:ReDroidCPP>"
+                        COMMENT "Bundling Qt DLLs with windeployqt"
+                    )
+                    message(STATUS "windeployqt found: ${WINDEPLOYQT_EXECUTABLE}")
+                else()
+                    message(WARNING "windeployqt not found!")
+                endif()
+            endif()
+            if(WIN32) # original block below
                 # Find Qt6 deployment plugin
                 find_package(Qt6 REQUIRED COMPONENTS CorePrivate GuiPrivate)
                 
