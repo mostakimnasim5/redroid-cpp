@@ -107,7 +107,36 @@ AppManagerDialog::AppManagerDialog(const QString& instanceId, QWidget* parent)
 AppManagerDialog::~AppManagerDialog() = default;
 
 void AppManagerDialog::loadInstalledApps() {
-    // Implementation for loading apps
+    m_appTable->setRowCount(0);
+    
+    QProcess proc;
+    proc.start("adb", {"-s", m_instanceId, "shell", "pm list packages -3 --user 0"});
+    proc.waitForFinished(8000);
+    
+    QString output = proc.readAllStandardOutput();
+    QStringList packages = output.split("
+", Qt::SkipEmptyParts);
+    
+    m_appTable->setRowCount(packages.size());
+    
+    for (int i = 0; i < packages.size(); i++) {
+        QString pkg = packages[i].replace("package:", "").trimmed();
+        if (pkg.isEmpty()) continue;
+        
+        // Get app label
+        QProcess labelProc;
+        labelProc.start("adb", {"-s", m_instanceId, "shell",
+            QString("dumpsys package %1 | grep -i label | head -1").arg(pkg)});
+        labelProc.waitForFinished(3000);
+        QString label = labelProc.readAllStandardOutput().trimmed();
+        
+        m_appTable->setItem(i, 0, new QTableWidgetItem(pkg));
+        m_appTable->setItem(i, 1, new QTableWidgetItem(label.isEmpty() ? pkg : label));
+        m_appTable->setItem(i, 2, new QTableWidgetItem(""));
+        m_appTable->setItem(i, 3, new QTableWidgetItem("Installed"));
+    }
+    
+    m_appTable->resizeColumnsToContents();
 }
 
 void AppManagerDialog::onRefreshClicked() {

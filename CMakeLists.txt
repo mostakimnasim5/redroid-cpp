@@ -206,12 +206,9 @@ if(BUILD_QT6_GUI)
         src/GUI/PhoneWindow.cpp
         src/GUI/DashboardWindow.cpp
         src/GUI/AntiDetectionPanel.cpp
-        src/GUI/main.cpp
         
         # Main App
         src/qtmain.cpp
-        src/mainwindow.cpp
-        src/AutoStartDialog.cpp
     )
     
     # =========================================================================
@@ -279,8 +276,6 @@ if(BUILD_QT6_GUI)
         src/GUI/PhoneWindow.h
         src/GUI/DashboardWindow.h
         src/GUI/AntiDetectionPanel.h
-        src/mainwindow.h
-        src/AutoStartDialog.h
         src/ReDroidController/openssl_stub.h
     )
     

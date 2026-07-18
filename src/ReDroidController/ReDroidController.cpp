@@ -64,7 +64,7 @@ ReDroidController& ReDroidController::instance() {
 DockerConfig::DockerConfig()
     : dockerPath("docker")
     , adbPath("")
-    , imageName("ghcr.io/redroid/redroid:14.0.0_google_64only")
+    , imageName("redroid-cpp/emulator:3.0.0")
     , networkDriver("bridge")
     , baseAdbPort(5555)
     , baseVncPort(5900)
@@ -305,6 +305,20 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     
     // GPU mode (swiftshader for Windows compatibility)
     args << "-e" << "REDROID_GPU_MODE=swiftshader";
+    
+    // Screen display - ADB screencap approach (no X11 needed)
+    // PhoneWindow captures screen via: adb exec-out screencap -p
+    // This works on all platforms without VcXsrv/X11
+    
+    // Optional X11 for Windows (only if VcXsrv is running)
+    QString displayEnv = qgetenv("DISPLAY");
+    if (!displayEnv.isEmpty()) {
+        args << "-e" << QString("DISPLAY=%1").arg(displayEnv);
+    } else {
+        // Windows default X11 server address
+        args << "-e" << "DISPLAY=host.docker.internal:0";
+        args << "--add-host" << "host.docker.internal:host-gateway";
+    }
     
     // Redroid configuration
     args << "-e" << "REDROID_CTS=0";
