@@ -87,10 +87,12 @@ RUN sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
     "emulator"
 
 # =============================================================================
-# Copy entrypoint script
+# Copy all scripts
 # =============================================================================
-COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
+COPY patch_system.sh /opt/patch_system.sh
+COPY init_cellular_network.sh /opt/init_cellular_network.sh
+RUN chmod +x /entrypoint.sh              /opt/patch_system.sh              /opt/init_cellular_network.sh
 
 # =============================================================================
 # Cleanup - Remove apt cache to keep image small
