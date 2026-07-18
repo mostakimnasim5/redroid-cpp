@@ -1,0 +1,56 @@
+# Build files
+build/
+cmake-build-*/
+*.cmake
+CMakeCache.txt
+CMakeFiles/
+Makefile
+compile_commands.json
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Logs and temp
+*.log
+logs/
+*.tmp
+*.bak
+
+# Release packages
+ReDroidCPP_v*/
+*.zip
+
+# Test outputs
+detection_bypass_report.json
+tmp_result.txt
+
+# Windows specific
+*.exe
+*.dll
+*.pdb
+
+# Documentation (not needed in container)
+docs/
+*.md
+!docker/README.md
+
+# CI/CD
+.github/
+.travis.yml
+
+# Source code (only docker/ needed)
+src/
+include/
+tests/
+gui/
+tools/
+profiles/
+CMakeLists.txt
