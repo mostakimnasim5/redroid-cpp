@@ -10,6 +10,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# ==============================================================================
+# Qt Auto-generation (MOC/UIC/RCC) - required for Q_OBJECT classes
+# ==============================================================================
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
 # Version info
 set(PROJECT_VERSION_MAJOR 3)
 set(PROJECT_VERSION_MINOR 0)
@@ -88,29 +95,8 @@ if(BUILD_QT6_GUI)
     # Find Qt6
     set(QT_MIN_VERSION "6.5.0")
     
-    if(WIN32)
-        # Try to find Qt6 in common locations
-        set(Qt6_SEARCH_PATHS
-            "C:/Qt/${QT_MIN_VERSION}/msvc2022_64"
-            "C:/Qt/6.5.3/msvc2022_64"
-            "C:/Qt/6.5.2/msvc2022_64"
-            "C:/Qt/6.5.1/msvc2022_64"
-            "C:/Qt/6.5.0/msvc2022_64"
-            "$ENV{QTDIR}/msvc2022_64"
-            "$ENV{QT_DIR}/msvc2022_64"
-        )
-        
-        find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED
-            PATHS ${Qt6_SEARCH_PATHS}
-            NO_DEFAULT_PATH
-        )
-        
-        if(NOT Qt6_FOUND)
-            find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED)
-        endif()
-    else()
-        find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED)
-    endif()
+    # Find Qt6 - works on both Linux and Windows CI (install-qt-action sets CMAKE_PREFIX_PATH)
+    find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED)
     
     message(STATUS "Found Qt6: ${Qt6_DIR}")
     

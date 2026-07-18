@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.20)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Required for Q_OBJECT in test classes
+set(CMAKE_AUTOMOC ON)
+
 # Find Qt6
 find_package(Qt6 COMPONENTS Test Core Widgets Network Concurrent REQUIRED)
 find_package(Threads REQUIRED)
