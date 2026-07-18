@@ -25,7 +25,7 @@ RealisticDeviceProfile& RealisticDeviceProfile::instance() {
 }
 
 RealisticDeviceProfile::RealisticDeviceProfile() {
-    qsrand(static_cast<uint>(QDateTime::currentMSecsSinceEpoch()));
+    // QRandomGenerator auto-seeds in Qt6 (qsrand removed)
 }
 
 // ========================================================================
@@ -395,7 +395,7 @@ QString RealisticDeviceProfile::generateHex(int length) {
     QString hex;
     const QString chars = "0123456789ABCDEF";
     for (int i = 0; i < length; i++) {
-        hex += chars[qrand() % 16];
+        hex += chars[static_cast<int>(QRandomGenerator::global()->bounded(16))];
     }
     return hex;
 }
@@ -403,7 +403,7 @@ QString RealisticDeviceProfile::generateHex(int length) {
 QString RealisticDeviceProfile::generateNumeric(int length) {
     QString num;
     for (int i = 0; i < length; i++) {
-        num += QString::number(qrand() % 10);
+        num += QString::number(static_cast<int>(QRandomGenerator::global()->bounded(10)));
     }
     return num;
 }
@@ -411,10 +411,10 @@ QString RealisticDeviceProfile::generateNumeric(int length) {
 double RealisticDeviceProfile::generateCoordinate(bool isLatitude) {
     if (isLatitude) {
         // Latitude: -90 to 90
-        return (qrand() % 18000) / 100.0 - 90.0;
+        return (static_cast<int>(QRandomGenerator::global()->bounded(18000))) / 100.0 - 90.0;
     } else {
         // Longitude: -180 to 180
-        return (qrand() % 36000) / 100.0 - 180.0;
+        return (static_cast<int>(QRandomGenerator::global()->bounded(36000))) / 100.0 - 180.0;
     }
 }
 
@@ -454,7 +454,7 @@ CompleteDeviceIdentity RealisticDeviceProfile::generateIdentity(const QString& m
     else allTACs = samsungTACs;
     
     // Generate IMEI
-    QString tac = allTACs[qrand() % allTACs.size()];
+    QString tac = allTACs[static_cast<int>(QRandomGenerator::global()->bounded(allTACs.size()))];
     QString sn = generateNumeric(6);
     identity.imei = tac + sn + QString::number(calculateLuhnDigit(tac + sn));
     
@@ -504,7 +504,7 @@ CompleteDeviceIdentity RealisticDeviceProfile::generateIdentity(const QString& m
     else if (manufacturer.toLower() == "xiaomi") wifiOUIs = {"34:80:B3", "F4:F5:D8"};
     else wifiOUIs = {"00:1A:11"};
     
-    QString oui = wifiOUIs[qrand() % wifiOUIs.size()];
+    QString oui = wifiOUIs[static_cast<int>(QRandomGenerator::global()->bounded(wifiOUIs.size()))];
     identity.wlanMac = oui + ":" + generateHex(2) + ":" + generateHex(2) + ":" + generateHex(2);
     identity.bluetoothMac = "00:1A:7D:" + generateHex(2) + ":" + generateHex(2) + ":" + generateHex(2);
     identity.ethernetMac = "00:1B:44:" + generateHex(2) + ":" + generateHex(2) + ":" + generateHex(2);
@@ -517,7 +517,7 @@ CompleteDeviceIdentity RealisticDeviceProfile::generateIdentity(const QString& m
     // IMSI
     QStringList mccList = {"310", "310", "310", "310", "404", "510", "424"};
     QStringList mncList = {"260", "410", "120", "030", "45", "03", "02"};
-    int idx = qrand() % mccList.size();
+    int idx = static_cast<int>(QRandomGenerator::global()->bounded(mccList.size()));
     QString mcc = mccList[idx];
     QString mnc = mncList[idx];
     identity.imsi1 = mcc + mnc + generateNumeric(9);
@@ -547,12 +547,12 @@ CompleteCarrierConfig RealisticDeviceProfile::generateCarrier() {
     QStringList mccs = {"310", "310", "311", "310", "312", "310"};
     QStringList mncs = {"260", "410", "480", "120", "030", "260"};
     
-    int idx = qrand() % carriers.size();
+    int idx = static_cast<int>(QRandomGenerator::global()->bounded(carriers.size()));
     carrier.carrierName = carriers[idx];
     carrier.carrierCountry = countries[idx];
     carrier.mcc = mccs[idx];
     carrier.mnc = mncs[idx];
-    carrier.carrierId = QString::number(qrand() % 1000);
+    carrier.carrierId = QString::number(static_cast<int>(QRandomGenerator::global()->bounded(1000)));
     carrier.carrierType = "postpaid";
     carrier.simOperatorName = carriers[idx];
     carrier.simCountry = countries[idx];
@@ -663,10 +663,10 @@ CompleteHardwareSpec RealisticDeviceProfile::generateHardware(const QString& man
     
     // Battery
     hw.batteryCapacity = 5000;
-    hw.batteryLevel = 75 + (qrand() % 20);
-    hw.batteryTemp = 320 + (qrand() % 30);
-    hw.batteryVoltage = 4000 + (qrand() % 500);
-    hw.batteryCurrent = -500 + (qrand() % 200);
+    hw.batteryLevel = 75 + (static_cast<int>(QRandomGenerator::global()->bounded(20)));
+    hw.batteryTemp = 320 + (static_cast<int>(QRandomGenerator::global()->bounded(30)));
+    hw.batteryVoltage = 4000 + (static_cast<int>(QRandomGenerator::global()->bounded(500)));
+    hw.batteryCurrent = -500 + (static_cast<int>(QRandomGenerator::global()->bounded(200)));
     hw.batteryStatus = "discharging";
     hw.batteryHealth = "good";
     hw.batteryTechnology = "Li-ion";
@@ -902,7 +902,7 @@ CompleteSensorCalibration RealisticDeviceProfile::generateSensors() {
     sensors.fingerprint.version = 1;
     sensors.fingerprint.type = "UNDER_DISPLAY_ULTRASONIC";
     sensors.fingerprint.strength = "STRONG";
-    sensors.fingerprint.sensorId = qrand() % 256;
+    sensors.fingerprint.sensorId = static_cast<int>(QRandomGenerator::global()->bounded(256));
     
     // Face Recognition
     sensors.faceRecognition.name = "Samsung Face Recognition";
@@ -922,9 +922,9 @@ CompleteNetworkConfig RealisticDeviceProfile::generateNetwork() {
     net.dhcpHostname = net.hostname;
     
     // IP
-    net.ipAddress = "192.168.1." + QString::number(100 + qrand() % 50);
+    net.ipAddress = "192.168.1." + QString::number(100 + static_cast<int>(QRandomGenerator::global()->bounded(50)));
     net.wifiIpAddress = net.ipAddress;
-    net.mobileIpAddress = "10.0.0." + QString::number(2 + qrand() % 10);
+    net.mobileIpAddress = "10.0.0." + QString::number(2 + static_cast<int>(QRandomGenerator::global()->bounded(10)));
     net.subnetMask = "255.255.255.0";
     net.gateway = "192.168.1.1";
     net.dns1 = "8.8.8.8";
@@ -933,9 +933,9 @@ CompleteNetworkConfig RealisticDeviceProfile::generateNetwork() {
     // WiFi
     net.wifiSSID = "Home_WiFi_" + generateNumeric(4);
     net.wifiBSSID = "AA:BB:CC:" + generateHex(2) + ":" + generateHex(2) + ":" + generateHex(2);
-    net.wifiSignal = QString::number(-40 - qrand() % 30) + " dBm";
+    net.wifiSignal = QString::number(-40 - static_cast<int>(QRandomGenerator::global()->bounded(30))) + " dBm";
     net.wifiLinkSpeed = 866;
-    net.wifiFrequency = 5180 + (qrand() % 2) * 20;
+    net.wifiFrequency = 5180 + (static_cast<int>(QRandomGenerator::global()->bounded(2))) * 20;
     net.wifiDriver = "android-driver";
     net.wifiChipset = "QC802BE";
     
@@ -964,17 +964,17 @@ CompleteLocationConfig RealisticDeviceProfile::generateLocation() {
     loc.gpsStatus = "OK";
     
     // Coordinates (New York area as example)
-    loc.latitude = 40.7128 + (qrand() % 1000) / 10000.0;
-    loc.longitude = -74.0060 + (qrand() % 1000) / 10000.0;
-    loc.altitude = 10.0 + (qrand() % 100) / 10.0;
-    loc.accuracy = 3.5 + (qrand() % 100) / 100.0;
-    loc.speed = qrand() % 5 / 3.6;
-    loc.bearing = qrand() % 360;
+    loc.latitude = 40.7128 + (static_cast<int>(QRandomGenerator::global()->bounded(1000))) / 10000.0;
+    loc.longitude = -74.0060 + (static_cast<int>(QRandomGenerator::global()->bounded(1000))) / 10000.0;
+    loc.altitude = 10.0 + (static_cast<int>(QRandomGenerator::global()->bounded(100))) / 10.0;
+    loc.accuracy = 3.5 + (static_cast<int>(QRandomGenerator::global()->bounded(100))) / 100.0;
+    loc.speed = static_cast<int>(QRandomGenerator::global()->bounded(5)) / 3.6;
+    loc.bearing = static_cast<int>(QRandomGenerator::global()->bounded(360));
     
     // Time
     loc.gpsTime = QString::number(QDateTime::currentMSecsSinceEpoch());
-    loc.gpsWeek = 2340 + qrand() % 10;
-    loc.gpsTimeOfWeek = (qrand() % 604800000);
+    loc.gpsWeek = 2340 + static_cast<int>(QRandomGenerator::global()->bounded(10));
+    loc.gpsTimeOfWeek = (static_cast<int>(QRandomGenerator::global()->bounded(604800000)));
     
     // NMEA
     loc.nmeaSentence = "$GPGGA," + QString::number(loc.latitude, 'f', 4) + ",N," + 
@@ -1008,12 +1008,12 @@ CompleteTimingConfig RealisticDeviceProfile::generateTiming() {
     // System Time
     timing.systemTime = now;
     timing.systemTimeNanos = now * 1000000;
-    timing.elapsedRealtime = 86400000 + qrand() % 86400000; // Random uptime
+    timing.elapsedRealtime = 86400000 + static_cast<int>(QRandomGenerator::global()->bounded(86400000)); // Random uptime
     timing.elapsedRealtimeNanos = timing.elapsedRealtime * 1000000;
     timing.uptimeMillis = timing.elapsedRealtime;
     
     // Boot Time
-    timing.bootCount = 1 + qrand() % 5;
+    timing.bootCount = 1 + static_cast<int>(QRandomGenerator::global()->bounded(5));
     timing.bootTime = now - timing.elapsedRealtime;
     timing.bootCompleted = true;
     timing.bootAnimation = false;
@@ -1030,8 +1030,8 @@ CompleteTimingConfig RealisticDeviceProfile::generateTiming() {
     timing.nitzTimeZone = "GMT+00:00";
     
     // Drift
-    timing.timeDrift = qrand() % 100 - 50;
-    timing.clockDrift = qrand() % 500 - 250;
+    timing.timeDrift = static_cast<int>(QRandomGenerator::global()->bounded(100)) - 50;
+    timing.clockDrift = static_cast<int>(QRandomGenerator::global()->bounded(500)) - 250;
     
     return timing;
 }
@@ -1092,7 +1092,7 @@ QJsonObject RealisticDeviceProfile::generateSamsungA54() {
 
 QJsonObject RealisticDeviceProfile::generateRandomRealisticDevice() {
     QStringList manufacturers = {"Samsung", "Google", "Xiaomi", "OnePlus", "Huawei", "OPPO", "Vivo"};
-    QString manufacturer = manufacturers[qrand() % manufacturers.size()];
+    QString manufacturer = manufacturers[static_cast<int>(QRandomGenerator::global()->bounded(manufacturers.size()))];
     return generateCompleteProfile(manufacturer, "", "14");
 }
 

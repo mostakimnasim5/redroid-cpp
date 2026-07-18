@@ -5,6 +5,7 @@
  */
 
 #include <QtTest>
+#include <QRegularExpression>
 #include <QCoreApplication>
 #include <QDebug>
 #include <QSet>
@@ -104,7 +105,7 @@ void Test_UniqueDeviceGenerator::testIMEIGeneration() {
     
     // IMEI should be 15 digits
     QVERIFY2(imei.length() == 15, qPrintable(QString("IMEI length should be 15, got %1").arg(imei.length())));
-    QVERIFY2(imei.contains(QRegExp("^[0-9]{15}$")), "IMEI should contain only digits");
+    QVERIFY2(QRegularExpression("^[0-9]{15}$").match(imei).hasMatch(), "IMEI should contain only digits");
 }
 
 void Test_UniqueDeviceGenerator::testIMEIUniqueness() {
@@ -204,8 +205,8 @@ void Test_UniqueDeviceGenerator::testSamsungSerialFormat() {
     for (int i = 0; i < 10; ++i) {
         QString serial = gen.generateUniqueSerial("samsung");
         // Format: R + 6 digits + X + 2 digits
-        QRegExp rx("^R\\d{6}X\\d{2}$");
-        QVERIFY2(rx.exactMatch(serial), qPrintable(QString("Invalid Samsung serial format: %1").arg(serial)));
+        QRegularExpression rx("^R\\d{6}X\\d{2}$");
+        QVERIFY2(rx.match(serial).hasMatch(), qPrintable(QString("Invalid Samsung serial format: %1").arg(serial)));
     }
 }
 
@@ -215,8 +216,8 @@ void Test_UniqueDeviceGenerator::testGoogleSerialFormat() {
     for (int i = 0; i < 10; ++i) {
         QString serial = gen.generateUniqueSerial("google");
         // Format: AG + 8 digits
-        QRegExp rx("^AG\\d{8}$");
-        QVERIFY2(rx.exactMatch(serial), qPrintable(QString("Invalid Google serial format: %1").arg(serial)));
+        QRegularExpression rx("^AG\\d{8}$");
+        QVERIFY2(rx.match(serial).hasMatch(), qPrintable(QString("Invalid Google serial format: %1").arg(serial)));
     }
 }
 
@@ -232,8 +233,8 @@ void Test_UniqueDeviceGenerator::testMACFormat() {
     
     for (int i = 0; i < 10; ++i) {
         QString mac = gen.generateUniqueMAC();
-        QRegExp rx("^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$");
-        QVERIFY2(rx.exactMatch(mac), qPrintable(QString("Invalid MAC format: %1").arg(mac)));
+        QRegularExpression rx("^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$");
+        QVERIFY2(rx.match(mac).hasMatch(), qPrintable(QString("Invalid MAC format: %1").arg(mac)));
     }
 }
 
@@ -275,8 +276,8 @@ void Test_UniqueDeviceGenerator::testAndroidIdFormat() {
     for (int i = 0; i < 10; ++i) {
         QString androidId = gen.generateUniqueAndroidId();
         // Android ID is 16 hex characters
-        QRegExp rx("^[0-9A-Fa-f]{16}$");
-        QVERIFY2(rx.exactMatch(androidId), qPrintable(QString("Invalid Android ID format: %1").arg(androidId)));
+        QRegularExpression rx("^[0-9A-Fa-f]{16}$");
+        QVERIFY2(rx.match(androidId).hasMatch(), qPrintable(QString("Invalid Android ID format: %1").arg(androidId)));
     }
 }
 
@@ -306,8 +307,8 @@ void Test_UniqueDeviceGenerator::testGSFIdFormat() {
     for (int i = 0; i < 10; ++i) {
         QString gsfId = gen.generateUniqueGSFId();
         // GSF ID is 10 digits
-        QRegExp rx("^\\d{10}$");
-        QVERIFY2(rx.exactMatch(gsfId), qPrintable(QString("Invalid GSF ID format: %1").arg(gsfId)));
+        QRegularExpression rx("^\\d{10}$");
+        QVERIFY2(rx.match(gsfId).hasMatch(), qPrintable(QString("Invalid GSF ID format: %1").arg(gsfId)));
     }
 }
 
@@ -324,8 +325,8 @@ void Test_UniqueDeviceGenerator::testICCIDFormat() {
     for (int i = 0; i < 10; ++i) {
         QString iccid = gen.generateUniqueICCID();
         // ICCID starts with 8961 + 13+ digits
-        QRegExp rx("^8961\\d+$");
-        QVERIFY2(rx.exactMatch(iccid), qPrintable(QString("Invalid ICCID format: %1").arg(iccid)));
+        QRegularExpression rx("^8961\\d+$");
+        QVERIFY2(rx.match(iccid).hasMatch(), qPrintable(QString("Invalid ICCID format: %1").arg(iccid)));
     }
 }
 
