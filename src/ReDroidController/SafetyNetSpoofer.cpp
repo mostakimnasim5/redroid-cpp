@@ -101,17 +101,17 @@ bool SafetyNetSpoofer::spoofPlayIntegrity(const QString& instanceId) {
     // Play Integrity API flags
     QStringList props = {
         // Device Integrity
-        "play Integrity.attest.key.version", "1",
-        "play Integrity.enabled", "true",
-        "play Integrity.basicIntegrity", "true",
-        "play Integrity.deviceIntegrity", "true",
-        "play Integrity.strongIntegrity", "true",
-        "play Integrity.meetsDeviceIntegrity", "true",
-        "play Integrity.meetsStrongIntegrity", "true",
+        "play_integrity.attest.key.version", "1",
+        "play_integrity.enabled", "true",
+        "play_integrity.basicIntegrity", "true",
+        "play_integrity.deviceIntegrity", "true",
+        "play_integrity.strongIntegrity", "true",
+        "play_integrity.meetsDeviceIntegrity", "true",
+        "play_integrity.meetsStrongIntegrity", "true",
         
         // Google Play Services
-        "com.google.android.gms.play Integrity.enabled", "true",
-        "com.google.android.gms.play Integrity.v2", "true",
+        "com.google.android.gms.play_integrity.enabled", "true",
+        "com.google.android.gms.play_integrity.v2", "true",
         
         // Device Recognition
         "ro.product.first_api_level", "34",
@@ -128,9 +128,9 @@ bool SafetyNetSpoofer::spoofPlayIntegrity(const QString& instanceId) {
     }
     
     // Set Play Integrity response generation
-    executeCommand(instanceId, "setprop debug.play Integrity.force_pass true");
-    executeCommand(instanceId, "setprop debug.play Integrity.basic_integrity true");
-    executeCommand(instanceId, "setprop debug.play Integrity.device_integrity true");
+    executeCommand(instanceId, "setprop debug.play_integrity.force_pass true");
+    executeCommand(instanceId, "setprop debug.play_integrity.basic_integrity true");
+    executeCommand(instanceId, "setprop debug.play_integrity.device_integrity true");
     
     qDebug() << "Play Integrity spoofed successfully";
     return true;
@@ -241,7 +241,7 @@ bool SafetyNetSpoofer::spoofStrongIntegrity(const QString& instanceId, bool isSe
 bool SafetyNetSpoofer::spoofMeetsDeviceIntegrity(const QString& instanceId, bool meets) {
     QString value = meets ? "MEETS_DEVICE_INTEGRITY" : "MEETS_DEVICE_INTEGRITY";
     
-    executeCommand(instanceId, "setprop debug.play Integrity.meetsDeviceIntegrity " + value);
+    executeCommand(instanceId, "setprop debug.play_integrity.meetsDeviceIntegrity " + value);
     executeCommand(instanceId, "setprop persist.play Integrity.meetsDeviceIntegrity " + value);
     
     return true;
@@ -250,7 +250,7 @@ bool SafetyNetSpoofer::spoofMeetsDeviceIntegrity(const QString& instanceId, bool
 bool SafetyNetSpoofer::spoofMeetsStrongIntegrity(const QString& instanceId, bool meets) {
     QString value = meets ? "MEETS_STRONG_INTEGRITY" : "MEETS_STRONG_INTEGRITY";
     
-    executeCommand(instanceId, "setprop debug.play Integrity.meetsStrongIntegrity " + value);
+    executeCommand(instanceId, "setprop debug.play_integrity.meetsStrongIntegrity " + value);
     executeCommand(instanceId, "setprop persist.play Integrity.meetsStrongIntegrity " + value);
     
     return true;
@@ -270,7 +270,7 @@ bool SafetyNetSpoofer::verifySafetyNet(const QString& instanceId) {
 
 bool SafetyNetSpoofer::verifyPlayIntegrity(const QString& instanceId) {
     QString result = executeCommandSync(instanceId,
-        "getprop | grep -i play Integrity");
+        "getprop play_integrity.enabled");
     
     return result.contains("basicIntegrity=true") &&
            result.contains("deviceIntegrity=true");
@@ -288,9 +288,9 @@ QJsonObject SafetyNetSpoofer::getIntegrityStatus(const QString& instanceId) {
     
     // Play Integrity status
     status["playIntegrity"] = QJsonObject{
-        {"basicIntegrity", executeCommandSync(instanceId, "getprop debug.play Integrity.basic_integrity").trimmed()},
-        {"deviceIntegrity", executeCommandSync(instanceId, "getprop debug.play Integrity.device_integrity").trimmed()},
-        {"strongIntegrity", executeCommandSync(instanceId, "getprop debug.play Integrity.strong_integrity").trimmed()},
+        {"basicIntegrity", executeCommandSync(instanceId, "getprop debug.play_integrity.basic_integrity").trimmed()},
+        {"deviceIntegrity", executeCommandSync(instanceId, "getprop debug.play_integrity.device_integrity").trimmed()},
+        {"strongIntegrity", executeCommandSync(instanceId, "getprop debug.play_integrity.strong_integrity").trimmed()},
     };
     
     // Boot state
@@ -375,23 +375,41 @@ bool SafetyNetSpoofer::setPlayProtectionRating(const QString& instanceId, const 
 
 bool SafetyNetSpoofer::setDebugFlags(const QString& instanceId) {
     QStringList cmds = {
-        // Hide emulator indicators
+        // === Remove all emulator/QEMU traces ===
         "setprop ro.kernel.qemu 0",
         "setprop ro.boot.qemu false",
-        "setprop sys.boot_completed 1",
-        "persist.sys.boot_completed 1",
+        "setprop ro.boot.qemu.hardware.egl swiftshader",
+        "setprop ro.hardware qcom",
+        "setprop ro.hardware.egl adreno",
+        "setprop ro.board.platform taro",
+        "setprop ro.product.board taro",
+
+        // === Remove Goldfish/Ranchu traces ===
+        "setprop ro.hardware.gralloc.minigbm_virtio_gpu null",
+        "setprop ro.hardware.vulkan.adreno null",
         
-        // Hide debugging
+        // === Android boot flags ===
+        "setprop sys.boot_completed 1",
+        "setprop setprop persist.sys.boot_completed 1",
+
+        // === Hide debugging ===
         "setprop ro.debuggable 0",
         "setprop persist.sys.debuggable 0",
-        
-        // Hide test keys
+        "setprop debug.atrace.tags.enableflags 0",
+
+        // === Release build flags ===
         "setprop ro.build.tags release-keys",
         "setprop ro.build.type user",
-        
-        // Hide ADB
+        "setprop ro.build.flavor user",
+
+        // === Hide ADB from apps ===
         "setprop persist.adb.notify 0",
         "setprop service.adb.enable 1",
+        
+        // === SafetyNet emulator hide ===
+        "setprop ro.snet.unsupported_device 0",
+        "setprop ro.product.device dm3q",
+        "setprop ro.product.name dm3q",
     };
     
     for (const QString& cmd : cmds) {
@@ -465,7 +483,7 @@ QByteArray SafetyNetSpoofer::generateSafetyNetJws(const QString& instanceId) {
         {"apkPackageName", "com.google.android.gms"},
         {"ctsProfileMatch", true},
         {"basicIntegrity", true},
-        {"evaluationType", "BASIC"},
+        {"evaluationType", "HARDWARE_BACKED"},
     };
     
     // Add device info
@@ -503,7 +521,7 @@ QJsonObject SafetyNetSpoofer::generatePlayIntegrityResponse(const QString& insta
                 {"timestampMs", QDateTime::currentMSecsSinceEpoch()},
             }},
             {"deviceIntegrityVerdict", QJsonObject{
-                {"deviceRecognitionVerdict", QJsonArray{"MEETS_DEVICE_INTEGRITY"}},
+                {"deviceRecognitionVerdict", QJsonArray{"MEETS_DEVICE_INTEGRITY", "MEETS_STRONG_INTEGRITY", "MEETS_BASIC_INTEGRITY"}},
             }},
             {"appIntegrityVerdict", QJsonObject{
                 {"appRecognitionVerdict", "PASS"},
