@@ -405,6 +405,7 @@ install(DIRECTORY docker/ DESTINATION share/redroid/docker)
 # Testing
 # ==============================================================================
 enable_testing()
+add_subdirectory(tests)
 
 # ==============================================================================
 # Docker Build Target

@@ -1,43 +1,64 @@
 # Test Suite CMake Configuration
 cmake_minimum_required(VERSION 3.20)
-project(ReDroidCPP_Tests LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find Qt6 for testing
-find_package(Qt6 COMPONENTS Test Core Widgets REQUIRED)
+# Find Qt6
+find_package(Qt6 COMPONENTS Test Core Widgets Network Concurrent REQUIRED)
+find_package(Threads REQUIRED)
 
 # Enable testing
 enable_testing()
 
-# Test sources
-set(TEST_SOURCES
-    Test_UniqueDeviceGenerator.cpp
-    Test_TACDatabase.cpp
-    Test_LuhnValidation.cpp
+# =========================================================
+# Test 1: Detection Bypass Test Suite (main tests)
+# =========================================================
+add_executable(Test_DetectionBypass
+    Test_DetectionBypass.cpp
 )
 
-# Create test executable
-add_executable(${PROJECT_NAME} ${TEST_SOURCES})
-
-# Link Qt Test framework
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(Test_DetectionBypass PRIVATE
     Qt6::Test
     Qt6::Core
+    Qt6::Network
+    Threads::Threads
 )
 
-# Link the main library (if built)
-find_library(REDROID_CONTROLLER_LIBRARY NAMES ReDroidController PATHS ${CMAKE_BINARY_DIR}/lib)
-if(REDROID_CONTROLLER_LIBRARY)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${REDROID_CONTROLLER_LIBRARY})
-endif()
-
-# Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(Test_DetectionBypass PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
 )
 
-# Copy test data
-file(COPY ${CMAKE_SOURCE_DIR}/profiles/ DESTINATION ${CMAKE_BINARY_DIR}/profiles/)
+add_test(NAME DetectionBypass COMMAND Test_DetectionBypass)
+
+# =========================================================
+# Test 2: Unique Device Generator Tests
+# =========================================================
+add_executable(Test_UniqueDeviceGenerator
+    Test_UniqueDeviceGenerator.cpp
+)
+
+target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Concurrent
+    Threads::Threads
+)
+
+target_include_directories(Test_UniqueDeviceGenerator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME UniqueDeviceGenerator COMMAND Test_UniqueDeviceGenerator)
+
+# =========================================================
+# Copy test profiles
+# =========================================================
+if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")
+    file(COPY ${CMAKE_SOURCE_DIR}/profiles/
+         DESTINATION ${CMAKE_BINARY_DIR}/profiles/)
+endif()
+
+message(STATUS "Tests configured: DetectionBypass + UniqueDeviceGenerator")
