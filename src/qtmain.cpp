@@ -190,10 +190,10 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setOrganizationName("VirtualPhonePro");
     
     // Enable high DPI scaling
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
     
     // Create application
+    // Note: AA_EnableHighDpiScaling + AA_UseHighDpiPixmaps
+    // removed in Qt6 (auto-enabled by default)
     QApplication app(argc, argv);
     app.setStyle(QStyleFactory::create("Fusion"));
     

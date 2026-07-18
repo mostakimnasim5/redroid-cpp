@@ -15,7 +15,6 @@
 
 #include "PhoneWindow.h"
 #include <QApplication>
-#include <QDesktopWidget>
 #include <QScreen>
 #include <QMessageBox>
 #include <QFileDialog>

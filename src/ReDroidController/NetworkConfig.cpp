@@ -297,15 +297,15 @@ QJsonObject NetworkConfig::getNetworkInfo(const QString& instanceId) {
     QString ipResult = ctrl.executeShell(instanceId, cmd);
     
     // Extract IPv4
-    QRegExp ipv4Regex("inet (\\d+\\.\\d+\\.\\d+\\.\\d+)");
-    if (ipv4Regex.indexIn(ipResult) != -1) {
-        info["ipv4"] = ipv4Regex.cap(1);
+    QRegularExpression ipv4Regex(R"(inet (\d+\.\d+\.\d+\.\d+))");
+    if (ipv4Regex.match(ipResult) != -1) {
+        info["ipv4"] = ipv4Regex.captured(1);
     }
     
     // Extract IPv6
-    QRegExp ipv6Regex("inet6 ([a-f0-9:]+)");
-    if (ipv6Regex.indexIn(ipResult) != -1) {
-        info["ipv6"] = ipv6Regex.cap(1);
+    QRegularExpression ipv6Regex(R"(inet6 ([a-f0-9:]+))");
+    if (ipv6Regex.match(ipResult) != -1) {
+        info["ipv6"] = ipv6Regex.captured(1);
     }
     
     // Get MAC address
@@ -317,9 +317,9 @@ QJsonObject NetworkConfig::getNetworkInfo(const QString& instanceId) {
     // Get gateway
     QString gatewayCmd = "ip route show default";
     QString gatewayResult = ctrl.executeShell(instanceId, gatewayCmd);
-    QRegExp gatewayRegex("default via (\\d+\\.\\d+\\.\\d+\\.\\d+)");
-    if (gatewayRegex.indexIn(gatewayResult) != -1) {
-        info["gateway"] = gatewayRegex.cap(1);
+    QRegularExpression gatewayRegex(R"(default via (\d+\.\d+\.\d+\.\d+))");
+    if (gatewayRegex.match(gatewayResult) != -1) {
+        info["gateway"] = gatewayRegex.captured(1);
     }
     
     return info;
