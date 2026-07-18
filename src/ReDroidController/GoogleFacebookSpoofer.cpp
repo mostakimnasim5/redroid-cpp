@@ -82,8 +82,8 @@ bool GoogleFacebookSpoofer::spoofPlayIntegrityResponse(const QString& instanceId
     
     QStringList commands = {
         // Set integrity token
-        "setprop play Integrity.enabled true",
-        "setprop ro.play.integrity.enabled 1",
+        "setprop play_integrity.enabled true",
+        "setprop ro.play_integrity.enabled 1",
         
         // Set integrity flags
         "setprop ro.device.integrity supported",
@@ -122,7 +122,7 @@ bool GoogleFacebookSpoofer::spoofSafetyNetAttestation(const QString& instanceId)
         "setprop ro.build.ctsProfileMatch true",
         
         // Basic integrity
-        "setprop ro.safetynet.evaluationType BASIC",
+        "setprop ro.safetynet.evaluationType HARDWARE_BACKED",
         
         // Attestation
         "setprop ro.attestation.enabled true",
@@ -149,9 +149,9 @@ bool GoogleFacebookSpoofer::configurePlayServices(const QString& instanceId) {
         "pm enable com.google.android.gsf",
         
         // Set GMS properties
-        "setprop ro.com.google.gmsversion 14_202400",
-        "setprop ro.gms.version 23.45.23",
-        "setprop ro.gms.play-services-version 23.45.23",
+        "setprop ro.com.google.gmsversion 14_202401001",
+        "setprop ro.gms.version 241213000",
+        "setprop ro.gms.playservices.version 241213000",
         
         // Play Services configuration
         "settings put global gms_is_gmscore_enabled 1",
@@ -180,13 +180,13 @@ bool GoogleFacebookSpoofer::setupPlayProtect(const QString& instanceId) {
     
     QStringList commands = {
         // Enable Play Protect
-        "settings put global playProtectEnabled 1",
-        "settings put global playProtectLastScan " + QString::number(QDateTime::currentDateTime().toSecsSinceEpoch()),
+        "settings put secure play_protect_enabled 1",
+        "settings put secure play_protect_last_scan " + QString::number(QDateTime::currentDateTime().toSecsSinceEpoch()),
         
         // Play Protect settings
         "settings put secure play_protect_enabled 1",
         "settings put global verifyAppsEnabled 1",
-        "settings put global app VerificationEnabled 1",
+        "settings put global verifyapps_enabled 1",
         
         // Play Protect status
         "setprop ro.play.protect.enabled true",

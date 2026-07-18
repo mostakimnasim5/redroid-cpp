@@ -524,10 +524,12 @@ bool BankingAppSpoofer::bypassQEMUDetection(const QString& instanceId) {
     
     // QEMU-specific detection bypasses
     QStringList commands = {
-        // Hide QEMU properties
+        // Hide QEMU properties - use real Samsung device values
         "resetprop ro.hardware qcom",
-        "resetprop ro.bootloader unknown",
-        "resetprop ro.product.model Generic",
+        "resetprop ro.bootloader G991BXXU9EXC1",
+        "resetprop ro.product.model SM-S928B",
+        "resetprop ro.product.name dm3q",
+        "resetprop ro.product.device dm3q",
         
         // Remove QEMU markers
         "rm -rf /system/lib64/hw/audio.primary.goldfish.so 2>/dev/null || true",
@@ -766,13 +768,24 @@ bool BankingAppSpoofer::setDebugProperties(const QString& instanceId) {
 }
 
 bool BankingAppSpoofer::hideADBStatus(const QString& instanceId) {
-    qDebug() << "[BankingSpoofer] Hiding ADB status";
+    qDebug() << "[BankingSpoofer] Hiding ADB visibility from apps (keeping ADB active)";
     
+    // IMPORTANT: Keep ADB enabled (we need it for screen mirror)
+    // But hide ADB from banking app detection checks
     QStringList commands = {
-        "settings put global adb_enabled 0",
-        "settings put global usb_debugging_enabled 0",
-        "setprop persist.adb.enable 0",
-        "setprop service.adb.root 0"
+        // Hide ADB from apps via properties (not actual disable)
+        "setprop service.adb.root 0",
+        "setprop ro.adb.secure 1",
+        
+        // Hide developer options from detection
+        "settings put global development_settings_enabled 0",
+        
+        // Hide USB debugging UI indicator (not actual ADB)
+        "settings put global usb_debugging_notified 0",
+        
+        // ADB remains active on TCP (5555) for our use
+        // But hide from USB debugging checks
+        "setprop persist.adb.notify 0"
     };
     
     for (const QString& cmd : commands) {
@@ -793,19 +806,42 @@ bool BankingAppSpoofer::spoofBuildProperties(const QString& instanceId) {
     QString model = models[QRandomGenerator::global()->bounded(models.size())];
     QString device = model.toLower().replace(" ", "_");
     
-    QString fingerprint = QString("%1/%2/%2:%4/SB0/123456:user/release-keys")
-        .arg(mfr, device, model, "13");
+    // Use real Samsung Galaxy S24 fingerprint format
+    // Format: brand/product/device:version/buildId/buildVariant:buildType/releaseKeys
+    struct DeviceProfile {
+        QString mfr, model, device, product, buildId, fingerprint;
+    };
+    
+    QVector<DeviceProfile> profiles = {
+        {"Samsung", "SM-S928B", "dm3q", "dm3q",
+         "UP1A.231005.007.S928BXXU1AXC4",
+         "samsung/dm3q/dm3q:14/UP1A.231005.007/S928BXXU1AXC4:user/release-keys"},
+        {"Samsung", "SM-S911B", "e1q", "e1q",
+         "UP1A.231005.007.S911BXXU5EXK1",
+         "samsung/e1q/e1q:14/UP1A.231005.007/S911BXXU5EXK1:user/release-keys"},
+        {"Google", "Pixel 8 Pro", "husky", "husky",
+         "AP1A.240405.002.B1",
+         "google/husky/husky:14/AP1A.240405.002.B1/11583682:user/release-keys"},
+    };
+    
+    int idx = QRandomGenerator::global()->bounded(profiles.size());
+    DeviceProfile profile = profiles[idx];
     
     mountRW(instanceId);
     
     QStringList commands = {
-        "resetprop ro.product.manufacturer " + mfr,
-        "resetprop ro.product.model " + model,
-        "resetprop ro.product.brand " + mfr,
-        "resetprop ro.product.device " + device,
-        "resetprop ro.build.fingerprint " + fingerprint,
-        "resetprop ro.build.display.id SB0",
-        "resetprop ro.build.version.release 13"
+        "resetprop ro.product.manufacturer " + profile.mfr,
+        "resetprop ro.product.model " + profile.model,
+        "resetprop ro.product.brand " + profile.mfr.toLower(),
+        "resetprop ro.product.device " + profile.device,
+        "resetprop ro.product.name " + profile.product,
+        "resetprop ro.build.fingerprint " + profile.fingerprint,
+        "resetprop ro.bootimage.build.fingerprint " + profile.fingerprint,
+        "resetprop ro.vendor.build.fingerprint " + profile.fingerprint,
+        "resetprop ro.build.display.id " + profile.buildId,
+        "resetprop ro.build.id " + profile.buildId,
+        "resetprop ro.build.version.release 14",
+        "resetprop ro.build.version.sdk 34",
     };
     
     for (const QString& cmd : commands) {
@@ -951,9 +987,28 @@ bool BankingAppSpoofer::configureVPN(const QString& instanceId) {
 }
 
 bool BankingAppSpoofer::spoofIPAddress(const QString& instanceId, const QString& ip) {
-    Q_UNUSED(instanceId);
-    Q_UNUSED(ip);
-    qDebug() << "[BankingSpoofer] Spoofing IP address";
+    qDebug() << "[BankingSpoofer] Spoofing IP address to:" << ip;
+    
+    QString targetIp = ip.isEmpty() ? "192.168.1.100" : ip;
+    
+    QStringList commands = {
+        // Set IP via network properties
+        "setprop dhcp.wlan0.ipaddress " + targetIp,
+        "setprop net.wlan0.localip " + targetIp,
+        
+        // Update WiFi connection properties  
+        "settings put global wifi_static_ip " + targetIp,
+        
+        // Set gateway to match subnet
+        "setprop dhcp.wlan0.gateway 192.168.1.1",
+        "setprop dhcp.wlan0.dns1 8.8.8.8",
+        "setprop dhcp.wlan0.dns2 8.8.4.4",
+    };
+    
+    for (const QString& cmd : commands) {
+        executeCommand(instanceId, cmd);
+    }
+    
     return true;
 }
 
@@ -966,8 +1021,28 @@ bool BankingAppSpoofer::configureProxy(const QString& instanceId, const QString&
 }
 
 bool BankingAppSpoofer::blockWebRTCLeaks(const QString& instanceId) {
-    Q_UNUSED(instanceId);
-    qDebug() << "[BankingSpoofer] Blocking WebRTC leaks";
+    qDebug() << "[BankingSpoofer] Blocking WebRTC IP leaks";
+    
+    QStringList commands = {
+        // Disable WebRTC via Chrome flags
+        "settings put global webrtc_ip_handling_policy disable_non_proxied_udp",
+        
+        // Block WebRTC ports via iptables
+        "iptables -A OUTPUT -p udp --dport 3478 -j DROP 2>/dev/null || true",
+        "iptables -A OUTPUT -p udp --dport 3479 -j DROP 2>/dev/null || true",
+        "iptables -A OUTPUT -p tcp --dport 3478 -j DROP 2>/dev/null || true",
+        
+        // Block STUN servers
+        "iptables -A OUTPUT -d stun.l.google.com -j DROP 2>/dev/null || true",
+        
+        // Disable multicast (used by WebRTC)
+        "iptables -A OUTPUT -m pkttype --pkt-type multicast -j DROP 2>/dev/null || true",
+    };
+    
+    for (const QString& cmd : commands) {
+        executeCommand(instanceId, cmd);
+    }
+    
     return true;
 }
 
@@ -1346,6 +1421,30 @@ bool BankingAppSpoofer::applyCompleteBankingSetup(const QString& instanceId) {
     bypassMockLocationDetection(instanceId);
     bypassBenchmarkDetection(instanceId);
     
+    // Samsung Knox bypass
+    QStringList knoxCommands = {
+        "setprop ro.samsung.knox.version 0",
+        "setprop ro.knox.version 0",
+        "setprop ro.config.knox 0",
+        "setprop ro.build.se_protection 0",
+        "pm disable com.samsung.android.knox.containercore 2>/dev/null || true",
+        "pm disable com.samsung.android.knoxguard 2>/dev/null || true",
+    };
+    for (const QString& cmd : knoxCommands) {
+        executeCommand(instanceId, cmd);
+    }
+    
+    // Widevine L1 spoof
+    QStringList widevineCommands = {
+        "setprop ro.widevine.drm.security.level L1",
+        "setprop persist.sys.widevine.level L1",
+        "setprop ro.drm.enabled true",
+        "setprop drm.service.enabled true",
+    };
+    for (const QString& cmd : widevineCommands) {
+        executeCommand(instanceId, cmd);
+    }
+    
     qDebug() << "[BankingSpoofer] Complete banking setup applied successfully";
     
     return true;
@@ -1367,19 +1466,56 @@ bool BankingAppSpoofer::applyQuickBankingSetup(const QString& instanceId) {
 
 QJsonObject BankingAppSpoofer::getSpoofingStatus(const QString& instanceId) {
     QJsonObject status;
+    ReDroidController& ctrl = ReDroidController::instance();
     
-    Q_UNUSED(instanceId);
+    // Real checks via ADB
+    QString suExists = ctrl.executeShell(instanceId, 
+        "ls /system/xbin/su 2>/dev/null && echo FOUND || echo NOT_FOUND");
+    QString magiskExists = ctrl.executeShell(instanceId,
+        "ls /data/adb/magisk 2>/dev/null && echo FOUND || echo NOT_FOUND");
+    QString qemuProp = ctrl.executeShell(instanceId,
+        "getprop ro.kernel.qemu");
+    QString debugProp = ctrl.executeShell(instanceId,
+        "getprop ro.debuggable");
+    QString model = ctrl.executeShell(instanceId,
+        "getprop ro.product.model");
+    QString fingerprint = ctrl.executeShell(instanceId,
+        "getprop ro.build.fingerprint");
     
-    status["rootBypass"] = true;
-    status["hookBypass"] = true;
-    status["emulatorBypass"] = true;
-    status["sslPinningBypass"] = true;
-    status["networkSpoofed"] = true;
-    status["batterySpoofed"] = true;
-    status["timeSpoofed"] = true;
-    status["usbSpoofed"] = true;
+    // Root bypass: su should NOT exist
+    status["rootBypass"] = !suExists.trimmed().contains("FOUND")
+                        && !magiskExists.trimmed().contains("FOUND");
+    
+    // Emulator bypass: qemu prop should be 0
+    status["emulatorBypass"] = qemuProp.trimmed() == "0" 
+                             || qemuProp.trimmed().isEmpty();
+    
+    // Debug bypass: debuggable should be 0
+    status["debugBypass"] = debugProp.trimmed() == "0";
+    
+    // Device identity looks real
+    status["identitySpoofed"] = !model.trimmed().isEmpty()
+                              && !fingerprint.contains("generic")
+                              && !fingerprint.contains("sdk");
+    
+    // Hook bypass (Frida ports blocked)
+    status["hookBypass"] = m_detectionBypassEnabled.value(
+        DetectionType::HOOK_DETECTION, false);
+    
+    // SSL pinning bypass active
+    status["sslPinningBypass"] = m_detectionBypassEnabled.value(
+        DetectionType::SSL_PINNING, false);
+    
     status["bypassLevel"] = m_bypassLevel;
+    status["deviceModel"] = model.trimmed();
     status["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    
+    // Overall status
+    bool allGood = status["rootBypass"].toBool()
+                && status["emulatorBypass"].toBool()
+                && status["debugBypass"].toBool()
+                && status["identitySpoofed"].toBool();
+    status["overallStatus"] = allGood ? "PROTECTED" : "NEEDS_FIX";
     
     return status;
 }
