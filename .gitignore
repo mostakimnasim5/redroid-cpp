@@ -72,3 +72,11 @@ docker_avd_data/
 *.ui
 .moc/
 *.pch
+
+# Release packages
+ReDroidCPP_v*/
+*.zip
+
+# Test output
+detection_bypass_report.json
+tmp_result.txt
