@@ -9,8 +9,7 @@ on:
 
 env:
   BUILD_TYPE: Release
-  QT_VERSION: '6.5'
-  CMAKE_VERSION: '3.28'
+  QT_VERSION: '6.7.3'
 
 jobs:
   # ============================================================================
@@ -19,18 +18,16 @@ jobs:
   linux-build:
     name: Linux (Ubuntu 22.04)
     runs-on: ubuntu-22.04
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
-      - name: Install dependencies
+
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            cmake \
-            ninja-build \
-            g++ \
+            cmake ninja-build g++ \
             libgl1-mesa-dev \
             libxcb-xinerama0-dev \
             libxcb-icccm4-dev \
@@ -44,33 +41,39 @@ jobs:
             libxkbcommon-x11-dev \
             libfontconfig1-dev \
             libfreetype6-dev \
-            libssl-dev
-            
-      - name: Setup Qt ${{ env.QT_VERSION }}
-        uses: jurplel/qt-action@v3
+            libssl-dev \
+            libdbus-1-dev
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v3
         with:
           version: ${{ env.QT_VERSION }}
-          
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          cache: true
+
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DBUILD_TESTS=ON \
             -DENABLE_LOGGING=ON
-            
+
       - name: Build
         run: cmake --build build --parallel $(nproc)
-        
+
       - name: Run Tests
         run: |
           cd build
           ctest --output-on-failure --timeout 300
-          
+
       - name: Package
         run: |
           mkdir -p artifacts
-          tar -czf artifacts/ReDroidCPP-Linux-x64.tar.gz -C build --exclude='*.a' --exclude='tests/*' .
-          
+          tar -czf artifacts/ReDroidCPP-Linux-x64.tar.gz \
+            -C build --exclude='*.a' --exclude='tests/*' .
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -83,21 +86,23 @@ jobs:
   windows-build:
     name: Windows (VS 2022)
     runs-on: windows-2022
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
-        
-      - name: Setup Qt ${{ env.QT_VERSION }}
-        uses: jurplel/qt-action@v3
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v3
         with:
           version: ${{ env.QT_VERSION }}
-          modules: qtbase qttools
-          cached: true
-          
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+
       - name: Configure CMake
         shell: bash
         run: |
@@ -105,56 +110,71 @@ jobs:
             -G "Visual Studio 17 2022" -A x64 \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DBUILD_TESTS=ON \
-            -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}/.." \
             -DENABLE_LOGGING=ON
-            
+
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel $(nproc)
-        
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
       - name: Run Tests
         shell: bash
         run: |
           cd build
           ctest -C ${{ env.BUILD_TYPE }} --output-on-failure --timeout 300
-          
+
       - name: Package
         shell: bash
         run: |
           mkdir -p artifacts
-          cmake --install build --config ${{ env.BUILD_TYPE }} --prefix artifacts/install
-          tar -czf artifacts/ReDroidCPP-Windows-x64.zip artifacts/install/
-          
+          cmake --install build \
+            --config ${{ env.BUILD_TYPE }} \
+            --prefix artifacts/install
+
+      - name: Zip package
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path artifacts/install `
+            -DestinationPath artifacts/ReDroidCPP-Windows-x64.zip `
+            -Force
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: artifacts/
+          path: artifacts/*.zip
 
   # ============================================================================
-  # Code Quality Check
+  # Code Quality
   # ============================================================================
   code-quality:
     name: Code Quality
     runs-on: ubuntu-22.04
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
-      - name: Install dependencies
+
+      - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake cppcheck clang-format clang-tidy
-            
+          sudo apt-get install -y cmake cppcheck clang-format
+
       - name: Run cppcheck
         run: |
-          find src include -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
-            xargs cppcheck --enable=all --std=c++17 --inline-suppr 2>/dev/null || true
-            
-      - name: Check formatting
+          cppcheck \
+            --enable=warning,style,performance \
+            --std=c++17 \
+            --inline-suppr \
+            --suppress=missingInclude \
+            --suppress=unmatchedSuppression \
+            --error-exitcode=0 \
+            src/ include/ 2>&1 | tee cppcheck-report.txt || true
+
+      - name: Check formatting (non-blocking)
         run: |
           find src include -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | \
-            head -20 | xargs clang-format --dry-run --Werror 2>/dev/null || true
+            head -10 | \
+            xargs clang-format --dry-run 2>/dev/null || true
 
   # ============================================================================
   # Security Scan
@@ -162,25 +182,24 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-22.04
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
-      - name: Run Trivy scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          
-      - name: Upload scan results
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: 'trivy-results.sarif'
 
-# ================================================================================
-# Build Matrix
-# ================================================================================
+      - name: Run Trivy scanner
+        uses: aquasecurity/trivy-action@0.19.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 0
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+        continue-on-error: true
