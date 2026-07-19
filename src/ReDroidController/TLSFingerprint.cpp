@@ -60,33 +60,33 @@ TLSFingerprint::TLSFingerprint() {
 }
 
 bool TLSFingerprint::initialize(const QString& deviceModel) {
-    DeviceProfile profile = DeviceProfile::ANDROID_DEFAULT;
+    TLSProfile profile = TLSProfile::ANDROID_DEFAULT;
     QString model = deviceModel.toLower();
     
     if (model.contains("samsung") || model.contains("galaxy")) {
-        profile = DeviceProfile::SAMSUNG_GALAXY;
+        profile = TLSProfile::SAMSUNG_GALAXY;
     } else if (model.contains("pixel")) {
-        profile = DeviceProfile::GOOGLE_PIXEL;
+        profile = TLSProfile::GOOGLE_PIXEL;
     } else if (model.contains("xiaomi") || model.contains("redmi") || model.contains("poco")) {
-        profile = DeviceProfile::XIAOMI;
+        profile = TLSProfile::XIAOMI;
     } else if (model.contains("oneplus")) {
-        profile = DeviceProfile::ONEPLUS;
+        profile = TLSProfile::ONEPLUS;
     } else if (model.contains("huawei") || model.contains("honor")) {
-        profile = DeviceProfile::HUAWEI;
+        profile = TLSProfile::HUAWEI;
     } else if (model.contains("oppo") || model.contains("realme")) {
-        profile = DeviceProfile::OPPO;
+        profile = TLSProfile::OPPO;
     } else if (model.contains("vivo")) {
-        profile = DeviceProfile::VIVO;
+        profile = TLSProfile::VIVO;
     } else if (model.contains("moto") || model.contains("motorola")) {
-        profile = DeviceProfile::MOTOROLA;
+        profile = TLSProfile::MOTOROLA;
     } else if (model.contains("chrome")) {
-        profile = DeviceProfile::CHROME_DESKTOP;
+        profile = TLSProfile::CHROME_DESKTOP;
     }
     
     return initializeWithProfile(profile);
 }
 
-bool TLSFingerprint::initializeWithProfile(DeviceProfile profile) {
+bool TLSFingerprint::initializeWithProfile(TLSProfile profile) {
     // Check cache first
     if (m_profileCache.contains(profile)) {
         m_config = m_profileCache[profile];
@@ -110,7 +110,7 @@ bool TLSFingerprint::initializeWithProfile(DeviceProfile profile) {
 }
 
 void TLSFingerprint::resetToDefault() {
-    initializeWithProfile(DeviceProfile::ANDROID_DEFAULT);
+    initializeWithProfile(TLSProfile::ANDROID_DEFAULT);
 }
 
 void TLSFingerprint::setTLSConfig(const OSTLSConfig& config) {
@@ -512,14 +512,6 @@ bool TLSFingerprint::applyToInstance(const QString& instanceId) {
     }
     
     return true;
-}
-
-QString TLSFingerprint::getCurrentJA3() {
-    return m_currentJA3;
-}
-
-QString TLSFingerprint::getCurrentJA4() {
-    return m_currentJA4;
 }
 
 } // namespace VirtualPhonePro

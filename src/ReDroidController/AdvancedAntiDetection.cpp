@@ -28,13 +28,12 @@ BehavioralAnalysisPrevention& BehavioralAnalysisPrevention::instance() {
 }
 
 BehavioralAnalysisPrevention::BehavioralAnalysisPrevention() 
-    : m_generator(QRandomGenerator::global()->generate())
-    , m_lastActivity(std::chrono::steady_clock::now())
+    : m_lastActivity(std::chrono::steady_clock::now())
+    , m_generator(QRandomGenerator::global()->generate())
 {
-    initializeDefault();
 }
 
-void BehavioralAnalysisPrevention::initializeDefault() {
+void BehavioralAnalysisPrevention::initializeDefaultStates() {
     // Natural typing pattern
     m_typingPattern = {50, 150, 90, 20, 120, 60, 0.02f, 5, 3, 0.01f, 0.15f};
     
@@ -803,10 +802,10 @@ QString UltraAntiDetectionEngine::generateDetectionReport() {
     
     QString report = "=== Anti-Detection Status Report ===\n";
     report += "Timestamp: " + status["timestamp"].toString() + "\n\n";
-    report += "Behavioral Analysis: " + (status["behavioralSafe"].toBool() ? "SAFE" : "AT RISK") + "\n";
-    report += "Hardware Emulation: " + (status["hardwareSafe"].toBool() ? "SAFE" : "AT RISK") + "\n";
-    report += "Graphics Spoofing: " + (status["graphicsSafe"].toBool() ? "SAFE" : "AT RISK") + "\n";
-    report += "OEM Deep Spoofing: " + (status["oemSafe"].toBool() ? "SAFE" : "AT RISK") + "\n";
+    report += QString("Behavioral Analysis: %1\n").arg(status["behavioralSafe"].toBool() ? "SAFE" : "AT RISK");
+    report += QString("Hardware Emulation: %1\n").arg(status["hardwareSafe"].toBool() ? "SAFE" : "AT RISK");
+    report += QString("Graphics Spoofing: %1\n").arg(status["graphicsSafe"].toBool() ? "SAFE" : "AT RISK");
+    report += QString("OEM Deep Spoofing: %1\n").arg(status["oemSafe"].toBool() ? "SAFE" : "AT RISK");
     
     return report;
 }

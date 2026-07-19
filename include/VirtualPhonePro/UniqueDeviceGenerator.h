@@ -157,6 +157,11 @@ public:
      */
     void clearAllRecords();
 
+    /**
+     * @brief Generate hash for a profile (public wrapper)
+     */
+    QString hashProfile(const QString& input);
+
 private:
     // Thread-safe singleton implementation
     static std::atomic<UniqueDeviceGenerator*> s_instance;
@@ -167,7 +172,7 @@ private:
     ~UniqueDeviceGenerator();
 
     // Disable copy/move for singleton
-    Q_DISABLE_COPY_Move(UniqueDeviceGenerator)
+    Q_DISABLE_COPY_MOVE(UniqueDeviceGenerator)
 
     // Internal generation helpers
     QString generateHash(const QString& input);

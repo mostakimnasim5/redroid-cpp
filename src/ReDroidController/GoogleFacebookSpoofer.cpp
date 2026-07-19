@@ -209,7 +209,7 @@ bool GoogleFacebookSpoofer::registerDeviceWithGooglePlay(const QString& instance
     
     QString deviceKey = generateDeviceKey(instanceId);
     QString androidId = QString::number(QRandomGenerator::global()->bounded(0x1000000000000000ULL, 0xffffffffffffffffULL), 16);
-    QString gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000, 9999999999ULL));
+    QString gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000ULL, 9999999999ULL));
     
     QStringList commands = {
         // Device registration

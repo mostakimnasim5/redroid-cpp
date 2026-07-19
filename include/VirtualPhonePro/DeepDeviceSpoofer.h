@@ -216,6 +216,7 @@ public:
     QJsonObject verifySpoofingCompleteness(const QString& instanceId);
     
 private:
+    static DeepDeviceSpoofer* s_instance;
     DeepDeviceSpoofer() = default;
     
     // Helper methods

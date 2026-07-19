@@ -10,7 +10,8 @@
 #include <QJsonDocument>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include <QHttpServer>
+#include <QHostAddress>
+#include <QNetworkProxy>
 
 namespace VirtualPhonePro {
 

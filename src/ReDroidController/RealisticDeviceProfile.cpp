@@ -249,7 +249,7 @@ QJsonObject CompleteSensorCalibration::toJson() const {
     accel["resolution"] = QString::number(accelerometer.resolution);
     accel["maxRange"] = QString::number(accelerometer.maxRange);
     accel["power"] = accelerometer.power;
-    accel["minDelay"] = QString::number(minDelay);
+    accel["minDelay"] = QString::number(accelerometer.minDelay);
     accel["type"] = accelerometer.type;
     accel["typeString"] = accelerometer.typeString;
     obj["accelerometer"] = accel;
@@ -274,10 +274,10 @@ QJsonObject CompleteSensorCalibration::toJson() const {
     obj["barometer"] = baro;
     
     // Light
-    QJsonObject light;
-    light["name"] = light.name;
-    light["vendor"] = light.vendor;
-    obj["light"] = light;
+    QJsonObject lightJson;
+    lightJson["name"] = light.name;
+    lightJson["vendor"] = light.vendor;
+    obj["light"] = lightJson;
     
     // Proximity
     QJsonObject prox;
@@ -792,7 +792,7 @@ CompleteSecurityConfig RealisticDeviceProfile::generateSecurity(const QString& m
     sec.keymasterSecurityLevel = "SOFTWARE";
     
     // Gatekeeper
-    sec.gatekeeperVersion = 4;
+    sec.gatekeeperVersion = QString::number(4);
     sec.gatekeeperSecurityLevel = "SOFTWARE";
     
     // StrongBox
@@ -972,7 +972,7 @@ CompleteLocationConfig RealisticDeviceProfile::generateLocation() {
     loc.bearing = static_cast<int>(QRandomGenerator::global()->bounded(360));
     
     // Time
-    loc.gpsTime = QString::number(QDateTime::currentMSecsSinceEpoch());
+    loc.gpsTime = QDateTime::currentMSecsSinceEpoch();
     loc.gpsWeek = 2340 + static_cast<int>(QRandomGenerator::global()->bounded(10));
     loc.gpsTimeOfWeek = (static_cast<int>(QRandomGenerator::global()->bounded(604800000)));
     

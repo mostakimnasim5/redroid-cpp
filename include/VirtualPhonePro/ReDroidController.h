@@ -6,6 +6,7 @@
 #include "VirtualPhonePro/DeviceProfile.h"
 #include "VirtualPhonePro/AndroidRealismEngine.h"
 #include "VirtualPhonePro/TimingAttackPrevention.hpp"
+#include "VirtualPhonePro/NetworkConfig.h"
 
 #include <QObject>
 #include <QString>
@@ -16,6 +17,7 @@
 #include <QMutex>
 #include <QTimer>
 #include <QHostAddress>
+#include <QCryptographicHash>
 
 namespace VirtualPhonePro {
 
@@ -46,6 +48,10 @@ struct InstanceInfo {
     // Connection info
     bool adbConnected;             // ADB connected flag
     bool vncEnabled;               // VNC enabled flag
+    
+    // Network configuration
+    NetworkIsolationConfig networkConfig;
+    QString networkName;
 };
 
 /**
@@ -68,6 +74,9 @@ struct SensorData {
     float magneticX;
     float magneticY;
     float magneticZ;
+    
+    float speed;
+    float bearing;
     
     qint64 timestamp;
 };
@@ -158,6 +167,16 @@ public:
      * @brief Set ADB path (default: app directory + adb.exe)
      */
     void setAdbPath(const QString& path);
+    
+    /**
+     * @brief Load configuration from file
+     */
+    void loadConfiguration();
+    
+    /**
+     * @brief Save configuration to file
+     */
+    void saveConfiguration();
     
     // =========================================================================
     // Instance Lifecycle
@@ -494,6 +513,7 @@ private:
     Q_DISABLE_COPY(ReDroidController)
     
     // Internal helpers
+    QJsonObject loadProfile(const QString& profileName);
     QString getAdbSerial(const QString& instanceId) const;
     QString getContainerName(const QString& instanceId) const;
     int allocateAdbPort();
@@ -526,7 +546,7 @@ private:
     
     // Instance management
     QMap<QString, InstanceInfo> m_instances;
-    QMutex m_instancesMutex;
+    mutable QMutex m_instancesMutex;
     int m_nextAdbPort;
     int m_nextVncPort;
     

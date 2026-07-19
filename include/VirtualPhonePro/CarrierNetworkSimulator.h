@@ -257,10 +257,11 @@ public:
      */
     QList<CarrierPreset> getCarrierPresets() const;
     
+    QString networkTypeToString(NetworkType type) const;
+    
 private:
     CarrierNetworkSimulator();
     
-    QString networkTypeToString(NetworkType type) const;
     NetworkType stringToNetworkType(const QString& str) const;
     QString generateIMSI(const QString& mcc, const QString& mnc);
     QString generateICCID(const QString& mcc);

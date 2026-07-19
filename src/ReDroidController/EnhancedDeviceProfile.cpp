@@ -56,7 +56,8 @@ void EnhancedIdentity::generateAll(const QString& manufacturer) {
     imei2[13] = QString::number(QRandomGenerator::global()->bounded(0, 10)).at(0);
     
     // MEID (hex format)
-    meid = QString::number(QRandomGenerator::global()->bounded(0x100000, 0xffffff, 16).toUpper());
+    quint32 meidVal = QRandomGenerator::global()->bounded(quint32(0x100000), quint32(0xffffff));
+    meid = QString::number(meidVal, 16).toUpper();
     
     // Serial Number
     if (manufacturer.toLower() == "samsung") {
@@ -69,24 +70,24 @@ void EnhancedIdentity::generateAll(const QString& manufacturer) {
     }
     
     // Android ID (16 hex chars)
-    androidId = QString::number(QRandomGenerator::global()->bounded(0x1000000000000000ULL, 0xffffffffffffffffULL), 16).toUpper();
+    androidId = QString::number(QRandomGenerator::global()->bounded(quint64(0x1000000000000000ULL), quint64(0xffffffffffffffffULL)), 16).toUpper();
     
     // GSF ID
-    gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000, 9999999999ULL));
+    gsfId = QString::number(QRandomGenerator::global()->bounded(quint64(1000000000), quint64(9999999999)));
     
     // Advertising ID
     advertisingId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     
     // WiFi MAC
     QString oui = "8C:71:F8";  // Samsung OUI
-    wifiMacAddress = oui + ":" + 
+    wlanMacAddress = oui + ":" + 
         QString::number(QRandomGenerator::global()->bounded(0, 256), 16).rightJustified(2, '0').toUpper() + ":" +
         QString::number(QRandomGenerator::global()->bounded(0, 256), 16).rightJustified(2, '0').toUpper() + ":" +
         QString::number(QRandomGenerator::global()->bounded(0, 256), 16).rightJustified(2, '0').toUpper();
     
     // SIM Information
     iccid = "8961" + QString::number(QRandomGenerator::global()->bounded(100000000000000ULL, 999999999999999ULL));
-    imsi = "310" + "260" + QString::number(QRandomGenerator::global()->bounded(10000000, 99999999));
+    imsi = "310260" + QString::number(QRandomGenerator::global()->bounded(10000000, 99999999));
     simOperator = "310260";
     simOperatorName = "T-Mobile";
     simCountry = "US";
@@ -115,10 +116,13 @@ bool EnhancedIdentity::validateAll() const {
 // Enhanced Build Info
 // ========================================================================
 
-void EnhancedBuildInfo::generateForDevice(const QString& manufacturer, const QString& model) {
+void EnhancedBuildInfo::generateForDevice(const QString& mfr, const QString& mdl) {
+    QString manufacturer = mfr;
+    QString model = mdl;
+    
     if (manufacturer.toLower() == "samsung") {
         brand = "samsung";
-        manufacturer = "samsung electronics";
+        this->manufacturer = "samsung electronics";
         device = "dm3q";
         product = "dm3q";
         board = "dm3q";
@@ -183,7 +187,6 @@ void EnhancedHardwareInfo::generateForDevice(const QString& manufacturer) {
         processor = "ARM Implementer 88 -> Qualcomm";
         hardware = "qcom";
         board = "taro";
-        modelName = "Snapdragon 8 Gen 3";
         gpuRenderer = "Adreno (TM) 750";
         gpuVendor = "Qualcomm";
         coreCount = 8;
@@ -197,7 +200,6 @@ void EnhancedHardwareInfo::generateForDevice(const QString& manufacturer) {
         processor = "ARM Implementer 65 -> Google";
         hardware = "gschip";
         board = "gschip";
-        modelName = "Tensor G3";
         gpuRenderer = "Immortalis-G715s MC10";
         gpuVendor = "ARM";
         coreCount = 8;
@@ -211,7 +213,6 @@ void EnhancedHardwareInfo::generateForDevice(const QString& manufacturer) {
         processor = "ARM Implementer 88";
         hardware = "qcom";
         board = "qcom";
-        modelName = "Snapdragon 8 Gen 2";
         gpuRenderer = "Adreno (TM) 740";
         gpuVendor = "Qualcomm";
         coreCount = 8;
@@ -292,23 +293,127 @@ void EnhancedBatteryInfo::generateAll() {
 
 void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
     if (manufacturer.toLower() == "samsung") {
-        accelerometer = {"STMicroelectronics Accelerometer", "STMicroelectronics", 1, 0.001196f, 78.4532f, 0.15f, 0};
-        gyroscope = {"STMicroelectronics Gyroscope", "STMicroelectronics", 1, 0.000f, 2000.0f, 0.25f, 0};
-        magnetometer = {"STMicroelectronics Magnetometer", "STMicroelectronics", 1, 0.150f, 4900.0f, 0.50f, 0};
-        proximity = {"Samsung Proximity Sensor", "Samsung", 1, 1.0f, 5.0f, 0.10f, 0};
-        light = {"Samsung Light Sensor", "Samsung", 1, 0.010f, 10000.0f, 0.25f, 0};
-        pressure = {"Samsung Pressure Sensor", "Samsung", 1, 0.001f, 1100.0f, 1.0f, 0};
-        stepCounter = {"Samsung Step Counter", "Samsung", 1, 1.0f, 0.0f, 0.50f, 0};
-        heartRate = {"Samsung Heart Rate Sensor", "Samsung", 1, 1.0f, 200.0f, 1.0f, 0};
+        accelerometer.name = "STMicroelectronics Accelerometer";
+        accelerometer.vendor = "STMicroelectronics";
+        accelerometer.version = "1";
+        accelerometer.resolution = 0.001196f;
+        accelerometer.maxRange = 78.4532f;
+        accelerometer.power = 0.15f;
+        accelerometer.minDelay = 0;
+        
+        gyroscope.name = "STMicroelectronics Gyroscope";
+        gyroscope.vendor = "STMicroelectronics";
+        gyroscope.version = "1";
+        gyroscope.resolution = 0.000f;
+        gyroscope.maxRange = 2000.0f;
+        gyroscope.power = 0.25f;
+        gyroscope.minDelay = 0;
+        
+        magnetometer.name = "STMicroelectronics Magnetometer";
+        magnetometer.vendor = "STMicroelectronics";
+        magnetometer.version = "1";
+        magnetometer.resolution = 0.150f;
+        magnetometer.maxRange = 4900.0f;
+        magnetometer.power = 0.50f;
+        magnetometer.minDelay = 0;
+        
+        proximity.name = "Samsung Proximity Sensor";
+        proximity.vendor = "Samsung";
+        proximity.version = "1";
+        proximity.resolution = 1.0f;
+        proximity.maxRange = 5.0f;
+        proximity.power = 0.10f;
+        proximity.minDelay = 0;
+        
+        light.name = "Samsung Light Sensor";
+        light.vendor = "Samsung";
+        light.version = "1";
+        light.resolution = 0.010f;
+        light.maxRange = 10000.0f;
+        light.power = 0.25f;
+        light.minDelay = 0;
+        
+        pressure.name = "Samsung Pressure Sensor";
+        pressure.vendor = "Samsung";
+        pressure.version = "1";
+        pressure.resolution = 0.001f;
+        pressure.maxRange = 1100.0f;
+        pressure.power = 1.0f;
+        pressure.minDelay = 0;
+        
+        stepCounter.name = "Samsung Step Counter";
+        stepCounter.vendor = "Samsung";
+        stepCounter.version = "1";
+        stepCounter.resolution = 1.0f;
+        stepCounter.maxRange = 0.0f;
+        stepCounter.power = 0.50f;
+        stepCounter.minDelay = 0;
+        
+        heartRate.name = "Samsung Heart Rate Sensor";
+        heartRate.vendor = "Samsung";
+        heartRate.version = "1";
+        heartRate.resolution = 1.0f;
+        heartRate.maxRange = 200.0f;
+        heartRate.power = 1.0f;
+        heartRate.minDelay = 0;
     } else {
-        accelerometer = {"BMI260 Accelerometer", "Bosch", 1, 0.001196f, 78.4532f, 0.15f, 0};
-        gyroscope = {"BMI260 Gyroscope", "Bosch", 1, 0.001f, 2000.0f, 0.25f, 0};
-        magnetometer = {"AK09916 Magnetometer", "Asahi Kasei", 1, 0.150f, 4900.0f, 0.50f, 0};
-        proximity = {"Proximity Sensor", "Generic", 1, 1.0f, 5.0f, 0.10f, 0};
-        light = {"Light Sensor", "Generic", 1, 0.010f, 10000.0f, 0.25f, 0};
-        pressure = {"Barometer", "Generic", 1, 0.001f, 1100.0f, 1.0f, 0};
-        stepCounter = {"Step Counter", "Generic", 1, 1.0f, 0.0f, 0.50f, 0};
-        heartRate = {};
+        accelerometer.name = "BMI260 Accelerometer";
+        accelerometer.vendor = "Bosch";
+        accelerometer.version = "1";
+        accelerometer.resolution = 0.001196f;
+        accelerometer.maxRange = 78.4532f;
+        accelerometer.power = 0.15f;
+        accelerometer.minDelay = 0;
+        
+        gyroscope.name = "BMI260 Gyroscope";
+        gyroscope.vendor = "Bosch";
+        gyroscope.version = "1";
+        gyroscope.resolution = 0.001f;
+        gyroscope.maxRange = 2000.0f;
+        gyroscope.power = 0.25f;
+        gyroscope.minDelay = 0;
+        
+        magnetometer.name = "AK09916 Magnetometer";
+        magnetometer.vendor = "Asahi Kasei";
+        magnetometer.version = "1";
+        magnetometer.resolution = 0.150f;
+        magnetometer.maxRange = 4900.0f;
+        magnetometer.power = 0.50f;
+        magnetometer.minDelay = 0;
+        
+        proximity.name = "Proximity Sensor";
+        proximity.vendor = "Generic";
+        proximity.version = "1";
+        proximity.resolution = 1.0f;
+        proximity.maxRange = 5.0f;
+        proximity.power = 0.10f;
+        proximity.minDelay = 0;
+        
+        light.name = "Light Sensor";
+        light.vendor = "Generic";
+        light.version = "1";
+        light.resolution = 0.010f;
+        light.maxRange = 10000.0f;
+        light.power = 0.25f;
+        light.minDelay = 0;
+        
+        pressure.name = "Barometer";
+        pressure.vendor = "Generic";
+        pressure.version = "1";
+        pressure.resolution = 0.001f;
+        pressure.maxRange = 1100.0f;
+        pressure.power = 1.0f;
+        pressure.minDelay = 0;
+        
+        stepCounter.name = "Step Counter";
+        stepCounter.vendor = "Generic";
+        stepCounter.version = "1";
+        stepCounter.resolution = 1.0f;
+        stepCounter.maxRange = 0.0f;
+        stepCounter.power = 0.50f;
+        stepCounter.minDelay = 0;
+        
+        heartRate = SensorData();
     }
 }
 
@@ -449,7 +554,7 @@ EnhancedDeviceProfile EnhancedDeviceProfile::createForBanking(const QString& man
     profile.deviceClass = "flagship";
     
     profile.identity.generateAll(manufacturer);
-    profile.build.generateForDevice(manufacturer, profile.identity.model);
+    profile.build.generateForDevice(manufacturer, manufacturer + " Device");
     profile.hardware.generateForDevice(manufacturer);
     profile.network.generateAll();
     profile.battery.generateAll();

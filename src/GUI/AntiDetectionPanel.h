@@ -15,7 +15,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QSwitch>
+#include <QCheckBox>
 #include <QGroupBox>
 #include <QTableWidget>
 #include <QTimer>

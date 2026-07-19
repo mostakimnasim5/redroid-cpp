@@ -47,6 +47,7 @@ target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
     Qt6::Core
     Qt6::Concurrent
     Threads::Threads
+    ReDroidController
 )
 
 target_include_directories(Test_UniqueDeviceGenerator PRIVATE

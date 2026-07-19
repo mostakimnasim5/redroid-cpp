@@ -255,9 +255,7 @@ void SecurityConfig::fromVariantMap(const QVariantMap& map) {
 // ============================================================================
 
 DeviceProfile::DeviceProfile()
-    : androidVersion(14)
-    , sdkVersion(34)
-    , adbPort(5555)
+    : adbPort(5555)
     , vncPort(5900)
     , instanceIndex(0)
 {
@@ -266,6 +264,10 @@ DeviceProfile::DeviceProfile()
     createdAt = QDateTime::currentDateTime().toString(Qt::ISODate);
     modifiedAt = createdAt;
     createdBy = "system";
+    
+    // Initialize build info with defaults
+    build.androidVersion = 14;
+    build.sdkVersion = 34;
 }
 
 QJsonObject DeviceProfile::toJson() const {
@@ -355,9 +357,9 @@ void DeviceProfile::fromJson(const QJsonObject& json) {
     security.fromVariantMap(json.value("security").toObject().toVariantMap());
     
     // Runtime
-    adbPort = json.value("adbPort", 5555).toInt();
-    vncPort = json.value("vncPort", 5900).toInt();
-    instanceIndex = json.value("instanceIndex", 0).toInt();
+    adbPort = json["adbPort"].toInt(5555);
+    vncPort = json["vncPort"].toInt(5900);
+    instanceIndex = json["instanceIndex"].toInt(0);
 }
 
 bool DeviceProfile::save(const QString& filePath) const {
@@ -556,7 +558,7 @@ DeviceProfile DeviceProfile::createSamsungS24Ultra() {
     profile.identity.imei2 = generateIMEI("35875108");
     profile.identity.serialNumber = generateSerial("Samsung");
     profile.identity.androidId = generateAndroidId();
-    profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000, 9999999999));
+    profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000LL, 9999999999LL));
     profile.identity.advertisingId = QUuid::createUuid().toString();
     
     // MAC addresses
@@ -635,7 +637,7 @@ DeviceProfile DeviceProfile::createGooglePixel8Pro() {
     profile.identity.imei = generateIMEI("35746608");
     profile.identity.serialNumber = generateSerial("Google");
     profile.identity.androidId = generateAndroidId();
-    profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000, 9999999999));
+    profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000LL, 9999999999LL));
     profile.identity.advertisingId = QUuid::createUuid().toString();
     
     // MAC addresses
@@ -653,8 +655,8 @@ DeviceProfile DeviceProfile::createGooglePixel8Pro() {
     profile.sim.country = "US";
     profile.sim.mcc = "310";
     profile.sim.mnc = "260";
-    profile.sim.iccid = "8901260" + QString::number(QRandomGenerator::global()->bounded(10000000000000ULL, 99999999999999ULL));
-    profile.sim.imsi = "310260" + QString::number(QRandomGenerator::global()->bounded(100000000, 999999999));
+    profile.sim.iccid = "8901260" + QString::number(QRandomGenerator::global()->bounded(10000000000000LL, 99999999999999LL));
+    profile.sim.imsi = "310260" + QString::number(QRandomGenerator::global()->bounded(100000000LL, 999999999LL));
     
     // GPS
     profile.gps.latitude = 37.4220;
@@ -685,7 +687,7 @@ DeviceProfile DeviceProfile::createRandom() {
     profile.identity.imei = generateIMEI(tac);
     profile.identity.serialNumber = generateSerial(manufacturer);
     profile.identity.androidId = generateAndroidId();
-    profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000, 9999999999));
+    profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000LL, 9999999999LL));
     profile.identity.advertisingId = QUuid::createUuid().toString();
     
     // Build info

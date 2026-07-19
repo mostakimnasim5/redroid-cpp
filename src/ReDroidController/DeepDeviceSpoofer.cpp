@@ -698,16 +698,12 @@ bool DeepDeviceSpoofer::registerDeviceWithGoogle(const QString& instanceId) {
     qDebug() << "[DeepSpoofer] Registering device with Google";
     
     // In real implementation, would register with actual Google API
-    QStringList commands = {
-        // Setup device registration
-        "settings put secure device_id " + QString::number(QRandomGenerator::global()->bounded(100000000000ULL, 999999999999ULL)),
-        "settings put secure android_id " + QString::number(QRandomGenerator::global()->bounded(0x1000000000000000ULL, 0xffffffffffffffffULL), 16),
-        "settings put secure gsf_id " + QString::number(QRandomGenerator::global()->bounded(1000000000, 9999999999ULL)),
-        
-        // Google Services Framework
-        "settings put global gservices_enabled 1",
-        "settings put secure google_security_suffix " + QString::number(QRandomGenerator::global()->bounded(10000, 99999))
-    };
+    QStringList commands;
+    commands << "settings put secure device_id " + QString::number(QRandomGenerator::global()->bounded(100000000000ULL, 999999999999ULL));
+    commands << "settings put secure android_id " + QString::number(QRandomGenerator::global()->bounded(0x1000000000000000ULL, 0xffffffffffffffffULL), 16);
+    commands << "settings put secure gsf_id " + QString::number(QRandomGenerator::global()->bounded(1000000000ULL, 9999999999ULL));
+    commands << "settings put global gservices_enabled 1";
+    commands << "settings put secure google_security_suffix " + QString::number(QRandomGenerator::global()->bounded(10000, 99999));
     
     for (const QString& cmd : commands) {
         executeCommand(instanceId, cmd);

@@ -54,8 +54,8 @@ enum class NetworkConfigMode {
  */
 enum class CellularTransportType {
     LTE,
-    5G_NSA,
-    5G_SA,
+    NR_NSA,
+    NR_SA,
     WCDMA,
     GSM
 };
@@ -180,7 +180,7 @@ struct TCPFingerprint {
     quint8 sackOk;
     quint8 timestamp;
     quint8 selectiveAck;
-    QString烙烫敲⁜ mode;              // "normal", "aggressive", "conservative"
+    QString mode;              // "normal", "aggressive", "conservative"
     
     static TCPFingerprint getForCountry(const QString& countryCode);
     static TCPFingerprint getDefault();

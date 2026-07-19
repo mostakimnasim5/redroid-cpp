@@ -35,14 +35,14 @@ BankingAppSpoofer& BankingAppSpoofer::instance() {
 BankingAppSpoofer::BankingAppSpoofer() {
     // Initialize bypass settings
     m_bypassLevel = 3;
-    m_detectionBypassEnabled[DetectionType::ROOT_DETECTION] = true;
-    m_detectionBypassEnabled[DetectionType::EMULATOR_DETECTION] = true;
-    m_detectionBypassEnabled[DetectionType::HOOK_DETECTION] = true;
-    m_detectionBypassEnabled[DetectionType::FRIDA_DETECTION] = true;
-    m_detectionBypassEnabled[DetectionType::DEBUG_DETECTION] = true;
-    m_detectionBypassEnabled[DetectionType::SSL_PINNING] = true;
-    m_detectionBypassEnabled[DetectionType::DNS_LEAK] = true;
-    m_detectionBypassEnabled[DetectionType::MOCK_LOCATION_DETECTION] = true;
+    m_detectionBypassEnabled[BankingDetectionType::ROOT_DETECTION] = true;
+    m_detectionBypassEnabled[BankingDetectionType::EMULATOR_DETECTION] = true;
+    m_detectionBypassEnabled[BankingDetectionType::HOOK_DETECTION] = true;
+    m_detectionBypassEnabled[BankingDetectionType::FRIDA_DETECTION] = true;
+    m_detectionBypassEnabled[BankingDetectionType::DEBUG_DETECTION] = true;
+    m_detectionBypassEnabled[BankingDetectionType::SSL_PINNING] = true;
+    m_detectionBypassEnabled[BankingDetectionType::DNS_LEAK] = true;
+    m_detectionBypassEnabled[BankingDetectionType::MOCK_LOCATION_DETECTION] = true;
 }
 
 // ========================================================================
@@ -58,7 +58,7 @@ int BankingAppSpoofer::getBypassLevel() const {
     return m_bypassLevel;
 }
 
-void BankingAppSpoofer::setDetectionBypassEnabled(DetectionType type, bool enabled) {
+void BankingAppSpoofer::setDetectionBypassEnabled(BankingDetectionType type, bool enabled) {
     m_detectionBypassEnabled[type] = enabled;
     qDebug() << "[BankingSpoofer] Detection" << static_cast<int>(type) 
              << "bypass:" << (enabled ? "enabled" : "disabled");
@@ -1500,11 +1500,11 @@ QJsonObject BankingAppSpoofer::getSpoofingStatus(const QString& instanceId) {
     
     // Hook bypass (Frida ports blocked)
     status["hookBypass"] = m_detectionBypassEnabled.value(
-        DetectionType::HOOK_DETECTION, false);
+        BankingDetectionType::HOOK_DETECTION, false);
     
     // SSL pinning bypass active
     status["sslPinningBypass"] = m_detectionBypassEnabled.value(
-        DetectionType::SSL_PINNING, false);
+        BankingDetectionType::SSL_PINNING, false);
     
     status["bypassLevel"] = m_bypassLevel;
     status["deviceModel"] = model.trimmed();
