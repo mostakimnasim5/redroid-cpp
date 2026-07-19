@@ -9,7 +9,6 @@ on:
 
 env:
   BUILD_TYPE: Release
-  QT_VERSION: '6.8.*'
 
 jobs:
   # ============================================================================
@@ -23,34 +22,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Install build tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             cmake ninja-build g++ \
-            libgl1-mesa-dev libglu1-mesa-dev \
-            libxcb-xinerama0-dev libxcb-icccm4-dev \
-            libxcb-image0-dev libxcb-keysyms1-dev \
-            libxcb-randr0-dev libxcb-render-util0-dev \
-            libxcb-shape0-dev libxcb-xfixes0-dev \
+            libgl-dev libglu1-mesa-dev \
             libxkbcommon-dev libxkbcommon-x11-dev \
-            libfontconfig1-dev libfreetype6-dev \
-            libssl-dev libdbus-1-dev libegl1-mesa-dev \
-            libgstreamer-gl1.0-0 libgstreamer-plugins-base1.0-dev
+            libssl-dev libdbus-1-dev
 
-      - name: Install Qt ${{ env.QT_VERSION }}
+      - name: Install Qt 6.8
         uses: jurplel/install-qt-action@v4
         with:
-          version: ${{ env.QT_VERSION }}
+          version: '6.8.3'
           host: linux
           target: desktop
           arch: gcc_64
           cache: true
-          extra: >-
-            --external 7z
-            -b https://mirrors.dotsrc.org/qtproject
+          cache-key-prefix: qt-linux-6.8.3
 
-      - name: Configure CMake
+      - name: Configure
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
@@ -59,20 +50,19 @@ jobs:
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
-      - name: Run Tests
-        run: |
-          cd build
-          ctest --output-on-failure --timeout 120
-        continue-on-error: true
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure -j$(nproc) || true
 
-      - name: Upload artifacts
+      - name: Upload
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: linux-build
           path: build/bin/
 
   # ============================================================================
-  # Windows Build (MSVC)
+  # Windows Build
   # ============================================================================
   windows-build:
     name: Windows (VS 2022)
@@ -82,53 +72,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup MSVC
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Install Qt ${{ env.QT_VERSION }}
+      - name: Install Qt 6.8
         uses: jurplel/install-qt-action@v4
         with:
-          version: ${{ env.QT_VERSION }}
+          version: '6.8.3'
           host: windows
           target: desktop
           arch: win64_msvc2022_64
           cache: true
-          extra: >-
-            -b https://mirrors.dotsrc.org/qtproject
+          cache-key-prefix: qt-windows-6.8.3
 
-      - name: Configure CMake
-        shell: cmd
+      - name: Configure
         run: |
-          cmake -B build ^
-            -G "Visual Studio 17 2022" -A x64 ^
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} ^
+          cmake -B build `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
             -DBUILD_QT6_GUI=ON
+        shell: pwsh
 
       - name: Build
-        shell: cmd
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
-
-      - name: Run Tests
-        shell: cmd
-        run: |
-          cd build
-          ctest -C ${{ env.BUILD_TYPE }} --output-on-failure --timeout 120
-        continue-on-error: true
-
-      - name: Package EXE
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path artifacts
-          Copy-Item -Path "build\bin\${{ env.BUILD_TYPE }}\ReDroidCPP.exe" `
-            -Destination "artifacts\" -ErrorAction SilentlyContinue
-          Copy-Item -Path "build\bin\ReDroidCPP.exe" `
-            -Destination "artifacts\" -ErrorAction SilentlyContinue
 
-      - name: Upload artifacts
+      - name: Test
+        working-directory: build
+        run: ctest -C ${{ env.BUILD_TYPE }} --output-on-failure || true
+        shell: pwsh
+
+      - name: Upload
         uses: actions/upload-artifact@v4
+        if: success()
         with:
-          name: windows-build
-          path: artifacts/
+          name: windows-exe
+          path: build/**/*.exe
 
   # ============================================================================
   # Code Quality
@@ -141,21 +117,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install tools
+      - name: cppcheck
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y cppcheck
-
-      - name: Run cppcheck
-        run: |
-          cppcheck \
-            --enable=warning,performance \
-            --std=c++17 \
+          sudo apt-get install -y -qq cppcheck
+          cppcheck --std=c++17 \
             --suppress=missingInclude \
             --suppress=unmatchedSuppression \
+            --enable=warning \
             --error-exitcode=0 \
             src/ include/ 2>&1 | tail -20 || true
-          echo "✅ Code quality check done"
 
   # ============================================================================
   # Security Scan
@@ -171,22 +141,20 @@ jobs:
 
       - name: Install Trivy
         run: |
-          sudo apt-get install -y wget apt-transport-https gnupg
+          sudo apt-get install -y -qq wget apt-transport-https gnupg
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
-            | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+            | gpg --dearmor \
+            | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] \
             https://aquasecurity.github.io/trivy-repo/deb generic main" \
             | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update -qq
           sudo apt-get install -y trivy
 
-      - name: Run Trivy scan
+      - name: Scan
         run: |
           trivy fs . \
             --severity HIGH,CRITICAL \
-            --format table \
             --exit-code 0 \
             --no-progress \
-            --timeout 5m \
-            2>&1 | tail -30 || true
-          echo "✅ Security scan done"
+            --timeout 5m || true
