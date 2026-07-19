@@ -12,6 +12,7 @@
 #include <QRandomGenerator>
 #include <QDateTime>
 #include <QDebug>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
 

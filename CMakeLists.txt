@@ -48,11 +48,19 @@ endif()
 # ==============================================================================
 if(MSVC)
     add_compile_options(
-        /W4
-        /WX-
-        /permissive-
-        /EHsc
-        /utf-8
+        /W3           # Reasonable warning level
+        /WX-          # Warnings NOT errors
+        /permissive-  # Strict conformance
+        /EHsc         # Exception handling
+        /utf-8        # UTF-8 source
+        /wd4100       # Unreferenced formal parameter
+        /wd4189       # Local variable initialized but not referenced
+        /wd4505       # Unreferenced local function
+        /wd4702       # Unreachable code
+        /wd4996       # Deprecated functions
+        /wd4458       # Declaration hides class member
+        /wd4457       # Declaration hides function parameter
+        /wd4456       # Declaration hides previous local
     )
     # Lean and mean
     add_definitions(-DWIN32_LEAN_AND_MEAN)

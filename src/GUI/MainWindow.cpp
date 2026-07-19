@@ -7,6 +7,7 @@
 #include <QUrl>
 #include <QThread>
 #include <QDebug>
+#include <QProcess>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)

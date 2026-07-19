@@ -37,6 +37,8 @@
 #include <QRandomGenerator>
 #else
 #include <QDateTime>
+#include <QJsonArray>
+#include <QJsonObject>
 #endif
 
 // RSA Key Size for attestation (2048 for performance, 4096 for maximum security)

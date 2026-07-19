@@ -21,6 +21,7 @@
 #include <QProgressBar>
 #include <QMessageBox>
 #include <QDebug>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
 

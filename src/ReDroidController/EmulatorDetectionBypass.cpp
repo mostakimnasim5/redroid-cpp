@@ -10,6 +10,8 @@
 #include <QFile>
 #include <QProcess>
 #include <QDir>
+#include <QJsonArray>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
 

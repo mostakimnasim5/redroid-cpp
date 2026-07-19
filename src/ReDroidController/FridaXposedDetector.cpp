@@ -8,6 +8,8 @@
 
 #include <QDebug>
 #include <QRegularExpression>
+#include <QJsonArray>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
 

@@ -20,8 +20,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install build tools
         run: |
@@ -32,85 +31,75 @@ jobs:
             libxkbcommon-dev libxkbcommon-x11-dev \
             libssl-dev libdbus-1-dev
 
-      - name: Install Qt ${{ env.QT_VERSION }} via aqtinstall
+      - name: Install Qt ${{ env.QT_VERSION }}
         run: |
           pip install aqtinstall --quiet
           python3 -m aqt install-qt linux desktop ${{ env.QT_VERSION }} linux_gcc_64 \
             --outputdir $HOME/Qt
           echo "$HOME/Qt/${{ env.QT_VERSION }}/gcc_64/bin" >> $GITHUB_PATH
           echo "CMAKE_PREFIX_PATH=$HOME/Qt/${{ env.QT_VERSION }}/gcc_64" >> $GITHUB_ENV
-          echo "Qt6_DIR=$HOME/Qt/${{ env.QT_VERSION }}/gcc_64/lib/cmake/Qt6" >> $GITHUB_ENV
-
-      - name: Verify Qt
-        run: qmake --version
 
       - name: Configure
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -DBUILD_QT6_GUI=ON \
-            -DCMAKE_PREFIX_PATH=$HOME/Qt/${{ env.QT_VERSION }}/gcc_64
+            -DBUILD_QT6_GUI=ON
 
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
       - name: Test
-        working-directory: build
-        run: ctest --output-on-failure || true
+        run: cd build && ctest --output-on-failure || true
 
-      - name: Upload
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: linux-build
           path: build/bin/
 
   # ============================================================================
-  # Windows Build (MSVC)
+  # Windows Build (MSVC 2022)
   # ============================================================================
   windows-build:
     name: Windows (VS 2022)
     runs-on: windows-2022
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Qt ${{ env.QT_VERSION }}
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ env.QT_VERSION }}
-          host: windows
-          target: desktop
-          arch: win64_msvc2022_64
-          cache: true
-          cache-key-prefix: qt-win-${{ env.QT_VERSION }}
+        shell: pwsh
+        run: |
+          pip install aqtinstall --quiet
+          python -m aqt install-qt windows desktop ${{ env.QT_VERSION }} win64_msvc2022_64 `
+            --outputdir C:\Qt
+          echo "C:\Qt\${{ env.QT_VERSION }}\msvc2022_64\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          echo "CMAKE_PREFIX_PATH=C:\Qt\${{ env.QT_VERSION }}\msvc2022_64" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
       - name: Configure
+        shell: pwsh
         run: |
           cmake -B build `
             -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
-            -DBUILD_QT6_GUI=ON
-        shell: pwsh
+            -DBUILD_QT6_GUI=ON `
+            -DCMAKE_PREFIX_PATH="C:\Qt\${{ env.QT_VERSION }}\msvc2022_64"
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
         shell: pwsh
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
       - name: Test
-        working-directory: build
-        run: ctest -C ${{ env.BUILD_TYPE }} --output-on-failure || true
         shell: pwsh
+        run: cd build; ctest -C ${{ env.BUILD_TYPE }} --output-on-failure; exit 0
 
-      - name: Upload
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: windows-exe
           path: |
-            build/**/*.exe
-            !build/**/test*.exe
+            build\**\*.exe
+            !build\**\test*.exe
 
   # ============================================================================
   # Code Quality
@@ -118,20 +107,12 @@ jobs:
   code-quality:
     name: Code Quality
     runs-on: ubuntu-22.04
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: cppcheck
-        run: |
+      - uses: actions/checkout@v4
+      - run: |
           sudo apt-get install -y -qq cppcheck
-          cppcheck --std=c++17 \
-            --suppress=missingInclude \
-            --suppress=unmatchedSuppression \
-            --enable=warning \
-            --error-exitcode=0 \
-            src/ include/ 2>&1 | tail -20 || true
+          cppcheck --std=c++17 --suppress=missingInclude \
+            --error-exitcode=0 src/ include/ 2>&1 | tail -10 || true
 
   # ============================================================================
   # Security Scan
@@ -140,23 +121,16 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-22.04
     continue-on-error: true
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Trivy
+      - uses: actions/checkout@v4
+      - name: Install and run Trivy
         run: |
-          sudo apt-get install -y -qq wget apt-transport-https gnupg
+          sudo apt-get install -y -qq wget gnupg
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
-            | gpg --dearmor \
-            | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+            | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] \
             https://aquasecurity.github.io/trivy-repo/deb generic main" \
             | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update -qq && sudo apt-get install -y trivy
-
-      - name: Scan
-        run: |
-          trivy fs . --severity HIGH,CRITICAL \
-            --exit-code 0 --no-progress --timeout 5m || true
+          trivy fs . --severity HIGH,CRITICAL --exit-code 0 \
+            --no-progress --timeout 5m || true

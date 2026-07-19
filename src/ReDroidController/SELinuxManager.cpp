@@ -11,6 +11,8 @@
 #include <QTextStream>
 #include <QCryptographicHash>
 #include <QRandomGenerator>
+#include <QJsonArray>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
 

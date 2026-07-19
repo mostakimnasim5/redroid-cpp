@@ -27,6 +27,9 @@
 #include <QPainter>
 #include <QBrush>
 #include <QPen>
+#include <QDir>
+#include <QFile>
+#include <QProcess>
 
 namespace VirtualPhonePro {
 

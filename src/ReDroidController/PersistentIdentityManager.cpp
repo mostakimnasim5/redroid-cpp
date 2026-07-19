@@ -11,6 +11,9 @@
 #include <QCryptographicHash>
 #include <QFile>
 #include <QDir>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
 

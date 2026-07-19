@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QRandomGenerator>
 #include <QUuid>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
 

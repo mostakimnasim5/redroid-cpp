@@ -13,6 +13,7 @@
 #include <QDateTime>
 #include <QCryptographicHash>
 #include <QUuid>
+#include <QJsonObject>
 
 namespace VirtualPhonePro {
 
