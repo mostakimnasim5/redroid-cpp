@@ -49,9 +49,9 @@ struct GPSLocation {
 };
 
 /**
- * @brief SensorCalibration data
+ * @brief SimSensorCalibration data
  */
-struct SensorCalibration {
+struct SimSensorCalibration {
     float offsetX;
     float offsetY;
     float offsetZ;

@@ -59,7 +59,7 @@ HardwareSecurityState HardwareAttestation::getSecurityState(const QString& insta
     defaultState.isSEPresent = true;
     defaultState.verifiedBootState = VerifiedBootState::VERIFIED;
     defaultState.bootloaderState = BootloaderState::LOCKED;
-    defaultState.verifiedBootKey = generateVerifiedBootKey();
+    defaultState.verifiedBootKey = "default_boot_key_needs_initialization";
     defaultState.verifiedBootHash = "";
     defaultState.verifiedBootStateString = "green";
     defaultState.isHardwareAttestationSupported = true;
@@ -74,10 +74,19 @@ HardwareSecurityState HardwareAttestation::getSecurityState(const QString& insta
     defaultState.teeVersion = "4.1";
     defaultState.teePatchLevel = "2024-01";
     defaultState.socManufacturer = "Qualcomm";
-    defaultState.socModel = "Snapdragon 8 Gen 3";
-    defaultState.hardwareVendor = "Samsung";
+    defaultState.socModel = "Snapdragon";
     
     return defaultState;
+}
+
+QString HardwareAttestation::generateVerifiedBootKey() {
+    // Generate a random 64-character hex string for verified boot key
+    const QString chars = "0123456789abcdef";
+    QString key;
+    for (int i = 0; i < 64; ++i) {
+        key += chars[QRandomGenerator::global()->bounded(16)];
+    }
+    return key;
 }
 
 bool HardwareAttestation::applyToInstance(const QString& instanceId) {
@@ -100,7 +109,7 @@ bool HardwareAttestation::applyToInstance(const QString& instanceId) {
         // Verified Boot
         QString("setprop ro.boot.verifiedbootstate %1").arg(
             verifiedBootStateToString(state.verifiedBootState)),
-        QString("setprop ro.boot.veritymode enforcing").arg(),
+        QString("setprop ro.boot.veritymode enforcing"),
         QString("setprop ro.verifiedbootstate %1").arg(
             verifiedBootStateToString(state.verifiedBootState)),
         
@@ -162,7 +171,7 @@ bool HardwareAttestation::applyToInstance(const QString& instanceId) {
         
         // Verified boot hash
         QString("setprop ro.boot.verity.hash %1").arg(state.verifiedBootHash),
-        QString("setprop ro.verity.mode enforcing").arg(),
+        QString("setprop ro.verity.mode enforcing"),
         
         //dm-verity
         "setprop ro.config.dmverity true",

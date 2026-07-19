@@ -1,6 +1,6 @@
-#include "AdvancedSpoofing.hpp"
-#include "ADBManager.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/AdvancedSpoofing.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <algorithm>
 #include <sstream>
 #include <iomanip>

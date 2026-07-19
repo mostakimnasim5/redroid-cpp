@@ -79,7 +79,7 @@ struct PropertySpoofConfig {
 };
 
 // SELinux State
-struct SELinuxState {
+struct MitigationSELinuxState {
     bool isEnforcing;
     bool isPermissive;
     bool isMockEnforcing;      // For permissive containers reporting enforcing
@@ -104,7 +104,7 @@ struct LifecycleState {
 };
 
 // Device Identity
-struct DeviceIdentity {
+struct MitigationDeviceIdentity {
     QString manufacturer;
     QString brand;
     QString model;
@@ -164,9 +164,9 @@ struct DetectionItem {
 struct SecurityMitigationState {
     QString instanceId;
     KernelSpoofConfig kernelSpoof;
-    SELinuxState selinux;
+    MitigationSELinuxState selinux;
     LifecycleState lifecycle;
-    DeviceIdentity deviceIdentity;
+    MitigationDeviceIdentity deviceIdentity;
     TEEMockState teeState;
     QList<DetectionItem> detectedItems;
     QMap<QString, QString> spoofedProperties;
@@ -304,7 +304,7 @@ public:
     /**
      * @brief Apply device identity spoofing
      */
-    bool spoofDeviceIdentity(const QString& instanceId, const DeviceIdentity& identity);
+    bool spoofDeviceIdentity(const QString& instanceId, const MitigationDeviceIdentity& identity);
     
     /**
      * @brief Set debuggable/security flags
@@ -333,7 +333,7 @@ public:
     /**
      * @brief Get SELinux status
      */
-    SELinuxState getSELinuxState(const QString& instanceId) const;
+    MitigationSELinuxState getSELinuxState(const QString& instanceId) const;
     
     /**
      * @brief Apply SELinux policy overrides
@@ -586,7 +586,7 @@ private:
     void initializeKnownSignatures();
     void initializeDeviceProfiles();
     KernelSpoofConfig getKernelConfigForDevice(const QString& deviceProfile);
-    DeviceIdentity getDeviceIdentityForProfile(const QString& profile);
+    MitigationDeviceIdentity getDeviceIdentityForProfile(const QString& profile);
     
     // Kernel spoofing helpers
     bool createProcVersionOverlay(const QString& instanceId, const QString& fakeVersion);
@@ -626,7 +626,7 @@ private:
     
     // Device profile data
     QMap<QString, KernelSpoofConfig> m_kernelProfiles;
-    QMap<QString, DeviceIdentity> m_deviceProfiles;
+    QMap<QString, MitigationDeviceIdentity> m_deviceProfiles;
     QList<VirtualizationSignature> m_knownSignatures;
 };
 

@@ -16,6 +16,8 @@
 #include "VirtualPhonePro/UniqueDeviceGenerator.h"
 #include "Data/TACDatabase.h"
 
+using namespace VirtualPhonePro;
+
 class Test_UniqueDeviceGenerator : public QObject {
     Q_OBJECT
 
@@ -408,7 +410,7 @@ void Test_UniqueDeviceGenerator::testThreadSafety() {
     }
     
     // All IMEIs should be unique
-    QSet<QString> uniqueSet = QSet<QString>::fromList(imeis);
+    QSet<QString> uniqueSet(imeis.begin(), imeis.end());
     QVERIFY2(uniqueSet.size() == imeis.size(), "Thread safety issue - duplicate IMEIs generated");
 }
 
@@ -428,7 +430,8 @@ void Test_UniqueDeviceGenerator::testConcurrentGeneration() {
 void Test_UniqueDeviceGenerator::testHashGeneration() {
     UniqueDeviceGenerator& gen = UniqueDeviceGenerator::instance();
     
-    QString hash = gen.generateHash("test_input");
+    // Use hashProfile instead of private generateHash
+    QString hash = gen.hashProfile("test_input");
     QVERIFY(!hash.isEmpty());
     
     // SHA-256 produces 64 hex characters

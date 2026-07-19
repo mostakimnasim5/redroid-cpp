@@ -25,6 +25,7 @@
 #include <QJsonObject>
 #include <QDateTime>
 #include <QList>
+#include <QTimer>
 #include <map>
 #include <string>
 
@@ -136,7 +137,7 @@ struct StorageConfig {
 };
 
 // Sensor Calibration
-struct SensorCalibration {
+struct HardwareSensorCalibration {
     QString sensorName;
     int sensorType;
     float offsetX;
@@ -172,7 +173,7 @@ struct HardwareFingerprintState {
     ThermalConfig thermal;
     MemoryConfig memory;
     StorageConfig storage;
-    QList<SensorCalibration> sensorCalibrations;
+    QList<HardwareSensorCalibration> sensorCalibrations;
     QList<PowerSupplyConfig> powerSupplies;
     bool isInitialized;
     bool isActive;
@@ -399,7 +400,7 @@ public:
     /**
      * @brief Add sensor calibration
      */
-    bool addSensorCalibration(const QString& instanceId, const SensorCalibration& calibration);
+    bool addSensorCalibration(const QString& instanceId, const HardwareSensorCalibration& calibration);
     
     /**
      * @brief Generate realistic sensor data

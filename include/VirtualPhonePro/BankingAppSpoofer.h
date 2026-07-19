@@ -20,7 +20,7 @@
 namespace VirtualPhonePro {
 
 // Detection types for banking apps
-enum class DetectionType {
+enum class BankingDetectionType {
     ROOT_DETECTION,
     EMULATOR_DETECTION,
     HOOK_DETECTION,
@@ -72,7 +72,7 @@ public:
     // Configuration
     void setBypassLevel(int level);
     int getBypassLevel() const;
-    void setDetectionBypassEnabled(DetectionType type, bool enabled);
+    void setDetectionBypassEnabled(BankingDetectionType type, bool enabled);
     
     // Root Detection Bypass
     bool bypassRootDetection(const QString& instanceId);
@@ -169,10 +169,11 @@ public:
     QJsonObject getDetectionStatus(const QString& instanceId);
     
 private:
+    static BankingAppSpoofer* s_instance;
     BankingAppSpoofer();
     
     int m_bypassLevel = 3;
-    QMap<DetectionType, bool> m_detectionBypassEnabled;
+    QMap<BankingDetectionType, bool> m_detectionBypassEnabled;
     
     // Helper methods
     bool executeCommand(const QString& instanceId, const QString& command);

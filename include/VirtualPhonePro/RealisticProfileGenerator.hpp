@@ -55,13 +55,55 @@ struct ManufacturerProfile {
     std::vector<CarrierInfo> carriers;
 };
 
-struct DeviceProfile {
+struct RawDeviceProfileData {
     // Basic Identity
     std::string manufacturer;
     std::string brand;
     std::string model;
     std::string deviceName;
     std::string productName;
+
+    // Version info
+    std::string androidVersion;
+    std::string sdkVersion;
+    std::string securityPatch;
+    std::string buildId;
+    std::string buildType;
+    std::string buildTags;
+    std::string buildFingerprint;
+
+    // Device identifiers
+    std::string bootLoader;
+    std::string hardware;
+    std::string board;
+    std::string device;
+    std::string product;
+
+    // Radio
+    std::string baseband;
+    std::string radioVersion;
+
+    // Network
+    std::string wifiInterface;
+    std::string dhcpServer;
+    std::string gateway;
+    std::string ipAddress;
+    std::string leaseDuration;
+
+    // Display
+    std::string displayId;
+    std::string physicalSize;
+    std::string modes;
+
+    // GPU
+    std::string glRenderer;
+    std::string glVendor;
+    std::string glVersion;
+
+    // System features
+    std::vector<std::string> supportedAbis;
+    std::vector<std::string> features;
+    std::vector<std::string> libraries;
     
     // Hardware
     std::string cpuModel;
@@ -88,18 +130,8 @@ struct DeviceProfile {
     int screenDensity;
     int screenDPI;
     
-    // Build Information
-    std::string androidVersion;
-    std::string sdkVersion;
-    std::string securityPatch;
-    std::string buildID;
-    std::string buildFingerprint;
-    std::string buildType;
-    std::string buildTags;
-    
     // Bootloader & Radio
     std::string bootloaderVersion;
-    std::string radioVersion;
     std::string kernelVersion;
     
     // Network
@@ -191,7 +223,7 @@ struct ProfileGenerationResult {
     bool success;
     std::string message;
     std::string error;
-    DeviceProfile profile;
+    RawDeviceProfileData profile;
     UniqueDeviceID uniqueIDs;
     int uniquenessScore;             // 0-100
     int realismScore;                // 0-100
@@ -246,34 +278,34 @@ public:
     // ============================================================
     // FINGERPRINT GENERATION
     // ============================================================
-    std::string generateBuildFingerprint(const DeviceProfile& profile);
+    std::string generateBuildFingerprint(const RawDeviceProfileData& profile);
     std::string generateBuildFingerprintSamsung(const std::string& model, const std::string& variant);
     std::string generateBuildFingerprintGoogle(const std::string& codename);
     std::string generateBuildFingerprintXiaomi(const std::string& codename);
-    std::string generateProfileHash(const DeviceProfile& profile);
-    void generateDeviceIdentifiers(DeviceProfile& profile, const std::string& brand);
+    std::string generateProfileHash(const RawDeviceProfileData& profile);
+    void generateDeviceIdentifiers(RawDeviceProfileData& profile, const std::string& brand);
     
     // ============================================================
     // VALUE CORRELATION
     // ============================================================
-    void correlateBuildValues(DeviceProfile& profile);
-    void correlateHardwareValues(DeviceProfile& profile);
-    void correlateNetworkValues(DeviceProfile& profile);
-    void correlateGeoValues(DeviceProfile& profile, const std::string& region);
+    void correlateBuildValues(RawDeviceProfileData& profile);
+    void correlateHardwareValues(RawDeviceProfileData& profile);
+    void correlateNetworkValues(RawDeviceProfileData& profile);
+    void correlateGeoValues(RawDeviceProfileData& profile, const std::string& region);
     
     // ============================================================
     // VALIDATION
     // ============================================================
-    bool validateProfile(const DeviceProfile& profile);
-    int calculateUniqueness(const DeviceProfile& profile);
-    int calculateRealism(const DeviceProfile& profile);
-    std::vector<std::string> getValidationErrors(const DeviceProfile& profile);
+    bool validateProfile(const RawDeviceProfileData& profile);
+    int calculateUniqueness(const RawDeviceProfileData& profile);
+    int calculateRealism(const RawDeviceProfileData& profile);
+    std::vector<std::string> getValidationErrors(const RawDeviceProfileData& profile);
     
     // ============================================================
     // BATCH GENERATION
     // ============================================================
     std::vector<ProfileGenerationResult> generateBatch(int count, const std::string& manufacturer = "");
-    std::vector<DeviceProfile> generateUniqueBatch(int count, const std::string& manufacturer = "");
+    std::vector<RawDeviceProfileData> generateUniqueBatch(int count, const std::string& manufacturer = "");
     
     // ============================================================
     // DATABASE ACCESS
@@ -286,11 +318,11 @@ public:
     // ============================================================
     // PROFILE MANAGEMENT
     // ============================================================
-    void saveProfile(const DeviceProfile& profile, const std::string& filepath);
-    DeviceProfile loadProfile(const std::string& filepath);
-    std::string exportToJSON(const DeviceProfile& profile);
-    std::string exportToShellScript(const DeviceProfile& profile);
-    std::string exportToADBCommands(const DeviceProfile& profile);
+    void saveProfile(const RawDeviceProfileData& profile, const std::string& filepath);
+    RawDeviceProfileData loadProfile(const std::string& filepath);
+    std::string exportToJSON(const RawDeviceProfileData& profile);
+    std::string exportToShellScript(const RawDeviceProfileData& profile);
+    std::string exportToADBCommands(const RawDeviceProfileData& profile);
     
 private:
     void initializeManufacturerDatabase();

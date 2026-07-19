@@ -243,6 +243,7 @@ public:
     bool resetSecurity(const QString& instanceId);
     
 private:
+    static HardwareAttestation* s_instance;
     HardwareAttestation();
     
     QString keymasterVersionToString(KeymasterVersion version) const;

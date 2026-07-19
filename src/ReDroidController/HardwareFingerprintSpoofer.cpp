@@ -1,6 +1,6 @@
 #include "VirtualPhonePro/HardwareFingerprintSpoofer.h"
-#include "ADBManager.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <sstream>
 #include <iomanip>
 #include <random>

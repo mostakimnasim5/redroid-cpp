@@ -33,9 +33,11 @@ static void MD5_Transform(uint32_t state[4], const unsigned char block[64]) {
                ((uint32_t)block[i * 4 + 3] << 24);
     }
     
+    #define F1(b, c, d) ((d) ^ ((b) & ((c) ^ (d))))
     #define F(a, b, c, d, x, s, ac) \
-        (a += F1(b, c, d) + x + ac, a = T(a, s), a += b)
-    #define F1(a, b, c, d, x, s, ac) (d ^ (b & (c ^ d)))
+        (a += F1(b, c, d) + (x) + (uint32_t)(ac), \
+         a = (((a) << (s)) | ((a) >> (32-(s)))), \
+         a += b)
     
     F(a, b, c, d, x[0], 7, 0xd76aa478); F(d, a, b, c, x[1], 12, 0xe8c7b756);
     F(c, d, a, b, x[2], 17, 0x242070db); F(b, c, d, a, x[3], 22, 0xc1bdceee);

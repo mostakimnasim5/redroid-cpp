@@ -40,8 +40,8 @@ enum class BatteryPlugState {
 
 // Battery technology
 enum class BatteryTechnology {
-    Li-ion,
-    Li-poly,
+    LiIon,
+    LiPoly,
     NiMH,
     NiCd,
     LiFePO4

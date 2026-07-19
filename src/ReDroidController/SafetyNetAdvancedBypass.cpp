@@ -212,19 +212,19 @@ SafetyNetResult SafetyNetAdvancedBypass::hideMagisk() {
 }
 
 SafetyNetResult SafetyNetAdvancedBypass::setGreenBootState() {
-    return setVerifiedBootState(BootState::GREEN);
+    return setVerifiedBootState(SafetyNetBootState::GREEN);
 }
 
-SafetyNetResult SafetyNetAdvancedBypass::setVerifiedBootState(BootState state) {
+SafetyNetResult SafetyNetAdvancedBypass::setVerifiedBootState(SafetyNetBootState state) {
     SafetyNetResult result = {.success = false, .message = "", .error = "", .token = {}, .details = {}};
     
     auto& adb = ADBManager::getInstance();
     
     std::string stateStr;
     switch (state) {
-        case BootState::GREEN: stateStr = "green"; break;
-        case BootState::ORANGE: stateStr = "orange"; break;
-        case BootState::RED: stateStr = "red"; break;
+        case SafetyNetBootState::GREEN: stateStr = "green"; break;
+        case SafetyNetBootState::ORANGE: stateStr = "orange"; break;
+        case SafetyNetBootState::RED: stateStr = "red"; break;
         default: stateStr = "unknown";
     }
     
@@ -1041,7 +1041,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hookPlayIntegrityAPI() {
     SafetyNetResult result = {.success = false, .message = "", .error = "", .token = {}, .details = {}};
     
     // Prepare environment for Play Integrity API
-    setVerifiedBootState(BootState::GREEN);
+    setVerifiedBootState(SafetyNetBootState::GREEN);
     setSELinuxEnforcing();
     disableDebugFlags();
     
@@ -1478,11 +1478,11 @@ SafetyNetResult SafetyNetAdvancedBypass::hookIntegrityAPI() {
 }
 
 SafetyNetResult SafetyNetAdvancedBypass::setOrangeBootState() { 
-    return setVerifiedBootState(BootState::ORANGE); 
+    return setVerifiedBootState(SafetyNetBootState::ORANGE); 
 }
 
 SafetyNetResult SafetyNetAdvancedBypass::setRedBootState() { 
-    return setVerifiedBootState(BootState::RED); 
+    return setVerifiedBootState(SafetyNetBootState::RED); 
 }
 
 SafetyNetResult SafetyNetAdvancedBypass::spoofTCPOptions() { 

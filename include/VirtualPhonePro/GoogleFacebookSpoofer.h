@@ -220,6 +220,7 @@ public:
     QJsonObject getSpoofingStatus(const QString& instanceId);
     
 private:
+    static GoogleFacebookSpoofer* s_instance;
     GoogleFacebookSpoofer() = default;
     
     // Helpers

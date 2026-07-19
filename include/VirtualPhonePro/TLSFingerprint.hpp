@@ -142,7 +142,7 @@ struct OSTLSConfig {
 };
 
 // Profile presets for common devices
-enum class DeviceProfile {
+enum class TLSProfile {
     ANDROID_DEFAULT,
     SAMSUNG_GALAXY,
     GOOGLE_PIXEL,
@@ -178,7 +178,7 @@ public:
     /**
      * @brief Initialize with specific profile
      */
-    bool initializeWithProfile(DeviceProfile profile);
+    bool initializeWithProfile(TLSProfile profile);
     
     /**
      * @brief Get current configuration
@@ -322,7 +322,7 @@ public:
     /**
      * @brief Get TLS configuration by profile enum
      */
-    static OSTLSConfig getConfigForProfile(DeviceProfile profile);
+    static OSTLSConfig getConfigForProfile(TLSProfile profile);
     
     // ========================================================================
     // LOOKUP & UTILITIES
@@ -342,6 +342,11 @@ public:
      * @brief Convert cipher suites to hex string (for JA3)
      */
     static QString cipherSuitesToHex(const QVector<quint16>& suites);
+    
+    /**
+     * @brief Convert cipher suites to comma-separated string
+     */
+    static QString cipherSuitesToString(const QVector<quint16>& suites);
     
     /**
      * @brief Convert extensions to string (for JA3)
@@ -368,6 +373,7 @@ public:
     QJsonObject getTLSProperties(const QString& instanceId);
     
 private:
+    static TLSFingerprint* s_instance;
     TLSFingerprint();
     
     OSTLSConfig m_config;
@@ -375,7 +381,7 @@ private:
     QString m_currentJA4;
     QString m_currentJA3H;
     
-    QMap<DeviceProfile, OSTLSConfig> m_profileCache;
+    QMap<TLSProfile, OSTLSConfig> m_profileCache;
     
     // Helper methods
     QString buildJA3String(quint16 tlsVersion,
@@ -383,7 +389,7 @@ private:
                           const QVector<quint16>& extensions,
                           const QVector<quint16>& ellipticCurves);
     
-    void cacheProfile(DeviceProfile profile);
+    void cacheProfile(TLSProfile profile);
     void initializeAllProfiles();
 };
 

@@ -15,7 +15,7 @@ enum class SafetyNetIntegrityLevel {
     CERTIFIED = 4
 };
 
-enum class BootState {
+enum class SafetyNetBootState {
     UNKNOWN,
     GREEN,
     ORANGE,
@@ -85,7 +85,7 @@ public:
     SafetyNetResult useMagiskHide();
     
     // Boot Integrity
-    SafetyNetResult setVerifiedBootState(BootState state);
+    SafetyNetResult setVerifiedBootState(SafetyNetBootState state);
     SafetyNetResult setGreenBootState();
     SafetyNetResult setOrangeBootState();
     SafetyNetResult setRedBootState();

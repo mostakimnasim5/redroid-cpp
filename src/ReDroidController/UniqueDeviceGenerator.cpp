@@ -402,6 +402,10 @@ void UniqueDeviceGenerator::initializeTACDatabase() {
     }
 }
 
+QString UniqueDeviceGenerator::hashProfile(const QString& input) {
+    return generateHash(input);
+}
+
 QString UniqueDeviceGenerator::generateHash(const QString& input) {
     QByteArray data = input.toUtf8();
     

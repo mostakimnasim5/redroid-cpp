@@ -57,6 +57,7 @@ struct SwipePattern {
     float touchPressureVariation = 0.1f;
     float pinchVelocityVariation = 0.2f;
     float rotationVariation = 0.1f;
+    float speedVariation = 0.1f;
 };
 
 struct AppUsagePattern {
@@ -101,7 +102,11 @@ public:
     // Fatigue simulation
     float calculateFatigueMultiplier(float elapsedMinutes);
     
+    // Initialization
+    void initializeDefaultStates();
+    
 private:
+    static BehavioralAnalysisPrevention* s_instance;
     BehavioralAnalysisPrevention();
     
     TypingPattern m_typingPattern;
@@ -200,6 +205,7 @@ public:
     QMap<QString, QString> getPowerStats();
     
 private:
+    static AdvancedHardwareEmulator* s_instance;
     AdvancedHardwareEmulator();
     
     CPUState m_cpuState;
@@ -267,6 +273,7 @@ public:
     bool applyToInstance(const QString& instanceId);
     
 private:
+    static AdvancedGraphicsSpoofing* s_instance;
     AdvancedGraphicsSpoofing();
     
     std::mt19937 m_generator;
@@ -306,6 +313,7 @@ public:
     bool applyAllOEM(const QString& instanceId, const QString& manufacturer);
     
 private:
+    static OEMDeepSpoofing* s_instance;
     OEMDeepSpoofing();
     
     QMap<QString, QString> m_samsungProps;
@@ -342,6 +350,7 @@ public:
     QString generateDetectionReport();
     
 private:
+    static UltraAntiDetectionEngine* s_instance;
     UltraAntiDetectionEngine();
     
     BehavioralAnalysisPrevention* m_behavioral;

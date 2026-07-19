@@ -55,7 +55,7 @@ enum class SELinuxEnforcementLevel {
 // SELINUX CONFIGURATION
 // ========================================================================
 
-struct SELinuxConfig {
+struct MitigationSELinuxConfig {
     // Current state
     SELinuxState state = SELinuxState::ENFORCING;
     SELinuxEnforcementLevel enforcementLevel = SELinuxEnforcementLevel::FULL_ENFORCING;
@@ -157,12 +157,12 @@ public:
     /**
      * @brief Configure SELinux spoofing for an instance
      */
-    void configure(const QString& instanceId, const SELinuxConfig& config);
+    void configure(const QString& instanceId, const MitigationSELinuxConfig& config);
     
     /**
      * @brief Get current configuration
      */
-    SELinuxConfig getConfig(const QString& instanceId) const;
+    MitigationSELinuxConfig getConfig(const QString& instanceId) const;
     
     /**
      * @brief Reset to default configuration
@@ -297,7 +297,7 @@ private:
     static SELinuxManager* s_instance;
     
     mutable QMutex m_mutex;
-    QMap<QString, SELinuxConfig> m_configs;
+    QMap<QString, MitigationSELinuxConfig> m_configs;
     QMap<QString, SELinuxState> m_states;
     QMap<QString, QList<SEPolicRule>> m_policyRules;
     QMap<QString, QMap<QString, QString>> m_processContexts;
