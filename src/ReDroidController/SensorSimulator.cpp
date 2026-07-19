@@ -12,6 +12,7 @@
 #include <QDebug>
 #include <QTimer>
 #include <QJsonObject>
+#include <QtMath>      // M_PI cross-platform
 
 namespace VirtualPhonePro {
 

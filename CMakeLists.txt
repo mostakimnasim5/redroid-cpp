@@ -56,6 +56,8 @@ if(MSVC)
     )
     # Lean and mean
     add_definitions(-DWIN32_LEAN_AND_MEAN)
+    add_definitions(-DNOMINMAX)                          # prevent Windows min/max macros conflicting with std::min/std::max
+    add_definitions(-D_USE_MATH_DEFINES)                 # enable M_PI in <cmath> on MSVC
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
     

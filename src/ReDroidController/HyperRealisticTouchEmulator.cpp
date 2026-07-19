@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QRandomGenerator>
 #include <QThread>
+#include <algorithm>   // std::min, std::max
 
 namespace VirtualPhonePro {
 
