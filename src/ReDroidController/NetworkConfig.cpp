@@ -10,6 +10,7 @@
 #include "VirtualPhonePro/ReDroidController.h"
 
 #include <QDebug>
+#include <QRegularExpression>
 #include <QJsonDocument>
 #include <QJsonObject>
 
@@ -298,14 +299,16 @@ QJsonObject NetworkConfig::getNetworkInfo(const QString& instanceId) {
     
     // Extract IPv4
     QRegularExpression ipv4Regex(R"(inet (\d+\.\d+\.\d+\.\d+))");
-    if (ipv4Regex.match(ipResult) != -1) {
-        info["ipv4"] = ipv4Regex.captured(1);
+    QRegularExpressionMatch ipv4Match = ipv4Regex.match(ipResult);
+    if (ipv4Match.hasMatch()) {
+        info["ipv4"] = ipv4Match.captured(1);
     }
     
     // Extract IPv6
     QRegularExpression ipv6Regex(R"(inet6 ([a-f0-9:]+))");
-    if (ipv6Regex.match(ipResult) != -1) {
-        info["ipv6"] = ipv6Regex.captured(1);
+    QRegularExpressionMatch ipv6Match = ipv6Regex.match(ipResult);
+    if (ipv6Match.hasMatch()) {
+        info["ipv6"] = ipv6Match.captured(1);
     }
     
     // Get MAC address
@@ -318,8 +321,9 @@ QJsonObject NetworkConfig::getNetworkInfo(const QString& instanceId) {
     QString gatewayCmd = "ip route show default";
     QString gatewayResult = ctrl.executeShell(instanceId, gatewayCmd);
     QRegularExpression gatewayRegex(R"(default via (\d+\.\d+\.\d+\.\d+))");
-    if (gatewayRegex.match(gatewayResult) != -1) {
-        info["gateway"] = gatewayRegex.captured(1);
+    QRegularExpressionMatch gatewayMatch = gatewayRegex.match(gatewayResult);
+    if (gatewayMatch.hasMatch()) {
+        info["gateway"] = gatewayMatch.captured(1);
     }
     
     return info;

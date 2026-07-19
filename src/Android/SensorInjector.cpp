@@ -7,6 +7,7 @@
 #include "VirtualPhonePro/ReDroidController.h"
 
 #include <QDebug>
+#include <QRandomGenerator>
 #include <QDateTime>
 #include <QtMath>
 

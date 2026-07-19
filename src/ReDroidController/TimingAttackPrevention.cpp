@@ -5,6 +5,7 @@
 
 #include "VirtualPhonePro/TimingAttackPrevention.hpp"
 #include <QtMath>
+#include <QRandomGenerator>
 #include <QDateTime>
 #include <QThread>
 

@@ -1,6 +1,7 @@
 #include "DashboardWindow.h"
 
 #include <QApplication>
+#include <QRandomGenerator>
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QFormLayout>

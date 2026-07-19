@@ -15,6 +15,7 @@
 #include "Data/TACDatabase.h"
 
 #include <QUuid>
+#include <QRandomGenerator>
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QFile>

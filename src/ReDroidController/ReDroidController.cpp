@@ -21,6 +21,7 @@
 #include "VirtualPhonePro/TLSFingerprint.hpp"
 
 #include <QCoreApplication>
+#include <QRandomGenerator>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>

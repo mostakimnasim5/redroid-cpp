@@ -1,3 +1,9 @@
+#include "VirtualPhonePro/NetworkProfileManager.h"
+#include <QRandomGenerator>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QDebug>
+
 
 // ========================================================================
 // DATA STRUCTURE IMPLEMENTATIONS

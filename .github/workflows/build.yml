@@ -9,6 +9,7 @@ on:
 
 env:
   BUILD_TYPE: Release
+  QT_VERSION: '6.7.3'
 
 jobs:
   # ============================================================================
@@ -31,28 +32,31 @@ jobs:
             libxkbcommon-dev libxkbcommon-x11-dev \
             libssl-dev libdbus-1-dev
 
-      - name: Install Qt 6.8
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.8.2'
-          host: linux
-          target: desktop
-          arch: gcc_64
-          cache: true
-          cache-key-prefix: qt-linux-6.8.2
+      - name: Install Qt ${{ env.QT_VERSION }} via aqtinstall
+        run: |
+          pip install aqtinstall --quiet
+          python3 -m aqt install-qt linux desktop ${{ env.QT_VERSION }} linux_gcc_64 \
+            --outputdir $HOME/Qt
+          echo "$HOME/Qt/${{ env.QT_VERSION }}/gcc_64/bin" >> $GITHUB_PATH
+          echo "CMAKE_PREFIX_PATH=$HOME/Qt/${{ env.QT_VERSION }}/gcc_64" >> $GITHUB_ENV
+          echo "Qt6_DIR=$HOME/Qt/${{ env.QT_VERSION }}/gcc_64/lib/cmake/Qt6" >> $GITHUB_ENV
+
+      - name: Verify Qt
+        run: qmake --version
 
       - name: Configure
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -DBUILD_QT6_GUI=ON
+            -DBUILD_QT6_GUI=ON \
+            -DCMAKE_PREFIX_PATH=$HOME/Qt/${{ env.QT_VERSION }}/gcc_64
 
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
       - name: Test
         working-directory: build
-        run: ctest --output-on-failure -j$(nproc) || true
+        run: ctest --output-on-failure || true
 
       - name: Upload
         uses: actions/upload-artifact@v4
@@ -62,7 +66,7 @@ jobs:
           path: build/bin/
 
   # ============================================================================
-  # Windows Build
+  # Windows Build (MSVC)
   # ============================================================================
   windows-build:
     name: Windows (VS 2022)
@@ -72,15 +76,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt 6.8
+      - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.2'
+          version: ${{ env.QT_VERSION }}
           host: windows
           target: desktop
           arch: win64_msvc2022_64
           cache: true
-          cache-key-prefix: qt-windows-6.8.2
+          cache-key-prefix: qt-win-${{ env.QT_VERSION }}
 
       - name: Configure
         run: |
@@ -104,7 +108,9 @@ jobs:
         if: success()
         with:
           name: windows-exe
-          path: build/**/*.exe
+          path: |
+            build/**/*.exe
+            !build/**/test*.exe
 
   # ============================================================================
   # Code Quality
@@ -148,13 +154,9 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] \
             https://aquasecurity.github.io/trivy-repo/deb generic main" \
             | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update -qq
-          sudo apt-get install -y trivy
+          sudo apt-get update -qq && sudo apt-get install -y trivy
 
       - name: Scan
         run: |
-          trivy fs . \
-            --severity HIGH,CRITICAL \
-            --exit-code 0 \
-            --no-progress \
-            --timeout 5m || true
+          trivy fs . --severity HIGH,CRITICAL \
+            --exit-code 0 --no-progress --timeout 5m || true

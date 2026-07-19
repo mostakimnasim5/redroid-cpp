@@ -2,6 +2,7 @@
 #include "VirtualPhonePro/ReDroidController.h"
 
 #include <QThread>
+#include <QRandomGenerator>
 #include <QMutexLocker>
 #include <QtConcurrent>
 #include <QCoreApplication>

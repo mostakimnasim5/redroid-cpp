@@ -10,6 +10,7 @@
 #include "VirtualPhonePro/ReDroidController.h"
 
 #include <QDebug>
+#include <QRandomGenerator>
 #include <QTimer>
 #include <QJsonObject>
 #include <QtMath>      // M_PI cross-platform
