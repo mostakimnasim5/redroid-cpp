@@ -138,7 +138,7 @@ void EnhancedBuildInfo::generateForDevice(const QString& mfr, const QString& mdl
         androidVersion = 14;
         sdkVersion = 34;
         securityPatchLevel = 20240101;
-    } else if (manufacturer.toLower() == "google") {
+    } else if (mfr.toLower() == "google") {
         brand = "google";
         this->manufacturer = "google";
         device = "husky";
@@ -156,15 +156,15 @@ void EnhancedBuildInfo::generateForDevice(const QString& mfr, const QString& mdl
         sdkVersion = 34;
         securityPatchLevel = 20240101;
     } else {
-        brand = manufacturer.toLower();
+        brand = mfr.toLower();
         this->manufacturer = manufacturer;
-        device = manufacturer.toLower();
-        product = manufacturer.toLower();
-        board = manufacturer.toLower();
+        device = mfr.toLower();
+        product = mfr.toLower();
+        board = mfr.toLower();
         hardware = "qcom";
         this->model = manufacturer + " Device";
         deviceName = manufacturer + " Device";
-        fingerprint = manufacturer.toLower() + "/" + manufacturer.toLower() + "/" + manufacturer.toLower() + 
+        fingerprint = mfr.toLower() + "/" + mfr.toLower() + "/" + mfr.toLower() + 
                      ":14/UP1A.231005.007/20240115.200015:user/release-keys";
         bootloader = "bootloader";
         buildId = "UP1A.231005.007";

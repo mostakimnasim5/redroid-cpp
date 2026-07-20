@@ -74,6 +74,7 @@ signals:
     void error(const QString& message);
 
 private:
+    static APIServer* s_instance;
     explicit APIServer(QObject* parent = nullptr);
     
     void handleRequest(QTcpSocket* socket);

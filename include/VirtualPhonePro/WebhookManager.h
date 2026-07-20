@@ -129,6 +129,7 @@ signals:
     void webhookError(const QString& id, const QString& error);
 
 private:
+    static WebhookManager* s_instance;
     explicit WebhookManager(QObject* parent = nullptr);
     
     WebhookPayload createPayload(WebhookEvent event, const QJsonObject& data);

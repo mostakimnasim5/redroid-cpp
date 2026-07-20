@@ -1,5 +1,5 @@
-#include "ADBManager.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <cstdlib>
 #include <sstream>
 #include <array>

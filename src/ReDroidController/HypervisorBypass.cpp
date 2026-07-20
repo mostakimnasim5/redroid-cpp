@@ -1,6 +1,6 @@
-#include "HypervisorBypass.hpp"
-#include "ADBManager.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/HypervisorBypass.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <random>
 #include <fstream>
 #include <sstream>

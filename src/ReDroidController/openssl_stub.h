@@ -75,4 +75,25 @@ unsigned char* SHA512(const unsigned char* d, size_t n, unsigned char* md);
 #define TLS1_2_VERSION 0x0303
 #define TLS1_3_VERSION 0x0304
 
+
+// ============================================================================
+// RAND stubs (simplified secure random using system RNG)
+// ============================================================================
+inline void RAND_seed(const void* /*buf*/, int /*num*/) {
+    // No-op: system RNG seeds itself
+}
+
+inline int RAND_bytes(unsigned char* buf, int num) {
+    // Use /dev/urandom for cryptographically secure random bytes
+    FILE* f = fopen("/dev/urandom", "rb");
+    if (f) {
+        size_t read = fread(buf, 1, num, f);
+        fclose(f);
+        return (int)read == num ? 1 : 0;
+    }
+    // Fallback: use rand()
+    for (int i = 0; i < num; i++) buf[i] = (unsigned char)(rand() & 0xFF);
+    return 1;
+}
+
 #endif // OPENSSL_STUB_H

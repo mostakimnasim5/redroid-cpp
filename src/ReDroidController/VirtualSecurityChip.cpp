@@ -1,6 +1,6 @@
-#include "VirtualSecurityChip.hpp"
-#include "CryptoUtils.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/VirtualSecurityChip.hpp"
+#include "VirtualPhonePro/CryptoUtils.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include "openssl_stub.h"
 #include <random>
 #include <sstream>

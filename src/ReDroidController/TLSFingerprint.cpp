@@ -502,9 +502,9 @@ bool TLSFingerprint::applyToInstance(const QString& instanceId) {
     // Apply TLS-related properties
     QStringList commands = {
         "setprop net.ssl.version TLSv1.3",
-        "setprop net.ssl.cipher_suites " + cipherSuitesToString(m_config.cipherSuites),
-        "setprop debug.tls.ja3 " + m_currentJA3,
-        "setprop debug.tls.ja4 " + m_currentJA4
+        QString("setprop net.ssl.cipher_suites ") + cipherSuitesToString(m_config.cipherSuites),
+        QString("setprop debug.tls.ja3 ") + m_currentJA3,
+        QString("setprop debug.tls.ja4 ") + m_currentJA4
     };
     
     for (const QString& cmd : commands) {

@@ -1,6 +1,6 @@
-#include "ScreenMirror.hpp"
-#include "ADBManager.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/ScreenMirror.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <chrono>
 #include <thread>
 

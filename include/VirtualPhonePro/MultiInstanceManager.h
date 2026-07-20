@@ -257,6 +257,8 @@ private:
     
     // Port allocation
     int m_nextAvailablePort;
+
+    static MultiInstanceManager* s_instance;
 };
 
 } // namespace VirtualPhonePro

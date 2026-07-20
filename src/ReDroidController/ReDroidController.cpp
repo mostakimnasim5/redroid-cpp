@@ -33,6 +33,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryFile>
+#include <QCryptographicHash>
 #include <QMutexLocker>
 #include <QUuid>
 #include <QThread>
@@ -209,6 +210,15 @@ void ReDroidController::saveConfiguration() {
     settings.setValue("docker/baseVncPort", m_config.baseVncPort);
     settings.setValue("docker/useWSL2", m_config.useWSL2);
     settings.setValue("docker/wslDistro", m_config.wslDistro);
+}
+
+QJsonObject ReDroidController::loadProfile(const QString& profileName) {
+    QString profilePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                        + "/profiles/" + profileName + ".json";
+    QFile file(profilePath);
+    if (!file.open(QIODevice::ReadOnly)) return QJsonObject();
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    return doc.isObject() ? doc.object() : QJsonObject();
 }
 
 // ============================================================================

@@ -554,6 +554,7 @@ public:
 private:
     static RealisticDeviceProfile* s_instance;
     RealisticDeviceProfile();
+    static RealisticDeviceProfile* s_instance;
     
     // Internal generators
     CompleteDeviceIdentity generateIdentity(const QString& manufacturer);

@@ -93,6 +93,7 @@ struct EnhancedHardwareInfo {
     QString cpuArchitecture;       // "arm64-v8a"
     QStringList cpuAbiList;        // Supported ABIs
     QString processor;              // e.g., "ARM Implementer 88"
+    QString processorModel;        // e.g., "Snapdragon 8 Gen 3"
     QString hardware;              // e.g., "qcom"
     QString board;                 // e.g., "taro"
     
@@ -187,7 +188,7 @@ struct EnhancedSensorInfo {
     struct SensorData {
         QString name;
         QString vendor;
-        QString version;
+        int version = 1;
         float resolution;
         float maxRange;
         float power;

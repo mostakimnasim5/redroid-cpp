@@ -22,6 +22,7 @@
 
 #include <QString>
 #include <QMap>
+#include <QTimer>
 #include <QJsonObject>
 #include <QDateTime>
 #include <QList>
@@ -183,6 +184,10 @@ struct HardwareFingerprintState {
 struct HardwareFingerprint {
     // CPU
     std::string cpuModel;
+    std::string cpuImplementer;
+    std::string cpuVariant;
+    std::string cpuPart;
+    std::string cpuRevision;
     int cpuCores = 8;
     int cpuThreads = 8;
     std::string cpuArchitecture = "arm64-v8a";
@@ -205,12 +210,17 @@ struct HardwareFingerprint {
     std::string deviceHardware;
     std::string bootloaderVersion;
     std::string kernelVersion;
+    std::string radioVersion;
     std::string buildFingerprint;
     
     // Board
     std::string boardVendor;
     std::string boardName;
     std::string sysVendor;
+    std::string dmiSystemVendor;
+    std::string dmiSystemProduct;
+    std::string dmiBoardVendor;
+    std::string dmiBoardProduct;
     std::string serialNumber;
     
     // System
@@ -238,6 +248,11 @@ enum class HardwareProfile {
 class HardwareFingerprintSpoofer {
 public:
     static HardwareFingerprintSpoofer& instance();
+    void shutdown();
+    bool initialize();
+    SpoofResult generateSamsungFingerprint();
+    SpoofResult generateGoogleFingerprint();
+    SpoofResult generateXiaomiFingerprint();
     
     // =========================================================================
     // Initialization & Configuration
@@ -299,7 +314,6 @@ public:
     /**
      * @brief Spoof GPU information
      */
-    bool spoofGPUInfo(const QString& instanceId);
     
     /**
      * @brief Spoof OpenGL/Vulkan info
@@ -475,13 +489,57 @@ signals:
 private slots:
     void onSimulationTick();
     
+    SpoofResult setExynos2100Profile();
+    SpoofResult setSnapdragon888Profile();
+    SpoofResult setSnapdragon8Gen1Profile();
+    SpoofResult setDimensity9000Profile();
+    SpoofResult setMaliG78Profile();
+    static HardwareFingerprintSpoofer& getInstance();
+    // Profile methods (implemented in .cpp)
+    SpoofResult enableAllSpoofing();
+    SpoofResult disableAllSpoofing();
+    SpoofResult spoofCPUInfo(const std::string& cpuModel, int cores, int threads);
+    SpoofResult setAdreno660Profile();
+    SpoofResult setAdreno730Profile();
+    SpoofResult setMaliG710Profile();
+    SpoofResult spoofDeviceInfo(const std::string& manufacturer, const std::string& model, const std::string& board);
+    SpoofResult setSamsungGalaxyS21Profile();
+    SpoofResult setSamsungGalaxyS22Profile();
+    SpoofResult setGooglePixel6Profile();
+    SpoofResult setGooglePixel7Profile();
+    SpoofResult setXiaomi12Profile();
+    SpoofResult setOnePlus10Profile();
+    SpoofResult spoofBootloaderVersion(const std::string& version);
+    SpoofResult spoofRadioVersion(const std::string& version);
+    SpoofResult spoofKernelVersion(const std::string& version);
+    SpoofResult spoofDMIInfo(const std::string& vendor, const std::string& product, const std::string& manufacturer, const std::string& version);
+    SpoofResult setRealHardwareDMI();
+    SpoofResult spoofBatteryInfo(int level, const std::string& status, const std::string& health);
+    SpoofResult spoofHardwareFeatures();
+    SpoofResult spoofSupportedABIs(const std::vector<std::string>& abis);
+    SpoofResult spoofBiometricInfo();
+    SpoofResult hideBiometricEnrollment();
+    SpoofResult spoofBuildFingerprint(const std::string& fingerprint);
+
+    SpoofResult spoofGPUInfo(const std::string& gpuModel);
+
 private:
     HardwareFingerprintSpoofer();
     ~HardwareFingerprintSpoofer();
+    // Legacy API from implementation
+    bool isInitialized() const;
+    bool isSpoofingActive() const;
+    SpoofResult validateSpoofing();
+    SpoofResult getStatus();
+    HardwareFingerprint getCurrentSpoofedFingerprint();
+    std::map<std::string, std::string> getDetailedStatus();
+
     
     static HardwareFingerprintSpoofer* s_instance;
     
     void initializeHardwareProfiles();
+    std::string generateRandomHex(int length);
+    std::string generateBuildFingerprint(const std::string& manufacturer, const std::string& model, const std::string& buildId);
     CPUConfig getCPUConfigForProfile(HardwareProfile profile);
     GPUConfig getGPUConfigForProfile(HardwareProfile profile);
     BatteryConfig getBatteryConfigForProfile(HardwareProfile profile);

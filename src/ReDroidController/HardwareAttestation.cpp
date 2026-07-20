@@ -93,20 +93,18 @@ bool HardwareAttestation::applyToInstance(const QString& instanceId) {
     ReDroidController& ctrl = ReDroidController::instance();
     HardwareSecurityState state = getSecurityState(instanceId);
     
-    QStringList commands = {
-        // Keymaster version
+    QStringList commands;
+    commands << // Keymaster version
         QString("setprop ro.keymaster.version %1").arg(
-            static_cast<int>(state.keymasterVersion)),
-        QString("setprop ro.hardware.keystore %1").arg(
-            state.isStrongBox ? "strongbox" : "tee"),
-        
-        // StrongBox
+            static_cast<int>(state.keymasterVersion))
+             << QString("setprop ro.hardware.keystore %1").arg(
+            state.isStrongBox ? "strongbox" : "tee")
+             << // StrongBox
         QString("setprop ro.hardware.strongbox_keystore %1").arg(
-            state.isStrongBox ? "true" : "false"),
-        QString("setprop ro.security.strongbox %1").arg(
-            state.isStrongBox ? "true" : "false"),
-        
-        // Verified Boot
+            state.isStrongBox ? "true" : "false")
+             << QString("setprop ro.security.strongbox %1").arg(
+            state.isStrongBox ? "true" : "false")
+             << // Verified Boot
         QString("setprop ro.boot.verifiedbootstate %1").arg(
             verifiedBootStateToString(state.verifiedBootState)),
         QString("setprop ro.boot.veritymode enforcing"),
@@ -115,37 +113,31 @@ bool HardwareAttestation::applyToInstance(const QString& instanceId) {
         
         // Bootloader
         QString("setprop ro.boot.flash.locked %1").arg(
-            state.bootloaderState == BootloaderState::LOCKED ? "1" : "0"),
-        QString("setprop ro.bootloader.locked %1").arg(
-            state.bootloaderState == BootloaderState::LOCKED ? "true" : "false"),
-        
-        // Device integrity
-        "setprop ro.secure 1",
-        "setprop ro.adb.secure 1",
-        "setprop ro.build.selinux Enforcing",
-        
-        // Hardware attestation
+            state.bootloaderState == BootloaderState::LOCKED ? "1" : "0")
+             << QString("setprop ro.bootloader.locked %1").arg(
+            state.bootloaderState == BootloaderState::LOCKED ? "true" : "false")
+             << // Device integrity
+        "setprop ro.secure 1"
+             << "setprop ro.adb.secure 1"
+             << "setprop ro.build.selinux Enforcing"
+             << // Hardware attestation
         QString("setprop ro.hardware.attestation %1").arg(
-            state.isHardwareAttestationSupported ? "true" : "false"),
-        QString("setprop ro.hardware.device_lock %1").arg(
-            state.isDeviceLockEnabled ? "true" : "false"),
-        
-        // Secure hardware
+            state.isHardwareAttestationSupported ? "true" : "false")
+             << QString("setprop ro.hardware.device_lock %1").arg(
+            state.isDeviceLockEnabled ? "true" : "false")
+             << // Secure hardware
         QString("setprop ro.hardware.secure_element %1").arg(
-            state.isSEPresent ? "true" : "false"),
-        QString("setprop ro.hardware.tee %1").arg(
-            state.isTEEPresent ? "true" : "false"),
-        
-        // TEE Info
-        QString("setprop ro.hardware.tee.vendor %1").arg(state.teeVendor),
-        QString("setprop ro.hardware.tee.version %1").arg(state.teeVersion),
-        QString("setprop ro.hardware.tee.patch %1").arg(state.teePatchLevel),
-        
-        // Encryption
-        "setprop ro.crypto.state encrypted",
-        "setprop ro.crypto.triple_des_evt_log 1",
-        
-        // DRM
+            state.isSEPresent ? "true" : "false")
+             << QString("setprop ro.hardware.tee %1").arg(
+            state.isTEEPresent ? "true" : "false")
+             << // TEE Info
+        QString("setprop ro.hardware.tee.vendor %1").arg(state.teeVendor)
+             << QString("setprop ro.hardware.tee.version %1").arg(state.teeVersion)
+             << QString("setprop ro.hardware.tee.patch %1").arg(state.teePatchLevel)
+             << // Encryption
+        "setprop ro.crypto.state encrypted"
+             << "setprop ro.crypto.triple_des_evt_log 1"
+             << // DRM
         QString("setprop ro.drm.level %1").arg(
             drmLevelToString(state.drmLevel)),
         QString("setprop ro.widevine.level %1").arg(
@@ -525,7 +517,7 @@ QString HardwareAttestation::generateVerifiedBootHash(const QString& manufacture
     return hash.toHex();
 }
 
-QString HardwareAttestation::generateVerifiedBootKey() {
+QString HardwareAttestation::generateVerifiedBootKey() const {
     // Generate a random 256-bit key for verified boot
     QRandomGenerator* gen = QRandomGenerator::global();
     QByteArray key;

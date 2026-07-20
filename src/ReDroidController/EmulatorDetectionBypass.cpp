@@ -170,7 +170,7 @@ bool EmulatorDetectionBypass::applyAllBypasses(const QString& instanceId) {
 
 BypassResult EmulatorDetectionBypass::bypassQEMUFiles(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::QEMU_FILE;
+    result.type = EmulatorDetectionType::QEMU_FILE;
     
     QStringList qemuFiles = {
         "/dev/qemu_pipe",
@@ -202,7 +202,7 @@ BypassResult EmulatorDetectionBypass::bypassQEMUFiles(const QString& instanceId)
 
 BypassResult EmulatorDetectionBypass::bypassQEMUPipe(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::QEMU_PIPE;
+    result.type = EmulatorDetectionType::QEMU_PIPE;
     
     QStringList pipeFiles = {
         "/dev/qemu_pipe",
@@ -228,7 +228,7 @@ BypassResult EmulatorDetectionBypass::bypassQEMUPipe(const QString& instanceId) 
 
 BypassResult EmulatorDetectionBypass::bypassQEMUProperties(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::QEMU_PROP;
+    result.type = EmulatorDetectionType::QEMU_PROP;
     
     ReDroidController& controller = ReDroidController::instance();
     
@@ -260,7 +260,7 @@ BypassResult EmulatorDetectionBypass::bypassQEMUProperties(const QString& instan
 
 BypassResult EmulatorDetectionBypass::bypassCPUSignature(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::GOLDISH_CPU;
+    result.type = EmulatorDetectionType::GOLDISH_CPU;
     
     ReDroidController& controller = ReDroidController::instance();
     
@@ -289,7 +289,7 @@ BypassResult EmulatorDetectionBypass::bypassCPUSignature(const QString& instance
 
 BypassResult EmulatorDetectionBypass::bypassGenericEmulator(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::GENERIC_EMULATOR;
+    result.type = EmulatorDetectionType::GENERIC_EMULATOR;
     
     ReDroidController& controller = ReDroidController::instance();
     
@@ -328,7 +328,7 @@ BypassResult EmulatorDetectionBypass::bypassGenericEmulator(const QString& insta
 
 BypassResult EmulatorDetectionBypass::bypassRootDetection(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::SU_BINARY;
+    result.type = EmulatorDetectionType::SU_BINARY;
     
     ReDroidController& controller = ReDroidController::instance();
     
@@ -364,7 +364,7 @@ BypassResult EmulatorDetectionBypass::bypassRootDetection(const QString& instanc
 
 BypassResult EmulatorDetectionBypass::bypassHookDetection(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::FRIDA_PORT;
+    result.type = EmulatorDetectionType::FRIDA_PORT;
     
     ReDroidController& controller = ReDroidController::instance();
     
@@ -402,7 +402,7 @@ BypassResult EmulatorDetectionBypass::bypassHookDetection(const QString& instanc
 
 BypassResult EmulatorDetectionBypass::bypassDebugDetection(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::DEBUG_FLAG;
+    result.type = EmulatorDetectionType::DEBUG_FLAG;
     
     ReDroidController& controller = ReDroidController::instance();
     
@@ -427,7 +427,7 @@ BypassResult EmulatorDetectionBypass::bypassDebugDetection(const QString& instan
 
 BypassResult EmulatorDetectionBypass::bypassSELinuxDetection(const QString& instanceId) {
     BypassResult result;
-    result.type = DetectionType::SELINUX_STATE;
+    result.type = EmulatorDetectionType::SELINUX_STATE;
     
     ReDroidController& controller = ReDroidController::instance();
     

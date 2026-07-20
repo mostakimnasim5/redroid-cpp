@@ -271,6 +271,8 @@ private:
     
     QMap<QString, CertificateStore> m_stores;
     QList<CACertificate> m_predefinedCertificates;
+
+    static SSLCertificateManager* s_instance;
 };
 
 } // namespace VirtualPhonePro

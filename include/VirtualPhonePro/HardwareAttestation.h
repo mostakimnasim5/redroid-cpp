@@ -250,7 +250,7 @@ private:
     QString verifiedBootStateToString(VerifiedBootState state) const;
     QString drmLevelToString(DRMLevel level) const;
     QString generateVerifiedBootHash(const QString& manufacturer, const QString& model);
-    QString generateVerifiedBootKey();
+    QString generateVerifiedBootKey() const;
     QString generateWidevineKeybox();
     
     HardwareSecurityState getDeviceDefaults(const QString& manufacturer, const QString& model);

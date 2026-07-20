@@ -149,7 +149,7 @@ SpoofResult HardwareFingerprintSpoofer::spoofGPUInfo(const std::string& gpuModel
     
     adb.setProperty("ro.hardware.gpu", gpuModel);
     adb.setProperty("debug.hwui.render", gpuModel);
-    adb.executeShellCommand("setprop debug.hwui.use_gpu_rasterizer true");
+    adb.executeShellCommand(std::string("setprop debug.hwui.use_gpu_rasterizer true"));
     adb.setProperty("debug.gralloc.gpu", gpuModel);
     
     m_currentSpoof.gpuRenderer = gpuModel;
@@ -355,10 +355,10 @@ SpoofResult HardwareFingerprintSpoofer::spoofDMIInfo(const std::string& vendor,
     auto& adb = ADBManager::getInstance();
     
     // DMI info for emulator detection bypass
-    adb.executeShellCommand("setprop sys.dmi.system.vendor " + vendor + " 2>/dev/null || true");
-    adb.executeShellCommand("setprop sys.dmi.system.product " + product + " 2>/dev/null || true");
-    adb.executeShellCommand("setprop sys.dmi.board.vendor " + boardVendor + " 2>/dev/null || true");
-    adb.executeShellCommand("setprop sys.dmi.board.product " + boardProduct + " 2>/dev/null || true");
+    adb.executeShellCommand(std::string("setprop sys.dmi.system.vendor ") + vendor + " 2>/dev/null || true");
+    adb.executeShellCommand(std::string("setprop sys.dmi.system.product ") + product + " 2>/dev/null || true");
+    adb.executeShellCommand(std::string("setprop sys.dmi.board.vendor ") + boardVendor + " 2>/dev/null || true");
+    adb.executeShellCommand(std::string("setprop sys.dmi.board.product ") + boardProduct + " 2>/dev/null || true");
     
     m_currentSpoof.dmiSystemVendor = vendor;
     m_currentSpoof.dmiSystemProduct = product;
@@ -399,8 +399,8 @@ SpoofResult HardwareFingerprintSpoofer::spoofHardwareFeatures() {
     auto& adb = ADBManager::getInstance();
     
     // Hide virtualization features
-    adb.executeShellCommand("resetprop ro.hardware.virtual 0 2>/dev/null || true");
-    adb.executeShellCommand("resetprop ro.kernel.virtual false 2>/dev/null || true");
+    adb.executeShellCommand(std::string("resetprop ro.hardware.virtual 0 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("resetprop ro.kernel.virtual false 2>/dev/null || true"));
     
     // Set real hardware features
     adb.setProperty("ro.hwui.disable_vulkan", "false");
@@ -441,8 +441,8 @@ SpoofResult HardwareFingerprintSpoofer::spoofBiometricInfo() {
     
     auto& adb = ADBManager::getInstance();
     
-    adb.executeShellCommand("settings put secure biometric_enrolled 1");
-    adb.executeShellCommand("settings put secure fingerprint_enrolled 1");
+    adb.executeShellCommand(std::string("settings put secure biometric_enrolled 1"));
+    adb.executeShellCommand(std::string("settings put secure fingerprint_enrolled 1"));
     
     result.success = true;
     result.message = "Biometric enrollment spoofed";
@@ -456,8 +456,8 @@ SpoofResult HardwareFingerprintSpoofer::hideBiometricEnrollment() {
     auto& adb = ADBManager::getInstance();
     
     // Hide biometric enrollment
-    adb.executeShellCommand("settings put secure biometric_enrolled 0");
-    adb.executeShellCommand("settings put secure fingerprint_enrolled 0");
+    adb.executeShellCommand(std::string("settings put secure biometric_enrolled 0"));
+    adb.executeShellCommand(std::string("settings put secure fingerprint_enrolled 0"));
     
     result.success = true;
     result.message = "Biometric enrollment hidden";
@@ -600,8 +600,8 @@ void HardwareFingerprintSpoofer::applyCPUChanges(const HardwareFingerprint& fp) 
     QString cpuInfoContent = generateCpuInfoContentFromFingerprint(fp);
     
     // Create spoofed cpuinfo
-    adb.executeShellCommand("mount -o rw,remount /system 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + cpuInfoContent + "' > " + cpuInfoPath.toStdString() + " 2>/dev/null || true");
+    adb.executeShellCommand(std::string("mount -o rw,remount /system 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("echo '") + cpuInfoContent.toStdString() + std::string("' > ") + cpuInfoPath.toStdString() + std::string(" 2>/dev/null || true"));
     
     qDebug() << "[HardwareSpoofer] Applied CPU changes:" << QString::fromStdString(fp.cpuModel).trimmed();
 }
@@ -613,7 +613,7 @@ void HardwareFingerprintSpoofer::applyGPUChanges(const HardwareFingerprint& fp) 
     if (!fp.gpuRenderer.empty()) {
         adb.setProperty("ro.hardware.gpu", fp.gpuRenderer);
         adb.setProperty("debug.hwui.render", fp.gpuRenderer);
-        adb.executeShellCommand("setprop debug.hwui.use_gpu_rasterizer true");
+        adb.executeShellCommand(std::string("setprop debug.hwui.use_gpu_rasterizer true"));
         adb.setProperty("debug.gralloc.gpu", fp.gpuRenderer);
         adb.setProperty("ro.opengles.version", "196610"); // OpenGL ES 3.2
         
@@ -635,8 +635,8 @@ void HardwareFingerprintSpoofer::applyGPUChanges(const HardwareFingerprint& fp) 
     
     // Spoof /sys/class/misc/gpu information
     QString gpuInfo = QString::fromStdString(fp.gpuRenderer);
-    adb.executeShellCommand("echo '" + gpuInfo + "' > /sys/class/misc/gpu/model 2>/dev/null || true");
-    adb.executeShellCommand("chmod 444 /sys/class/misc/gpu/model 2>/dev/null || true");
+    adb.executeShellCommand(std::string("echo '") + gpuInfo.toStdString() + "' > /sys/class/misc/gpu/model 2>/dev/null || true");
+    adb.executeShellCommand(std::string("chmod 444 /sys/class/misc/gpu/model 2>/dev/null || true"));
     
     qDebug() << "[HardwareSpoofer] Applied GPU changes:" << gpuInfo;
 }
@@ -692,8 +692,8 @@ void HardwareFingerprintSpoofer::applyDeviceChanges(const HardwareFingerprint& f
     }
     
     // Apply /system/build.prop modifications
-    adb.executeShellCommand("mount -o rw,remount /system 2>/dev/null || true");
-    adb.executeShellCommand("getprop ro.product.manufacturer > /system/build.prop 2>/dev/null || true");
+    adb.executeShellCommand(std::string("mount -o rw,remount /system 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("getprop ro.product.manufacturer > /system/build.prop 2>/dev/null || true"));
     
     qDebug() << "[HardwareSpoofer] Applied device changes for:" 
              << QString::fromStdString(fp.deviceManufacturer).trimmed() << QString::fromStdString(fp.deviceModel).trimmed();
@@ -716,25 +716,25 @@ void HardwareFingerprintSpoofer::applyDMIChanges(const HardwareFingerprint& fp) 
     QString sysVendor = QString::fromStdString(fp.sysVendor.empty() ? fp.deviceManufacturer : fp.sysVendor);
     
     // Apply board information
-    adb.executeShellCommand("echo '" + boardVendor + "' > /sys/class/dmi/id/board_vendor 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + boardName + "' > /sys/class/dmi/id/board_name 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + sysVendor + "' > /sys/class/dmi/id/sys_vendor 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + boardName + "' > /sys/class/dmi/id/product_name 2>/dev/null || true");
-    adb.executeShellCommand("echo '1.0' > /sys/class/dmi/id/product_version 2>/dev/null || true");
+    adb.executeShellCommand(std::string("echo '") + boardVendor.toStdString() + "' > /sys/class/dmi/id/board_vendor 2>/dev/null || true");
+    adb.executeShellCommand(std::string("echo '") + boardName.toStdString() + "' > /sys/class/dmi/id/board_name 2>/dev/null || true");
+    adb.executeShellCommand(std::string("echo '") + sysVendor.toStdString() + "' > /sys/class/dmi/id/sys_vendor 2>/dev/null || true");
+    adb.executeShellCommand(std::string("echo '") + boardName.toStdString() + "' > /sys/class/dmi/id/product_name 2>/dev/null || true");
+    adb.executeShellCommand(std::string("echo '1.0' > /sys/class/dmi/id/product_version 2>/dev/null || true"));
     
     // Apply BIOS information
-    adb.executeShellCommand("echo 'American Megatrends' > /sys/class/dmi/id/bios_vendor 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + boardVendor + "' > /sys/class/dmi/id/boardVendor 2>/dev/null || true");
+    adb.executeShellCommand(std::string("echo 'American Megatrends' > /sys/class/dmi/id/bios_vendor 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("echo '") + boardVendor.toStdString() + "' > /sys/class/dmi/id/boardVendor 2>/dev/null || true");
     
     // Make DMI files read-only to prevent modification
     for (const QString& path : dmiPaths) {
-        adb.executeShellCommand("chmod 444 '" + path + "' 2>/dev/null || true");
+        adb.executeShellCommand(std::string("chmod 444 '") + path.toStdString() + "' 2>/dev/null || true");
     }
     
     // Apply kernel command line for virtualization hiding
     QString kernelCmdline = "androidboot.hardware=" + QString::fromStdString(fp.deviceHardware) + 
                            " androidboot.bootdevice=bootdevice androidboot.slot_suffix=_a";
-    adb.executeShellCommand("echo '" + kernelCmdline + "' > /proc/cmdline 2>/dev/null || true");
+    adb.executeShellCommand(std::string("echo '") + kernelCmdline.toStdString() + "' > /proc/cmdline 2>/dev/null || true");
     
     qDebug() << "[HardwareSpoofer] Applied DMI changes:" << boardName;
 }
@@ -755,7 +755,7 @@ void HardwareFingerprintSpoofer::restoreOriginalValues() {
     };
     
     for (const QString& prop : propertiesToRestore) {
-        adb.executeShellCommand("resetprop " + prop + " 2>/dev/null || true");
+        adb.executeShellCommand(std::string("resetprop ") + prop.toStdString() + " 2>/dev/null || true");
     }
     
     // Clear spoofed properties tracking
@@ -772,11 +772,11 @@ void HardwareFingerprintSpoofer::restoreOriginalValues() {
     };
     
     for (const QString& path : dmiPaths) {
-        adb.executeShellCommand("chmod 644 '" + path + "' 2>/dev/null || true");
+        adb.executeShellCommand(std::string("chmod 644 '") + path.toStdString() + "' 2>/dev/null || true");
     }
     
     // Restore /proc/cpuinfo
-    adb.executeShellCommand("mount -o ro,remount /system 2>/dev/null || true");
+    adb.executeShellCommand(std::string("mount -o ro,remount /system 2>/dev/null || true"));
     
     qDebug() << "[HardwareSpoofer] Original values restored";
 }

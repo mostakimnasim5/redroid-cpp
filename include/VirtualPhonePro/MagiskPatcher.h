@@ -126,6 +126,7 @@ public:
     bool patchZygisk(const QString& instanceId);
     
 private:
+    static MagiskPatcher* s_instance;
     MagiskPatcher() = default;
     
     bool executeCommand(const QString& instanceId, const QString& command);

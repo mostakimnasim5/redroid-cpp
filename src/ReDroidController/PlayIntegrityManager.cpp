@@ -26,6 +26,7 @@
 #include <QDateTime>
 #include <QRandomGenerator>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QProcess>
 #include <QFile>
 #include <QFileDevice>
@@ -98,7 +99,7 @@ static QByteArray generateSecureRandomBytes(int length) {
     // Use multiple random sources for better entropy
     quint64 seed = QDateTime::currentMSecsSinceEpoch();
     seed ^= reinterpret_cast<quint64>(generator);
-    seed ^= QThread::currentThreadId();
+    seed ^= (quint64)(quintptr)QThread::currentThreadId();
     
     for (int i = 0; i < length; i++) {
         // Mix multiple entropy sources
@@ -219,7 +220,7 @@ static RSAKeyPair generateRSAKeyPair(int keySize = 2048) {
     keys.q = generateSecureRandomBytes(halfSize);
     
     // Ensure p > q (swap if needed)
-    if (QByteArray::compare(keys.p, keys.q) < 0) {
+    if (keys.p < keys.q) {
         qSwap(keys.p, keys.q);
     }
     
@@ -441,8 +442,6 @@ PlayIntegrityManager::PlayIntegrityManager(QObject* parent)
     qDebug() << "[PlayIntegrity] Manager initialized";
 }
 
-PlayIntegrityManager::~PlayIntegrityManager() {
-}
 
 // ========================================================================
 // JSON CONVERSION
@@ -979,7 +978,7 @@ bool PlayIntegrityManager::applyIntegrityProperties(const QString& instanceId) {
     
     // Security patch
     commands.append(QString("setprop ro.build.version.security_patch %1").arg(config.securityPatchLevel));
-    commands.append(QString("setprop ro.build.version.all_codenames %1").arg(config.androidVersion()));
+    commands.append(QString("setprop ro.build.version.all_codenames %1").arg(config.androidVersion));
     
     // Hide root
     if (!config.isDeviceRooted) {
@@ -1838,42 +1837,6 @@ void PlayIntegrityManager::configureTEE(const QString& instanceId) {
 /**
  * @brief Set verified boot state to GREEN (fully verified)
  */
-void PlayIntegrityManager::setVerifiedBootState(const QString& instanceId, const QString& state) {
-    QMutexLocker locker(&m_mutex);
-    
-    if (!m_attestationConfigs.contains(instanceId)) {
-        m_attestationConfigs[instanceId] = HardwareAttestationConfig();
-    }
-    
-    HardwareAttestationConfig& config = m_attestationConfigs[instanceId];
-    
-    // Parse and set boot state
-    if (state.toLower() == "green") {
-        config.bootState = VerifiedBootState::GREEN;
-        config.isDeviceLocked = true;
-    } else if (state.toLower() == "yellow") {
-        config.bootState = VerifiedBootState::YELLOW;
-        config.isDeviceLocked = true;
-    } else if (state.toLower() == "orange") {
-        config.bootState = VerifiedBootState::ORANGE;
-        config.isDeviceLocked = false;
-    } else if (state.toLower() == "red") {
-        config.bootState = VerifiedBootState::RED;
-        config.isDeviceLocked = false;
-    } else if (state.toLower() == "unlocked") {
-        config.bootState = VerifiedBootState::UNLOCKED;
-        config.isDeviceLocked = false;
-    }
-    
-    // Generate verified boot hash
-    ReDroidController& controller = ReDroidController::instance();
-    QString manufacturer = controller.getProperty(instanceId, "ro.product.manufacturer");
-    QString model = controller.getProperty(instanceId, "ro.product.model");
-    config.verifiedBootHash = generateVerifiedBootKeyHash(manufacturer, model);
-    
-    qDebug() << "[PlayIntegrity] Boot state set to:" << state 
-             << "for" << instanceId;
-}
 
 /**
  * @brief Generate complete boot state information for attestation

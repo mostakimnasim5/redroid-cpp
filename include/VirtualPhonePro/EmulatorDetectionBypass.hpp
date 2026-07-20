@@ -35,7 +35,7 @@ namespace VirtualPhonePro {
 // DETECTION TYPES
 // ========================================================================
 
-enum class DetectionType {
+enum class EmulatorDetectionType {
     // Emulator detection
     QEMU_FILE = 0,
     QEMU_PIPE = 1,
@@ -70,7 +70,7 @@ enum class DetectionType {
 // ========================================================================
 
 struct BypassResult {
-    DetectionType type;
+    EmulatorDetectionType type;
     bool bypassed = false;
     QString description;
     QString action;
@@ -341,7 +341,7 @@ public:
     
 signals:
     void bypassCompleted(const QString& instanceId, bool success);
-    void detectionFound(const QString& instanceId, DetectionType type);
+    void detectionFound(const QString& instanceId, EmulatorDetectionType type);
 
 private:
     explicit EmulatorDetectionBypass(QObject* parent = nullptr);

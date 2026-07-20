@@ -257,8 +257,8 @@ CellularNetworkConfig NetworkProfileManager::generateCellularConfig(const Networ
             config.networkMode = "LTE";
             config.preferredNetworkType = "9";
             break;
-        case CellularTransportType::5G_NSA:
-        case CellularTransportType::5G_SA:
+        case CellularTransportType::NR_NSA:
+        case CellularTransportType::NR_SA:
             config.transportTypeStr = "5G";
             config.networkMode = "5G";
             config.preferredNetworkType = "20";
@@ -475,7 +475,7 @@ CellularNetworkConfig NetworkProfileManager::generateCellularConfig(const Networ
     }
     switch (config.transportType) {
         case CellularTransportType::LTE: config.transportTypeStr = "LTE"; config.networkMode = "LTE"; config.preferredNetworkType = "9"; break;
-        case CellularTransportType::5G_NSA: case CellularTransportType::5G_SA: config.transportTypeStr = "5G"; config.networkMode = "5G"; config.preferredNetworkType = "20"; break;
+        case CellularTransportType::NR_NSA: case CellularTransportType::NR_SA: config.transportTypeStr = "5G"; config.networkMode = "5G"; config.preferredNetworkType = "20"; break;
         case CellularTransportType::WCDMA: config.transportTypeStr = "HSDPA"; config.networkMode = "WCDMA"; config.preferredNetworkType = "3"; break;
         case CellularTransportType::GSM: config.transportTypeStr = "EDGE"; config.networkMode = "GSM"; config.preferredNetworkType = "1"; break;
     }

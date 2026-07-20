@@ -76,7 +76,7 @@ BatteryState BatteryPowerManager::getBatteryState(const QString& instanceId) con
     defaultState.isFull = false;
     defaultState.isOnline = true;
     defaultState.health = BatteryHealth::GOOD;
-    defaultState.technology = BatteryTechnology::Li-ion;
+    defaultState.technology = BatteryTechnology::LiIon;
     defaultState.capacityMah = 5000;
     defaultState.plugState = BatteryPlugState::UNPLUGGED;
     defaultState.timestamp = QDateTime::currentMSecsSinceEpoch();
@@ -111,8 +111,8 @@ bool BatteryPowerManager::applyToInstance(const QString& instanceId) {
         
         // Technology
         QString("dumpsys battery set technology %1").arg(
-            state.technology == BatteryTechnology::Li-ion ? "Li-ion" :
-            state.technology == BatteryTechnology::Li-poly ? "Li-poly" : "Li-ion"
+            state.technology == BatteryTechnology::LiIon ? "Li-ion" :
+            state.technology == BatteryTechnology::LiPoly ? "Li-poly" : "Li-ion"
         ),
         
         // AC powered status
@@ -320,7 +320,7 @@ QMap<QString, QString> BatteryPowerManager::getAllBatteryProperties(const QStrin
     props["battery.level.scale"] = "100";
     props["battery.voltage"] = QString::number(state.voltage);
     props["battery.temperature"] = QString::number(state.temperature);
-    props["battery.technology"] = state.technology == BatteryTechnology::Li-ion ? "Li-ion" : "Li-poly";
+    props["battery.technology"] = state.technology == BatteryTechnology::LiIon ? "Li-ion" : "Li-poly";
     
     // Status
     props["battery.status"] = state.isCharging ? "charging" : "discharging";
@@ -361,7 +361,7 @@ bool BatteryPowerManager::resetBattery(const QString& instanceId) {
     defaultState.isFull = false;
     defaultState.isOnline = true;
     defaultState.health = BatteryHealth::GOOD;
-    defaultState.technology = BatteryTechnology::Li-ion;
+    defaultState.technology = BatteryTechnology::LiIon;
     defaultState.capacityMah = 5000;
     defaultState.currentCapacityMah = 5000;
     defaultState.plugState = BatteryPlugState::UNPLUGGED;

@@ -1,5 +1,5 @@
-#include "HttpClient.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/HttpClient.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <sstream>
 #include <cstring>
 

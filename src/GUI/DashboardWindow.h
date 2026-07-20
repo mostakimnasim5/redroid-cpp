@@ -58,6 +58,7 @@ private:
     void loadManufacturerModels();
     
     QString m_instanceId;
+    bool m_isProtected = false;
     DeviceProfile m_profile;
     QString m_manufacturer;
     QString m_androidVersion;

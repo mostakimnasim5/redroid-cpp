@@ -32,6 +32,7 @@
 #include <QTimer>
 #include <QUrl>
 #include <QHostAddress>
+#include "VirtualPhonePro/NetworkConfig.h"
 #include <QtConcurrent>
 
 namespace VirtualPhonePro {
