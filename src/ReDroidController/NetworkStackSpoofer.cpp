@@ -1,6 +1,6 @@
-#include "NetworkStackSpoofer.hpp"
-#include "ADBManager.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/NetworkStackSpoofer.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <sstream>
 #include <random>
 

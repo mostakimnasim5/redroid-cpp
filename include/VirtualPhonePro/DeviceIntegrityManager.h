@@ -372,6 +372,7 @@ public:
     
 private:
     DeviceIntegrityManager();
+    static DeviceIntegrityManager* s_instance;
     
     // Helper methods
     QString integrityLevelToString(IntegrityLevel level) const;

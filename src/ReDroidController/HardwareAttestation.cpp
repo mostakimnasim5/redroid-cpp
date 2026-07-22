@@ -525,15 +525,6 @@ QString HardwareAttestation::generateVerifiedBootHash(const QString& manufacture
     return hash.toHex();
 }
 
-QString HardwareAttestation::generateVerifiedBootKey() {
-    // Generate a random 256-bit key for verified boot
-    QRandomGenerator* gen = QRandomGenerator::global();
-    QByteArray key;
-    for (int i = 0; i < 32; i++) {
-        key.append(static_cast<char>(gen->bounded(256)));
-    }
-    return key.toHex();
-}
 
 QString HardwareAttestation::generateWidevineKeybox() {
     // Generate a fake Widevine keybox (in real scenario this would be a proper keybox)

@@ -1,12 +1,19 @@
-#include "SafetyNetAdvancedBypass.hpp"
-#include "IPTimezoneConverter.hpp"
-#include "ADBManager.hpp"
-#include "Logger.hpp"
-#include "VirtualSecurityChip.hpp"
-#include "CryptoEmulator.hpp"
-#include "DeviceIDGenerator.hpp"
+#include "VirtualPhonePro/SafetyNetAdvancedBypass.hpp"
+#include "VirtualPhonePro/IPTimezoneConverter.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
+#include "VirtualPhonePro/VirtualSecurityChip.hpp"
+#include "VirtualPhonePro/CryptoEmulator.hpp"
+#include "VirtualPhonePro/DeviceIDGenerator.hpp"
 #include <sstream>
 #include <random>
+#include <QString>
+#include <QStringList>
+#include <QDebug>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QDateTime>
 
 namespace VirtualPhonePro {
 
@@ -177,10 +184,10 @@ SafetyNetResult SafetyNetAdvancedBypass::hideRootBinary() {
     auto& adb = ADBManager::getInstance();
     
     // Hide common root binary locations
-    adb.executeShellCommand("mount -o rw,remount /system 2>/dev/null || true");
-    adb.executeShellCommand("chmod 000 /system/bin/su 2>/dev/null || true");
-    adb.executeShellCommand("chmod 000 /system/xbin/su 2>/dev/null || true");
-    adb.executeShellCommand("chmod 000 /sbin/su 2>/dev/null || true");
+    adb.executeShellCommand(std::string("mount -o rw,remount /system 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("chmod 000 /system/bin/su 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("chmod 000 /system/xbin/su 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("chmod 000 /sbin/su 2>/dev/null || true"));
     
     result.success = true;
     result.message = "Root binaries hidden";
@@ -194,16 +201,16 @@ SafetyNetResult SafetyNetAdvancedBypass::hideMagisk() {
     auto& adb = ADBManager::getInstance();
     
     // Hide Magisk files
-    adb.executeShellCommand("chattr -i /sbin/.magisk 2>/dev/null || true");
-    adb.executeShellCommand("chmod 000 /sbin/.magisk 2>/dev/null || true");
-    adb.executeShellCommand("chmod 000 /data/adb/magisk 2>/dev/null || true");
-    adb.executeShellCommand("mv /data/adb/magisk /data/adb/magisk_backup 2>/dev/null || true");
+    adb.executeShellCommand(std::string("chattr -i /sbin/.magisk 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("chmod 000 /sbin/.magisk 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("chmod 000 /data/adb/magisk 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("mv /data/adb/magisk /data/adb/magisk_backup 2>/dev/null || true"));
     
     // Hide Magisk manager
-    adb.executeShellCommand("pm hide com.topjohnwu.magisk 2>/dev/null || true");
+    adb.executeShellCommand(std::string("pm hide com.topjohnwu.magisk 2>/dev/null || true"));
     
     // Disable Magisk Hide
-    adb.executeShellCommand("magiskhide disable 2>/dev/null || true");
+    adb.executeShellCommand(std::string("magiskhide disable 2>/dev/null || true"));
     
     result.success = true;
     result.message = "Magisk hidden";
@@ -254,7 +261,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setSELinuxEnforcing() {
     
     auto& adb = ADBManager::getInstance();
     
-    adb.executeShellCommand("setenforce 1");
+    adb.executeShellCommand(std::string("setenforce 1"));
     adb.setProperty("ro.build.selinux", "1");
     adb.setProperty("ro.build.selinux.enforce", "true");
     
@@ -298,8 +305,8 @@ SafetyNetResult SafetyNetAdvancedBypass::disableDebugFlags() {
     adb.setProperty("sys.usb.config", "mtp");
     
     // Disable debugging features
-    adb.executeShellCommand("settings put global development_settings_enabled 0");
-    adb.executeShellCommand("settings put secure adb_enabled 0");
+    adb.executeShellCommand(std::string("settings put global development_settings_enabled 0"));
+    adb.executeShellCommand(std::string("settings put secure adb_enabled 0"));
     
     m_modifiedProperties["ro.debuggable"] = "0";
     m_modifiedProperties["ro.adb.secure"] = "1";
@@ -363,31 +370,31 @@ SafetyNetResult SafetyNetAdvancedBypass::generateIntegrityToken(SafetyNetIntegri
     
     switch (level) {
         case SafetyNetIntegrityLevel::CERTIFIED:
-            m_currentToken.basicIntegrity = "true";
+            m_currentToken.basicIntegrity = true;
             m_currentToken.ctsProfileMatch = "true";
             m_currentToken.deviceIntegrity = "CERTIFIED";
             break;
             
         case SafetyNetIntegrityLevel::MEETS_STRONG_INTEGRITY:
-            m_currentToken.basicIntegrity = "true";
+            m_currentToken.basicIntegrity = true;
             m_currentToken.ctsProfileMatch = "true";
             m_currentToken.deviceIntegrity = "LEGIT";
             break;
             
         case SafetyNetIntegrityLevel::MEETS_DEVICE_INTEGRITY:
-            m_currentToken.basicIntegrity = "true";
+            m_currentToken.basicIntegrity = true;
             m_currentToken.ctsProfileMatch = "false";
             m_currentToken.deviceIntegrity = "LEGIT";
             break;
             
         case SafetyNetIntegrityLevel::MEETS_BASIC_INTEGRITY:
-            m_currentToken.basicIntegrity = "true";
+            m_currentToken.basicIntegrity = true;
             m_currentToken.ctsProfileMatch = "false";
             m_currentToken.deviceIntegrity = "UNCHECKED";
             break;
             
         default:
-            m_currentToken.basicIntegrity = "false";
+            m_currentToken.basicIntegrity = false;
             m_currentToken.ctsProfileMatch = "false";
             m_currentToken.deviceIntegrity = "UNKNOWN";
             break;
@@ -424,7 +431,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setCTSCProfileMatch() {
 SafetyNetResult SafetyNetAdvancedBypass::setBasicIntegrity() {
     SafetyNetResult result = {.success = false, .message = "", .error = "", .token = {}, .details = {}};
     
-    m_currentToken.basicIntegrity = "true";
+    m_currentToken.basicIntegrity = true;
     
     result.success = true;
     result.message = "Basic integrity set to true";
@@ -435,7 +442,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setBasicIntegrity() {
 SafetyNetResult SafetyNetAdvancedBypass::setStrongIntegrity() {
     SafetyNetResult result = {.success = false, .message = "", .error = "", .token = {}, .details = {}};
     
-    m_currentToken.basicIntegrity = "true";
+    m_currentToken.basicIntegrity = true;
     m_currentToken.ctsProfileMatch = "true";
     m_currentToken.deviceIntegrity = "LEGIT";
     
@@ -448,7 +455,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setStrongIntegrity() {
 SafetyNetResult SafetyNetAdvancedBypass::setCertifiedIntegrity() {
     SafetyNetResult result = {.success = false, .message = "", .error = "", .token = {}, .details = {}};
     
-    m_currentToken.basicIntegrity = "true";
+    m_currentToken.basicIntegrity = true;
     m_currentToken.ctsProfileMatch = "true";
     m_currentToken.deviceIntegrity = "CERTIFIED";
     
@@ -482,9 +489,9 @@ SafetyNetResult SafetyNetAdvancedBypass::setScreenLocked() {
     auto& adb = ADBManager::getInstance();
     
     // Check if screen lock is enabled
-    std::string lockStatus = adb.executeShellCommand("settings get secure lock_screen_lock_out");
+    std::string lockStatus = adb.executeShellCommand(std::string("settings get secure lock_screen_lock_out"));
     if (lockStatus.empty() || lockStatus == "0") {
-        adb.executeShellCommand("settings put secure lock_screen_lock_out 1");
+        adb.executeShellCommand(std::string("settings put secure lock_screen_lock_out 1"));
     }
     
     m_currentToken.screenLockEnabled = true;
@@ -612,7 +619,7 @@ SafetyNetResult SafetyNetAdvancedBypass::validateAllChecks() {
     if (tags.find("release-keys") != std::string::npos) passedChecks++;
     
     // Check SELinux
-    std::string selinux = adb.executeShellCommand("getenforce");
+    std::string selinux = adb.executeShellCommand(std::string("getenforce"));
     if (selinux.find("Enforcing") != std::string::npos) passedChecks++;
     
     // Check boot state
@@ -693,15 +700,15 @@ void SafetyNetAdvancedBypass::prepareBypassEnvironment() {
     auto& adb = ADBManager::getInstance();
     
     // Mount system as writable
-    adb.executeShellCommand("mount -o rw,remount /system 2>/dev/null || true");
-    adb.executeShellCommand("mount -o rw,remount /vendor 2>/dev/null || true");
+    adb.executeShellCommand(std::string("mount -o rw,remount /system 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("mount -o rw,remount /vendor 2>/dev/null || true"));
     
     // Create backup directory
-    adb.executeShellCommand("mkdir -p /data/local/tmp/safetynet_backup 2>/dev/null || true");
+    adb.executeShellCommand(std::string("mkdir -p /data/local/tmp/safetynet_backup 2>/dev/null || true"));
     
     // Backup original files
-    adb.executeShellCommand("cp /system/build.prop /data/local/tmp/safetynet_backup/build.prop.bak 2>/dev/null || true");
-    adb.executeShellCommand("cp /default.prop /data/local/tmp/safetynet_backup/default.prop.bak 2>/dev/null || true");
+    adb.executeShellCommand(std::string("cp /system/build.prop /data/local/tmp/safetynet_backup/build.prop.bak 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("cp /default.prop /data/local/tmp/safetynet_backup/default.prop.bak 2>/dev/null || true"));
     
     // Store original property values
     m_backupValues["ro.debuggable"] = adb.getProperty("ro.debuggable");
@@ -738,7 +745,7 @@ void SafetyNetAdvancedBypass::applyIntegrityToken() {
     }
     
     // Update token state
-    m_currentToken.basicIntegrity = "true";
+    m_currentToken.basicIntegrity = true;
     m_currentToken.ctsProfileMatch = "true";
     m_currentToken.deviceIntegrity = "MEETS_DEVICE_INTEGRITY";
     m_currentToken.RootDetected = false;
@@ -802,7 +809,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSUBinary() {
     
     int successCount = 0;
     for (const QString& cmd : commands) {
-        if (adb.executeShellCommand(cmd).find("error") == QString::npos) {
+        if (adb.executeShellCommand(cmd.toStdString()).find("error") == std::string::npos) {
             successCount++;
         }
     }
@@ -828,7 +835,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSuperSU() {
     };
     
     for (const QString& cmd : commands) {
-        adb.executeShellCommand(cmd);
+        adb.executeShellCommand(cmd.toStdString());
     }
     
     result.success = true;
@@ -862,7 +869,7 @@ SafetyNetResult SafetyNetAdvancedBypass::useMagiskHide() {
     };
     
     for (const QString& cmd : commands) {
-        adb.executeShellCommand(cmd);
+        adb.executeShellCommand(cmd.toStdString());
     }
     
     result.success = true;
@@ -969,7 +976,7 @@ SafetyNetResult SafetyNetAdvancedBypass::bypassPlayServicesChecks() {
     }
     
     // Ensure GMS is visible and valid
-    adb.executeShellCommand("pm enable com.google.android.gms 2>/dev/null || true");
+    adb.executeShellCommand(std::string("pm enable com.google.android.gms 2>/dev/null || true"));
     
     result.success = true;
     result.message = "Play Services checks configured";
@@ -982,8 +989,8 @@ SafetyNetResult SafetyNetAdvancedBypass::hideGMS() {
     
     // For banking apps, we want GMS visible but not detected as spoofed
     // Don't actually hide GMS, just ensure it looks legitimate
-    adb.executeShellCommand("pm unhide com.google.android.gms 2>/dev/null || true");
-    adb.executeShellCommand("pm enable com.google.android.gms 2>/dev/null || true");
+    adb.executeShellCommand(std::string("pm unhide com.google.android.gms 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("pm enable com.google.android.gms 2>/dev/null || true"));
     
     result.success = true;
     result.message = "GMS visibility ensured";
@@ -1017,7 +1024,7 @@ SafetyNetResult SafetyNetAdvancedBypass::disableSafetyNet() {
     adb.setProperty("com.google.android.gms.safetynet.basicIntegrity", "true");
     
     m_currentToken.ctsProfileMatch = "true";
-    m_currentToken.basicIntegrity = "true";
+    m_currentToken.basicIntegrity = true;
     
     result.success = true;
     result.message = "SafetyNet configured to pass checks";
@@ -1070,8 +1077,8 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSystemMounts() {
     auto& adb = ADBManager::getInstance();
     
     // Hide system mount information that might indicate tampering
-    adb.executeShellCommand("mount -o ro,remount /system 2>/dev/null || true");
-    adb.executeShellCommand("mount -o ro,remount /vendor 2>/dev/null || true");
+    adb.executeShellCommand(std::string("mount -o ro,remount /system 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("mount -o ro,remount /vendor 2>/dev/null || true"));
     
     result.success = true;
     result.message = "System mounts secured";
@@ -1091,7 +1098,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSystemBinaries() {
     };
     
     for (const QString& binary : protectedBinaries) {
-        adb.executeShellCommand("chattr +i " + binary + " 2>/dev/null || true");
+        adb.executeShellCommand("chattr +i " + binary.toStdString() + std::string(" 2>/dev/null || true"));
     }
     
     result.success = true;
@@ -1114,7 +1121,7 @@ SafetyNetResult SafetyNetAdvancedBypass::checkForDangerousApps() {
     
     QStringList foundApps;
     for (const QString& app : dangerousApps) {
-        QString output = adb.executeShellCommand("pm list packages " + app);
+        QString output = QString::fromStdString(adb.executeShellCommand("pm list packages " + app.toStdString()));
         if (!output.isEmpty() && !output.contains("error")) {
             foundApps.append(app);
         }
@@ -1122,12 +1129,12 @@ SafetyNetResult SafetyNetAdvancedBypass::checkForDangerousApps() {
     
     // Hide any found dangerous apps
     for (const QString& app : foundApps) {
-        adb.executeShellCommand("pm hide " + app + " 2>/dev/null || true");
+        adb.executeShellCommand("pm hide " + app.toStdString() + std::string(" 2>/dev/null || true"));
     }
     
     result.success = true;
-    result.message = foundApps.isEmpty() ? "No dangerous apps found" : "Hidden " + QString::number(foundApps.size()) + " dangerous apps";
-    result.details["found"] = QString::number(foundApps.size());
+    result.message = foundApps.isEmpty() ? "No dangerous apps found" : std::string("Hidden ") + std::to_string(foundApps.size()) + std::string(" dangerous apps");
+    result.details["found"] = std::to_string(foundApps.size());
     return result;
 }
 
@@ -1145,7 +1152,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideXposed() {
     };
     
     for (const QString& cmd : commands) {
-        adb.executeShellCommand(cmd);
+        adb.executeShellCommand(cmd.toStdString());
     }
     
     // Disable Xposed properties
@@ -1170,7 +1177,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideFrida() {
     };
     
     for (const QString& cmd : commands) {
-        adb.executeShellCommand(cmd);
+        adb.executeShellCommand(cmd.toStdString());
     }
     
     // Set Frida detection bypass properties
@@ -1197,13 +1204,13 @@ SafetyNetResult SafetyNetAdvancedBypass::setBatteryHealth(const std::string& hea
         healthCmd = "dumpsys battery set health 1"; // Default to good
     }
     
-    adb.executeShellCommand(healthCmd);
-    adb.executeShellCommand("dumpsys battery set status 2"); // Not charging
+    adb.executeShellCommand(healthCmd.toStdString());
+    adb.executeShellCommand(std::string("dumpsys battery set status 2")); // Not charging
     
     m_currentToken.usesStorageEncryption = true; // Good battery health
     
     result.success = true;
-    result.message = "Battery health set to: " + QString::fromStdString(health);
+    result.message = "Battery health set to: " + QString::fromStdString(health).toStdString();
     return result;
 }
 
@@ -1225,10 +1232,10 @@ SafetyNetResult SafetyNetAdvancedBypass::setBatteryStatus(const std::string& sta
         statusCmd = "dumpsys battery set status 2"; // Default to charging
     }
     
-    adb.executeShellCommand(statusCmd);
+    adb.executeShellCommand(statusCmd.toStdString());
     
     result.success = true;
-    result.message = "Battery status set to: " + QString::fromStdString(status);
+    result.message = "Battery status set to: " + QString::fromStdString(status).toStdString();
     return result;
 }
 
@@ -1245,7 +1252,7 @@ SafetyNetResult SafetyNetAdvancedBypass::disablePowerSaving() {
     };
     
     for (const QString& cmd : commands) {
-        adb.executeShellCommand(cmd);
+        adb.executeShellCommand(cmd.toStdString());
     }
     
     result.success = true;
@@ -1258,7 +1265,7 @@ SafetyNetResult SafetyNetAdvancedBypass::checkMemoryTampering() {
     auto& adb = ADBManager::getInstance();
     
     // Check for memory tampering indicators
-    QString memPermissions = adb.executeShellCommand("cat /proc/self/status | grep -i seccomp");
+    QString memPermissions = QString::fromStdString(adb.executeShellCommand(std::string("cat /proc/self/status | grep -i seccomp")));
     
     // If we can read this, memory is likely not tampered
     bool isTampered = memPermissions.isEmpty() || memPermissions.contains("0000");
@@ -1275,7 +1282,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideDebuggableProcess() {
     
     // Ensure no processes are debuggable
     adb.setProperty("ro.debuggable", "0");
-    adb.executeShellCommand("setprop debug.atrace.tags_enableflags 0");
+    adb.executeShellCommand(std::string("setprop debug.atrace.tags_enableflags 0"));
     
     m_modifiedProperties["ro.debuggable"] = "0";
     
@@ -1295,7 +1302,7 @@ SafetyNetResult SafetyNetAdvancedBypass::secureMemoryAllocation() {
     };
     
     for (const QString& cmd : sysctls) {
-        adb.executeShellCommand(cmd);
+        adb.executeShellCommand(cmd.toStdString());
     }
     
     result.success = true;
@@ -1315,7 +1322,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setKeyguardSecure() {
     };
     
     for (const QString& cmd : commands) {
-        adb.executeShellCommand(cmd);
+        adb.executeShellCommand(cmd.toStdString());
     }
     
     m_currentToken.screenLockEnabled = true;

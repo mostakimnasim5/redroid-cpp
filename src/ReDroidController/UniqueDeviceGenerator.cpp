@@ -151,7 +151,7 @@ quint32 UniqueDeviceGenerator::getSecureRandomUInt32(quint32 min, quint32 max) c
                         (static_cast<quint32>(bytes[3]) << 24);
         } else {
             // Fallback to Qt's random generator
-            randomValue = QRandomGenerator::global()->bounded(0, UINT32_MAX);
+            randomValue = QRandomGenerator::global()->bounded(static_cast<quint32>(0), static_cast<quint32>(UINT32_MAX));
         }
     } while (randomValue >= limit);
     
@@ -172,7 +172,7 @@ quint64 UniqueDeviceGenerator::getSecureRandomUInt64() const {
     }
     
     // Fallback
-    return QRandomGenerator::global()->bounded(0, INT64_MAX);
+    return QRandomGenerator::global()->bounded(static_cast<quint64>(0), static_cast<quint64>(INT64_MAX));
 }
 
 QString UniqueDeviceGenerator::getSecureRandomHex(size_t length) const {

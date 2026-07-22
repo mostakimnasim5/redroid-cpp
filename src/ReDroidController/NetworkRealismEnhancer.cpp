@@ -170,10 +170,9 @@ bool NetworkRealismEnhancer::applyToInstance(const QString& instanceId) {
     };
     
     // Network country
-    commands += {
-        "setprop persist.sys.timezone " + getenv("TZ") ? getenv("TZ") : "UTC",
-        "setprop gsm.network.countrycode " + state.networkCountryCode,
-    };
+    QString tz = QString(getenv("TZ") ? getenv("TZ") : "UTC");
+    commands.append("setprop persist.sys.timezone " + tz);
+    commands.append("setprop gsm.network.countrycode " + state.networkCountryCode);
     
     // Execute all commands
     for (const QString& cmd : commands) {

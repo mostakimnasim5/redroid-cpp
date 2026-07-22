@@ -4,6 +4,7 @@
  */
 
 #include "VirtualPhonePro/EmulatorDetectionBypass.hpp"
+#include "VirtualPhonePro/PlayIntegrityManager.hpp"
 #include "VirtualPhonePro/ReDroidController.h"
 
 #include <QDebug>
@@ -34,8 +35,6 @@ EmulatorDetectionBypass::EmulatorDetectionBypass(QObject* parent)
     qDebug() << "[EmulatorBypass] Detection bypass module initialized";
 }
 
-EmulatorDetectionBypass::~EmulatorDetectionBypass() {
-}
 
 // ========================================================================
 // JSON CONVERSION

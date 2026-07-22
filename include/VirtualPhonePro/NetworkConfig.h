@@ -1,4 +1,7 @@
 #pragma once
+#include <QObject>
+#include <QJsonObject>
+#include <QStringList>
 
 #ifndef VIRTUALPHONEPRO_NETWORK_CONFIG_H
 #define VIRTUALPHONEPRO_NETWORK_CONFIG_H
@@ -139,6 +142,36 @@ struct NetworkStats {
     QString macAddress;
     QString networkName;
     qint64 timestamp;
+};
+
+
+// =========================================================================
+// NetworkConfig Manager Class
+// =========================================================================
+
+class NetworkConfigManager : public QObject {
+    Q_OBJECT
+public:
+    static NetworkConfigManager& instance();
+
+    bool configureProxy(const QString& instanceId, const ProxyConfig& proxy);
+    bool removeProxy(const QString& instanceId);
+    bool spoofMacAddress(const QString& instanceId, const QString& interface,
+                         const QString& macAddress);
+    QString getMacAddress(const QString& instanceId, const QString& interface);
+    bool setupVPN(const QString& instanceId, const VPNConfig& vpn);
+    bool disconnectVPN(const QString& instanceId);
+    bool blockIPv6(const QString& instanceId);
+    bool enableIPv6(const QString& instanceId);
+    bool setDNSServers(const QString& instanceId, const QStringList& servers);
+    QStringList getDNSServers(const QString& instanceId);
+    bool testNetworkLeak(const QString& instanceId);
+    QJsonObject getNetworkInfo(const QString& instanceId);
+
+private:
+    explicit NetworkConfigManager(QObject* parent = nullptr);
+    ~NetworkConfigManager();
+    static NetworkConfigManager* s_instance;
 };
 
 } // namespace VirtualPhonePro

@@ -261,6 +261,7 @@ public:
     
 private:
     CarrierNetworkSimulator();
+    static CarrierNetworkSimulator* s_instance;
     
     NetworkType stringToNetworkType(const QString& str) const;
     QString generateIMSI(const QString& mcc, const QString& mnc);

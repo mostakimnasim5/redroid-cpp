@@ -64,14 +64,16 @@ struct HMSConfig {
 
 // Xiaomi MIUI Configuration
 struct MIUIConfig {
-    bool isMIUISupported;
-    bool isMIUIEnhanced;
+    bool isMIUISupported = false;
+    bool isMIUIEnhanced = false;
     QString miuiVersion;
     QString miuiBuildVersion;
-    bool isMiPaySupported;
-    bool isGameTurboEnabled;
-    bool isBatterySaverPlus;
+    bool isMiPaySupported = false;
+    bool isGameTurboEnabled = false;
+    bool isBatterySaverPlus = false;
     QString antutuVersion;
+    QString oemId;       // MIUI version name (e.g. "V14.0")
+    QString oemBrand;    // MIUI build version (e.g. "14.0.24")
 };
 
 // Google Services Configuration
@@ -235,6 +237,7 @@ public:
     
 private:
     OEMDeepSpoofing();
+    static OEMDeepSpoofing* s_instance;
     
     OEMState getDefaultsForType(OEMType type);
     QString oemTypeToString(OEMType type) const;

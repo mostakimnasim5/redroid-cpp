@@ -34,6 +34,8 @@
 #include <QHostAddress>
 #include <QtConcurrent>
 
+#include "VirtualPhonePro/NetworkConfig.h"
+
 namespace VirtualPhonePro {
 
 // ========================================================================
@@ -174,6 +176,7 @@ struct CellularNetworkConfig {
  * @brief TCP/IP fingerprint for network masking
  */
 struct TCPFingerprint {
+    QJsonObject toJson() const;
     quint16 windowSize;
     quint16 mss;
     bool windowScaling;
@@ -190,6 +193,7 @@ struct TCPFingerprint {
  * @brief DNS configuration for country
  */
 struct DNSCOnfig {
+    QJsonObject toJson() const;
     QStringList primary;           // Primary DNS servers
     QStringList secondary;        // Backup DNS
     QStringList doh;              // DNS over HTTPS endpoints

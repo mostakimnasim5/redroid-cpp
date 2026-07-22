@@ -1,5 +1,5 @@
-#include "DeviceIDGenerator.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/DeviceIDGenerator.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <random>
 #include <chrono>
 #include <sstream>

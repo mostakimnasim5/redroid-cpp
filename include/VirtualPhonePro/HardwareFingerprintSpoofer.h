@@ -20,6 +20,7 @@
 #ifndef VIRTUALPHONEPRO_HARDWARE_FINGERPRINT_SPOOFER_H
 #define VIRTUALPHONEPRO_HARDWARE_FINGERPRINT_SPOOFER_H
 
+#include <QObject>
 #include <QString>
 #include <QMap>
 #include <QJsonObject>
@@ -235,7 +236,8 @@ enum class HardwareProfile {
     GENERIC_HIGH_END
 };
 
-class HardwareFingerprintSpoofer {
+class HardwareFingerprintSpoofer : public QObject {
+    Q_OBJECT
 public:
     static HardwareFingerprintSpoofer& instance();
     

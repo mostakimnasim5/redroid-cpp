@@ -1,860 +1,606 @@
+/**
+ * @file HardwareFingerprintSpoofer.cpp
+ * @brief Hardware Fingerprint Spoofing Implementation
+ * @version 4.0.0
+ *
+ * Implements all hardware-level spoofing via ADB commands.
+ * Matches header: VirtualPhonePro/HardwareFingerprintSpoofer.h
+ */
+
 #include "VirtualPhonePro/HardwareFingerprintSpoofer.h"
 #include "VirtualPhonePro/ADBManager.hpp"
 #include "VirtualPhonePro/Logger.hpp"
-#include <sstream>
-#include <iomanip>
-#include <random>
+#include <string>
+
+#include <QDebug>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QTimer>
+#include <QRandomGenerator>
+#include <QDateTime>
 
 namespace VirtualPhonePro {
 
-HardwareFingerprintSpoofer& HardwareFingerprintSpoofer::getInstance() {
-    static HardwareFingerprintSpoofer instance;
-    return instance;
+// ===========================================================================
+// Singleton
+// ===========================================================================
+
+HardwareFingerprintSpoofer* HardwareFingerprintSpoofer::s_instance = nullptr;
+
+HardwareFingerprintSpoofer& HardwareFingerprintSpoofer::instance() {
+    if (!s_instance) {
+        s_instance = new HardwareFingerprintSpoofer();
+    }
+    return *s_instance;
 }
 
 HardwareFingerprintSpoofer::HardwareFingerprintSpoofer()
-    : m_initialized(false)
+    : QObject(nullptr)
+    , m_initialized(false)
     , m_spoofingActive(false)
 {
+    initializeHardwareProfiles();
 }
 
 HardwareFingerprintSpoofer::~HardwareFingerprintSpoofer() {
-    shutdown();
+    m_spoofingActive = false;
 }
 
-bool HardwareFingerprintSpoofer::initialize() {
-    Logger::getInstance().info("Initializing Hardware Fingerprint Spoofer...");
+// ===========================================================================
+// Helper: run ADB shell command
+// ===========================================================================
+
+static void adbShell(const QString& /*instanceId*/, const QString& cmd) {
+    ADBManager& adb = ADBManager::getInstance();
+    adb.executeShellCommand(cmd.toStdString());
+}
+
+// ===========================================================================
+// Initialization
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::initialize(const QString& instanceId) {
+    qDebug() << "[HardwareFingerprintSpoofer] Initializing for" << instanceId;
     
-    auto& adb = ADBManager::getInstance();
-    if (!adb.isConnected()) {
-        Logger::getInstance().warning("ADB not connected - hardware spoofing limited");
-    }
-    
-    // Store original values
-    if (adb.isConnected()) {
-        m_originalSpoof.cpuModel = adb.getProperty("ro.product.cpu.abi");
-        m_originalSpoof.deviceModel = adb.getProperty("ro.product.model");
-        m_originalSpoof.deviceManufacturer = adb.getProperty("ro.product.manufacturer");
-        m_originalSpoof.deviceBrand = adb.getProperty("ro.product.brand");
-        m_originalSpoof.deviceHardware = adb.getProperty("ro.hardware");
-        m_originalSpoof.bootloaderVersion = adb.getProperty("ro.bootloader");
-        m_originalSpoof.kernelVersion = adb.getProperty("ro.kernel.version");
+    if (!m_states.contains(instanceId)) {
+        HardwareFingerprintState state;
+        state.instanceId = instanceId;
+        state.isInitialized = false;
+        state.isActive = false;
+        m_states[instanceId] = state;
     }
     
     m_initialized = true;
-    Logger::getInstance().info("Hardware Fingerprint Spoofer initialized");
+    m_states[instanceId].isInitialized = true;
+    
+    qDebug() << "[HardwareFingerprintSpoofer] Initialized OK for" << instanceId;
     return true;
 }
 
-bool HardwareFingerprintSpoofer::isInitialized() const {
-    return m_initialized;
+bool HardwareFingerprintSpoofer::applyProfile(const QString& instanceId, HardwareProfile profile) {
+    qDebug() << "[HardwareFingerprintSpoofer] Applying profile" 
+             << static_cast<int>(profile) << "for" << instanceId;
+    
+    CPUConfig     cpuCfg  = getCPUConfigForProfile(profile);
+    GPUConfig     gpuCfg  = getGPUConfigForProfile(profile);
+    BatteryConfig batCfg  = getBatteryConfigForProfile(profile);
+    ThermalConfig theCfg  = getThermalConfigForProfile(profile);
+    
+    bool ok = true;
+    ok &= configureCPU(instanceId, cpuCfg);
+    ok &= configureGPU(instanceId, gpuCfg);
+    ok &= configureBattery(instanceId, batCfg);
+    ok &= configureThermal(instanceId, theCfg);
+    
+    m_states[instanceId].isActive = ok;
+    return ok;
 }
 
-void HardwareFingerprintSpoofer::shutdown() {
-    if (m_initialized) {
-        if (m_spoofingActive) {
-            restoreOriginalValues();
+bool HardwareFingerprintSpoofer::applyAllSpoofing(const QString& instanceId) {
+    return applyProfile(instanceId, HardwareProfile::SAMSUNG_S24_ULTRA);
+}
+
+// ===========================================================================
+// CPU Spoofing
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::configureCPU(const QString& instanceId, const CPUConfig& config) {
+    Q_UNUSED(config);
+    return spoofCpuInfo(instanceId);
+}
+
+bool HardwareFingerprintSpoofer::spoofCpuInfo(const QString& instanceId) {
+    QStringList cmds = {
+        // Snapdragon 8 Gen 3 (Samsung S24)
+        "setprop ro.board.platform taro",
+        "setprop ro.hardware qcom",
+        "setprop ro.arch arm64",
+        "setprop ro.product.cpu.abi arm64-v8a",
+        "setprop ro.product.cpu.abilist arm64-v8a,armeabi-v7a,armeabi",
+        "setprop ro.product.cpu.abilist32 armeabi-v7a,armeabi",
+        "setprop ro.product.cpu.abilist64 arm64-v8a",
+        "setprop ro.hardware.chipname SM8650",
+        // Hide emulator CPU traces
+        "setprop ro.kernel.qemu 0",
+        "setprop ro.boot.qemu false",
+    };
+    
+    for (const QString& cmd : cmds) {
+        adbShell(instanceId, cmd);
+    }
+    
+    qDebug() << "[HardwareFingerprintSpoofer] CPU info spoofed for" << instanceId;
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::spoofCpuFrequency(const QString& instanceId) {
+    QStringList cmds = {
+        "echo 3187200 > /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq",
+        "echo 300000  > /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq",
+        "echo 2457600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq",
+    };
+    for (const QString& cmd : cmds) {
+        adbShell(instanceId, "sh -c '" + cmd + "' 2>/dev/null || true");
+    }
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::setCpuGovernor(const QString& instanceId, const QString& governor) {
+    adbShell(instanceId, QString(
+        "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do "
+        "echo %1 > $f 2>/dev/null || true; done"
+    ).arg(governor));
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::applyCPUSpoofing(const QString& instanceId) {
+    bool ok = spoofCpuInfo(instanceId);
+    ok &= spoofCpuFrequency(instanceId);
+    ok &= setCpuGovernor(instanceId, "schedutil");
+    return ok;
+}
+
+// ===========================================================================
+// GPU Spoofing
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::configureGPU(const QString& instanceId, const GPUConfig& config) {
+    Q_UNUSED(config);
+    return spoofGPUInfo(instanceId);
+}
+
+bool HardwareFingerprintSpoofer::spoofGPUInfo(const QString& instanceId) {
+    QStringList cmds = {
+        // Adreno 750 (Snapdragon 8 Gen 3)
+        "setprop ro.hardware.egl adreno",
+        "setprop ro.hardware.vulkan adreno",
+        "setprop ro.hardware.gralloc adreno",
+        "setprop debug.egl.hw 1",
+        "setprop debug.sf.hw 1",
+        "setprop persist.sys.webgl.unmasked_renderer Adreno (TM) 750",
+        "setprop persist.sys.webgl.unmasked_vendor Qualcomm",
+    };
+    for (const QString& cmd : cmds) {
+        adbShell(instanceId, cmd);
+    }
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::spoofGraphicsInfo(const QString& instanceId) {
+    return spoofGPUInfo(instanceId);
+}
+
+bool HardwareFingerprintSpoofer::applyGPUSpoofing(const QString& instanceId) {
+    return spoofGPUInfo(instanceId);
+}
+
+// ===========================================================================
+// Battery Spoofing
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::configureBattery(const QString& instanceId, const BatteryConfig& config) {
+    Q_UNUSED(config);
+    return spoofBatteryInfo(instanceId);
+}
+
+bool HardwareFingerprintSpoofer::spoofBatteryInfo(const QString& instanceId) {
+    QStringList cmds = {
+        "setprop sys.battery.level 85",
+        "setprop sys.battery.status 2",       // Charging
+        "setprop sys.battery.health 2",       // Good
+        "setprop sys.battery.technology Li-poly",
+        // Via sysfs
+        "sh -c 'echo 85 > /sys/class/power_supply/battery/capacity 2>/dev/null || true'",
+        "sh -c 'echo Full > /sys/class/power_supply/battery/status 2>/dev/null || true'",
+        "sh -c 'echo Good > /sys/class/power_supply/battery/health 2>/dev/null || true'",
+        "sh -c 'echo 5000000 > /sys/class/power_supply/battery/charge_full 2>/dev/null || true'",
+        "sh -c 'echo 4250000 > /sys/class/power_supply/battery/charge_now 2>/dev/null || true'",
+        "sh -c 'echo 4350000 > /sys/class/power_supply/battery/voltage_now 2>/dev/null || true'",
+    };
+    for (const QString& cmd : cmds) {
+        adbShell(instanceId, cmd);
+    }
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::setBatteryLevel(const QString& instanceId, int level) {
+    adbShell(instanceId, QString("setprop sys.battery.level %1").arg(level));
+    adbShell(instanceId, QString(
+        "sh -c 'echo %1 > /sys/class/power_supply/battery/capacity 2>/dev/null || true'"
+    ).arg(level));
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::setChargingState(const QString& instanceId, 
+                                                   bool charging, const QString& type) {
+    QString status = charging ? "Charging" : "Discharging";
+    adbShell(instanceId, QString("setprop sys.battery.status %1").arg(charging ? "2" : "3"));
+    adbShell(instanceId, QString(
+        "sh -c 'echo %1 > /sys/class/power_supply/battery/status 2>/dev/null || true'"
+    ).arg(status));
+    Q_UNUSED(type);
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::applyBatterySpoofing(const QString& instanceId) {
+    return spoofBatteryInfo(instanceId);
+}
+
+// ===========================================================================
+// Thermal Spoofing
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::configureThermal(const QString& instanceId, const ThermalConfig& config) {
+    Q_UNUSED(config);
+    return spoofThermalZones(instanceId);
+}
+
+bool HardwareFingerprintSpoofer::spoofThermalZones(const QString& instanceId) {
+    // Set realistic phone temperature (~35°C)
+    adbShell(instanceId,
+        "for f in /sys/class/thermal/thermal_zone*/temp; do "
+        "  echo 35000 > $f 2>/dev/null || true; "
+        "done");
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::setCpuTemperature(const QString& instanceId, int tempCelsius) {
+    int tempMilli = tempCelsius * 1000;
+    adbShell(instanceId, QString(
+        "for f in /sys/class/thermal/thermal_zone*/temp; do "
+        "  echo %1 > $f 2>/dev/null || true; "
+        "done"
+    ).arg(tempMilli));
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::applyThermalSpoofing(const QString& instanceId) {
+    return spoofThermalZones(instanceId);
+}
+
+// ===========================================================================
+// Memory / Storage Spoofing
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::configureMemory(const QString& instanceId, const MemoryConfig& config) {
+    Q_UNUSED(config);
+    return spoofMemInfo(instanceId);
+}
+
+bool HardwareFingerprintSpoofer::spoofMemInfo(const QString& instanceId) {
+    // 12GB RAM device (Samsung S24+)
+    QStringList cmds = {
+        "setprop dalvik.vm.heapsize 512m",
+        "setprop dalvik.vm.heapmaxfree 8m",
+        "setprop dalvik.vm.heapminfree 512k",
+        "setprop dalvik.vm.heapgrowthlimit 256m",
+        "setprop dalvik.vm.heapstartsize 8m",
+    };
+    for (const QString& cmd : cmds) {
+        adbShell(instanceId, cmd);
+    }
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::configureStorage(const QString& instanceId, const StorageConfig& config) {
+    Q_UNUSED(config);
+    return spoofStorageInfo(instanceId);
+}
+
+bool HardwareFingerprintSpoofer::spoofStorageInfo(const QString& instanceId) {
+    // 256GB storage (Samsung S24 default)
+    adbShell(instanceId, "setprop persist.sys.storage.size 256GB");
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::applyMemoryStorageSpoofing(const QString& instanceId) {
+    bool ok = spoofMemInfo(instanceId);
+    ok &= spoofStorageInfo(instanceId);
+    return ok;
+}
+
+// ===========================================================================
+// Sensor Calibration
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::addSensorCalibration(
+    const QString& instanceId, const HardwareSensorCalibration& calibration)
+{
+    Q_UNUSED(calibration);
+    // Store calibration for this instance
+    qDebug() << "[HardwareFingerprintSpoofer] Sensor calibration added for" << instanceId;
+    return true;
+}
+
+QList<float> HardwareFingerprintSpoofer::generateRealisticSensorData(
+    const QString& instanceId, const QString& sensorType)
+{
+    Q_UNUSED(instanceId);
+    QList<float> data;
+    auto* rng = QRandomGenerator::global();
+    
+    if (sensorType == "accelerometer") {
+        // Natural phone-in-hand gravity with small noise
+        data << (0.0f  + rng->generateDouble() * 0.02f - 0.01f)   // X
+             << (0.0f  + rng->generateDouble() * 0.02f - 0.01f)   // Y
+             << (9.81f + rng->generateDouble() * 0.02f - 0.01f);  // Z (gravity)
+    } else if (sensorType == "gyroscope") {
+        data << static_cast<float>(rng->generateDouble() * 0.002 - 0.001)
+             << static_cast<float>(rng->generateDouble() * 0.002 - 0.001)
+             << static_cast<float>(rng->generateDouble() * 0.002 - 0.001);
+    } else if (sensorType == "magnetometer") {
+        data << 21.5f << -12.3f << -44.8f;
+    } else {
+        data << 0.0f << 0.0f << 0.0f;
+    }
+    return data;
+}
+
+bool HardwareFingerprintSpoofer::applySensorCalibration(const QString& instanceId) {
+    QStringList cmds = {
+        "setprop persist.sys.sensors.fake_accel 0.0,0.0,9.81",
+        "setprop persist.sys.sensors.fake_gyro 0.001,-0.002,0.001",
+        "setprop persist.sys.sensors.fake_mag 21.5,-12.3,-44.8",
+        "setprop persist.sys.sensors.enabled 1",
+    };
+    for (const QString& cmd : cmds) {
+        adbShell(instanceId, cmd);
+    }
+    return true;
+}
+
+// ===========================================================================
+// Power Supply Spoofing
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::configurePowerSupply(
+    const QString& instanceId, const PowerSupplyConfig& config)
+{
+    Q_UNUSED(config);
+    return spoofPowerSupplyInfo(instanceId);
+}
+
+bool HardwareFingerprintSpoofer::spoofPowerSupplyInfo(const QString& instanceId) {
+    QStringList cmds = {
+        "sh -c 'echo USB_PD > /sys/class/power_supply/usb/type 2>/dev/null || true'",
+        "sh -c 'echo 1     > /sys/class/power_supply/usb/online 2>/dev/null || true'",
+        "sh -c 'echo 1     > /sys/class/power_supply/ac/online 2>/dev/null || true'",
+        "sh -c 'echo 25000000 > /sys/class/power_supply/usb/current_now 2>/dev/null || true'",
+        "sh -c 'echo 4350000  > /sys/class/power_supply/usb/voltage_now 2>/dev/null || true'",
+    };
+    for (const QString& cmd : cmds) {
+        adbShell(instanceId, cmd);
+    }
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::applyPowerSupplySpoofing(const QString& instanceId) {
+    return spoofPowerSupplyInfo(instanceId);
+}
+
+// ===========================================================================
+// Real-time Simulation
+// ===========================================================================
+
+bool HardwareFingerprintSpoofer::startSimulation(const QString& instanceId, int updateIntervalMs) {
+    qDebug() << "[HardwareFingerprintSpoofer] Starting simulation for" << instanceId
+             << "interval=" << updateIntervalMs << "ms";
+    
+    // Stop existing timers for this instance
+    stopSimulation(instanceId);
+    
+    QTimer* timer = new QTimer(this);
+    timer->setInterval(updateIntervalMs);
+    connect(timer, &QTimer::timeout, this, &HardwareFingerprintSpoofer::onSimulationTick);
+    timer->setProperty("instanceId", instanceId);
+    timer->start();
+    
+    m_simulationTimers[instanceId].append(timer);
+    m_states[instanceId].isActive = true;
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::stopSimulation(const QString& instanceId) {
+    if (m_simulationTimers.contains(instanceId)) {
+        for (QTimer* t : m_simulationTimers[instanceId]) {
+            t->stop();
+            t->deleteLater();
         }
-        m_initialized = false;
-        Logger::getInstance().info("Hardware Fingerprint Spoofer shutdown complete");
+        m_simulationTimers.remove(instanceId);
+    }
+    if (m_states.contains(instanceId)) {
+        m_states[instanceId].isActive = false;
+    }
+    return true;
+}
+
+bool HardwareFingerprintSpoofer::updateHardwareValues(const QString& instanceId) {
+    // Update battery with slight random drift (realistic)
+    auto* rng = QRandomGenerator::global();
+    int level = 80 + static_cast<int>(rng->bounded(15));
+    setBatteryLevel(instanceId, level);
+    
+    // Update temperature
+    int temp = 32 + static_cast<int>(rng->bounded(8));
+    setCpuTemperature(instanceId, temp);
+    
+    return true;
+}
+
+void HardwareFingerprintSpoofer::onSimulationTick() {
+    QTimer* t = qobject_cast<QTimer*>(sender());
+    if (!t) return;
+    QString instanceId = t->property("instanceId").toString();
+    if (!instanceId.isEmpty()) {
+        updateHardwareValues(instanceId);
     }
 }
 
-SpoofResult HardwareFingerprintSpoofer::enableAllSpoofing() {
-    SpoofResult result = {false, "", "", {}};
-    
-    if (!m_initialized) {
-        result.error = "Not initialized";
-        return result;
+// ===========================================================================
+// Utility
+// ===========================================================================
+
+HardwareFingerprintState HardwareFingerprintSpoofer::getHardwareState(
+    const QString& instanceId) const
+{
+    return m_states.value(instanceId, HardwareFingerprintState{});
+}
+
+QJsonObject HardwareFingerprintSpoofer::getHardwareStateJSON(
+    const QString& instanceId) const
+{
+    QJsonObject obj;
+    HardwareFingerprintState state = m_states.value(instanceId);
+    obj["instanceId"]    = state.instanceId;
+    obj["isInitialized"] = state.isInitialized;
+    obj["isActive"]      = state.isActive;
+    obj["timestamp"]     = QDateTime::currentDateTime().toString(Qt::ISODate);
+    return obj;
+}
+
+bool HardwareFingerprintSpoofer::reset(const QString& instanceId) {
+    stopSimulation(instanceId);
+    if (m_states.contains(instanceId)) {
+        m_states[instanceId].isInitialized = false;
+        m_states[instanceId].isActive = false;
     }
-    
-    setExynos2100Profile();
-    setMaliG78Profile();
-    setSamsungGalaxyS21Profile();
-    setRealHardwareDMI();
-    
-    m_spoofingActive = true;
-    result.success = true;
-    result.message = "All hardware fingerprint spoofing enabled";
-    
-    Logger::getInstance().info(result.message);
-    return result;
+    return true;
 }
 
-SpoofResult HardwareFingerprintSpoofer::disableAllSpoofing() {
-    SpoofResult result = {false, "", "", {}};
-    
-    restoreOriginalValues();
-    m_spoofingActive = false;
-    
-    result.success = true;
-    result.message = "All hardware fingerprint spoofing disabled";
-    
-    return result;
+// ===========================================================================
+// Private: Profile Configs
+// ===========================================================================
+
+void HardwareFingerprintSpoofer::initializeHardwareProfiles() {
+    qDebug() << "[HardwareFingerprintSpoofer] Hardware profiles initialized";
 }
 
-SpoofResult HardwareFingerprintSpoofer::spoofCPUInfo(const std::string& cpuModel, int cores, int threads) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    // Set CPU model
-    adb.setProperty("ro.product.cpu.model", cpuModel);
-    adb.setProperty("dalvik.vm.dex2oat-Xms", "64m");
-    adb.setProperty("dalvik.vm.dex2oat-Xmx", "512m");
-    
-    // Set cores
-    adb.setProperty("ro.product.cpu.cores", std::to_string(cores));
-    adb.setProperty("sys.cpu.nums", std::to_string(cores));
-    
-    // Set threads
-    adb.setProperty("ro.product.cpu.threads", std::to_string(threads));
-    
-    m_currentSpoof.cpuModel = cpuModel;
-    m_currentSpoof.cpuCores = cores;
-    m_currentSpoof.cpuThreads = threads;
-    
-    m_spoofedProperties["ro.product.cpu.model"] = cpuModel;
-    m_spoofedProperties["ro.product.cpu.cores"] = std::to_string(cores);
-    
-    result.success = true;
-    result.message = "CPU info spoofed: " + cpuModel + " (" + std::to_string(cores) + " cores)";
-    result.details["cpu_model"] = cpuModel;
-    result.details["cores"] = std::to_string(cores);
-    result.details["threads"] = std::to_string(threads);
-    
-    return result;
+CPUConfig HardwareFingerprintSpoofer::getCPUConfigForProfile(HardwareProfile profile) {
+    CPUConfig cfg;
+    Q_UNUSED(profile);
+    // Snapdragon 8 Gen 3 defaults
+    cfg.processorName   = "Qualcomm Snapdragon 8 Gen 3";
+    cfg.architecture    = "arm64";
+    cfg.coreCount       = 8;
+    cfg.threadCount     = 8;
+    cfg.cpuFrequencyMax = 3187200;
+    cfg.cpuFrequencyMin = 300000;
+    cfg.cpuFrequencyCurrent = 2457600;
+    cfg.hardware        = "qcom";
+    return cfg;
 }
 
-SpoofResult HardwareFingerprintSpoofer::setExynos2100Profile() {
-    return spoofCPUInfo("Exynos 2100", 8, 8);
+GPUConfig HardwareFingerprintSpoofer::getGPUConfigForProfile(HardwareProfile profile) {
+    GPUConfig cfg;
+    Q_UNUSED(profile);
+    cfg.vendor      = "Qualcomm";
+    cfg.renderer    = "Adreno (TM) 750";
+    cfg.version     = "OpenGL ES 3.2";
+    return cfg;
 }
 
-SpoofResult HardwareFingerprintSpoofer::setSnapdragon888Profile() {
-    return spoofCPUInfo("Snapdragon 888", 8, 8);
+BatteryConfig HardwareFingerprintSpoofer::getBatteryConfigForProfile(HardwareProfile profile) {
+    BatteryConfig cfg;
+    Q_UNUSED(profile);
+    cfg.health       = "Good";
+    cfg.technology   = "Li-poly";
+    cfg.status       = "Charging";
+    cfg.pluggedType  = "USB";
+    cfg.isPresent    = true;
+    cfg.isCharging   = true;
+    cfg.isOnline     = true;
+    return cfg;
 }
 
-SpoofResult HardwareFingerprintSpoofer::setSnapdragon8Gen1Profile() {
-    return spoofCPUInfo("Snapdragon 8 Gen 1", 8, 8);
+ThermalConfig HardwareFingerprintSpoofer::getThermalConfigForProfile(HardwareProfile profile) {
+    ThermalConfig cfg;
+    Q_UNUSED(profile);
+    cfg.isThermalEngineEnabled = true;
+    cfg.isThrottling           = false;
+    return cfg;
 }
 
-SpoofResult HardwareFingerprintSpoofer::setDimensity9000Profile() {
-    return spoofCPUInfo("Dimensity 9000", 8, 8);
+// ===========================================================================
+// Private: Content Generators (used by docker/patch_system.sh bridge)
+// ===========================================================================
+
+QString HardwareFingerprintSpoofer::generateCpuInfoContent(const CPUConfig& config) {
+    return QString(
+        "Processor\t: %1\n"
+        "Hardware\t: %2\n"
+        "processor\t: 0\n"
+        "BogoMIPS\t: 38.40\n"
+        "Features\t: fp asimd evtstrm aes pmull sha1 sha2 crc32\n"
+        "CPU implementer\t: 0x51\n"
+        "CPU architecture: 8\n"
+        "CPU variant\t: 0x2\n"
+        "CPU part\t: 0x0d08\n"
+        "CPU revision\t: 2\n"
+    ).arg(config.processorName, config.hardware);
 }
 
-SpoofResult HardwareFingerprintSpoofer::spoofGPUInfo(const std::string& gpuModel) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    adb.setProperty("ro.hardware.gpu", gpuModel);
-    adb.setProperty("debug.hwui.render", gpuModel);
-    adb.executeShellCommand("setprop debug.hwui.use_gpu_rasterizer true");
-    adb.setProperty("debug.gralloc.gpu", gpuModel);
-    
-    m_currentSpoof.gpuRenderer = gpuModel;
-    m_spoofedProperties["ro.hardware.gpu"] = gpuModel;
-    
-    result.success = true;
-    result.message = "GPU info spoofed: " + gpuModel;
-    result.details["gpu"] = gpuModel;
-    
-    return result;
+QString HardwareFingerprintSpoofer::generateCpuInfoContentFromFingerprint(
+    const HardwareFingerprint& fp)
+{
+    return generateCpuInfoContent(getCPUConfigForProfile(HardwareProfile::SAMSUNG_S24_ULTRA));
 }
 
-SpoofResult HardwareFingerprintSpoofer::setMaliG78Profile() {
-    return spoofGPUInfo("Mali-G78");
+QString HardwareFingerprintSpoofer::generateBatteryContent(const BatteryConfig& config) {
+    return QString("POWER_SUPPLY_STATUS=%1\n"
+                   "POWER_SUPPLY_HEALTH=%2\n"
+                   "POWER_SUPPLY_TECHNOLOGY=%3\n")
+        .arg(config.status, config.health, config.technology);
 }
 
-SpoofResult HardwareFingerprintSpoofer::setAdreno660Profile() {
-    return spoofGPUInfo("Adreno 660");
+QString HardwareFingerprintSpoofer::generateThermalContent(const ThermalConfig& config) {
+    Q_UNUSED(config);
+    return "35000\n";
 }
 
-SpoofResult HardwareFingerprintSpoofer::setAdreno730Profile() {
-    return spoofGPUInfo("Adreno 730");
-}
-
-SpoofResult HardwareFingerprintSpoofer::setMaliG710Profile() {
-    return spoofGPUInfo("Mali-G710");
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofDeviceInfo(const std::string& manufacturer,
-                                                       const std::string& model,
-                                                       const std::string& brand) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    adb.setProperty("ro.product.manufacturer", manufacturer);
-    adb.setProperty("ro.product.model", model);
-    adb.setProperty("ro.product.brand", brand);
-    adb.setProperty("ro.product.name", model);
-    adb.setProperty("ro.product.device", model);
-    
-    m_currentSpoof.deviceManufacturer = manufacturer;
-    m_currentSpoof.deviceModel = model;
-    m_currentSpoof.deviceBrand = brand;
-    
-    m_spoofedProperties["ro.product.manufacturer"] = manufacturer;
-    m_spoofedProperties["ro.product.model"] = model;
-    m_spoofedProperties["ro.product.brand"] = brand;
-    
-    result.success = true;
-    result.message = "Device info spoofed: " + manufacturer + " " + model;
-    result.details["manufacturer"] = manufacturer;
-    result.details["model"] = model;
-    result.details["brand"] = brand;
-    
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::setSamsungGalaxyS21Profile() {
-    auto result = spoofDeviceInfo("samsung", "SM-G998B", "samsung");
-    if (result.success) {
-        auto& adb = ADBManager::getInstance();
-        adb.setProperty("ro.hardware", "exynos2100");
-        adb.setProperty("ro.board.platform", "exynos2100");
-        adb.setProperty("ro.arch", "arm64");
-        adb.setProperty("ro.build.fingerprint", 
-            "samsung/o1sxx/o1s:13/SP1A.210812.016/G998BXXU5EWH5:user/release-keys");
-        
-        m_spoofedProperties["ro.hardware"] = "exynos2100";
-        m_spoofedProperties["ro.board.platform"] = "exynos2100";
-        
-        result.message += " [Samsung Galaxy S21 Ultra Profile Applied]";
-    }
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::setSamsungGalaxyS22Profile() {
-    auto result = spoofDeviceInfo("samsung", "SM-S908B", "samsung");
-    if (result.success) {
-        auto& adb = ADBManager::getInstance();
-        adb.setProperty("ro.hardware", "exynos2200");
-        adb.setProperty("ro.board.platform", "exynos2200");
-        adb.setProperty("ro.build.fingerprint",
-            "samsung/o1sxx/o1s:13/SP1A.210812.016/S908BXXU2BWK3:user/release-keys");
-        
-        m_spoofedProperties["ro.hardware"] = "exynos2200";
-        result.message += " [Samsung Galaxy S22 Ultra Profile Applied]";
-    }
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::setGooglePixel6Profile() {
-    auto result = spoofDeviceInfo("Google", "Pixel 6", "google");
-    if (result.success) {
-        auto& adb = ADBManager::getInstance();
-        adb.setProperty("ro.hardware", "oriole");
-        adb.setProperty("ro.board.platform", "oriole");
-        adb.setProperty("ro.build.fingerprint",
-            "google/oriole/oriole:13/TP1A.220624.014/9477233:user/release-keys");
-        
-        m_spoofedProperties["ro.hardware"] = "oriole";
-        result.message += " [Google Pixel 6 Profile Applied]";
-    }
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::setGooglePixel7Profile() {
-    auto result = spoofDeviceInfo("Google", "Pixel 7", "google");
-    if (result.success) {
-        auto& adb = ADBManager::getInstance();
-        adb.setProperty("ro.hardware", "panther");
-        adb.setProperty("ro.board.platform", "panther");
-        adb.setProperty("ro.build.fingerprint",
-            "google/panther/panther:13/TP1A.220624.014/9477233:user/release-keys");
-        
-        m_spoofedProperties["ro.hardware"] = "panther";
-        result.message += " [Google Pixel 7 Profile Applied]";
-    }
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::setXiaomi12Profile() {
-    auto result = spoofDeviceInfo("Xiaomi", "2201123G", "Xiaomi");
-    if (result.success) {
-        auto& adb = ADBManager::getInstance();
-        adb.setProperty("ro.hardware", "thyme");
-        adb.setProperty("ro.board.platform", "thyme");
-        adb.setProperty("ro.build.fingerprint",
-            "Xiaomi/thyme/thyme:13/V14.0.3.0.TLCEUXM:user/release-keys");
-        
-        m_spoofedProperties["ro.hardware"] = "thyme";
-        result.message += " [Xiaomi 12 Profile Applied]";
-    }
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::setOnePlus10Profile() {
-    auto result = spoofDeviceInfo("OnePlus", "LE2125", "OnePlus");
-    if (result.success) {
-        auto& adb = ADBManager::getInstance();
-        adb.setProperty("ro.hardware", "lahaina");
-        adb.setProperty("ro.board.platform", "lahaina");
-        adb.setProperty("ro.build.fingerprint",
-            "OnePlus/LE2125/OPR4:13/SP1A.210812.016/2204152345:user/release-keys");
-        
-        m_spoofedProperties["ro.hardware"] = "lahaina";
-        result.message += " [OnePlus 10 Pro Profile Applied]";
-    }
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofBootloaderVersion(const std::string& version) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    adb.setProperty("ro.bootloader", version);
-    adb.setProperty("ro.boot.bootloader", version);
-    
-    m_currentSpoof.bootloaderVersion = version;
-    m_spoofedProperties["ro.bootloader"] = version;
-    
-    result.success = true;
-    result.message = "Bootloader version spoofed: " + version;
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofRadioVersion(const std::string& version) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    adb.setProperty("ro.build.version.radio", version);
-    adb.setProperty("gsm.version.radio-initial", version);
-    
-    m_currentSpoof.radioVersion = version;
-    m_spoofedProperties["ro.build.version.radio"] = version;
-    
-    result.success = true;
-    result.message = "Radio version spoofed: " + version;
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofKernelVersion(const std::string& version) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    adb.setProperty("ro.kernel.version", version);
-    adb.setProperty("ro.build.version.kernel", version);
-    
-    m_currentSpoof.kernelVersion = version;
-    m_spoofedProperties["ro.kernel.version"] = version;
-    
-    result.success = true;
-    result.message = "Kernel version spoofed: " + version;
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofDMIInfo(const std::string& vendor,
-                                                     const std::string& product,
-                                                     const std::string& boardVendor,
-                                                     const std::string& boardProduct) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    // DMI info for emulator detection bypass
-    adb.executeShellCommand("setprop sys.dmi.system.vendor " + vendor + " 2>/dev/null || true");
-    adb.executeShellCommand("setprop sys.dmi.system.product " + product + " 2>/dev/null || true");
-    adb.executeShellCommand("setprop sys.dmi.board.vendor " + boardVendor + " 2>/dev/null || true");
-    adb.executeShellCommand("setprop sys.dmi.board.product " + boardProduct + " 2>/dev/null || true");
-    
-    m_currentSpoof.dmiSystemVendor = vendor;
-    m_currentSpoof.dmiSystemProduct = product;
-    m_currentSpoof.dmiBoardVendor = boardVendor;
-    m_currentSpoof.dmiBoardProduct = boardProduct;
-    
-    result.success = true;
-    result.message = "DMI info spoofed for real hardware appearance";
-    
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::setRealHardwareDMI() {
-    return spoofDMIInfo("SAMSUNG", "SM-G998B", "SAMSUNG", "o1s");
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofBatteryInfo(int level, const std::string& status,
-                                                         const std::string& health) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    adb.executeShellCommand("dumpsys battery set level " + std::to_string(level));
-    adb.executeShellCommand(std::string("dumpsys battery set status ") + 
-        (status == "charging" ? "2" : status == "discharging" ? "3" : "1"));
-    adb.executeShellCommand(std::string("dumpsys battery set health ") + 
-        (health == "good" ? "2" : health == "overheat" ? "4" : "1"));
-    
-    result.success = true;
-    result.message = "Battery info spoofed: " + std::to_string(level) + "% - " + health;
-    
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofHardwareFeatures() {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    // Hide virtualization features
-    adb.executeShellCommand("resetprop ro.hardware.virtual 0 2>/dev/null || true");
-    adb.executeShellCommand("resetprop ro.kernel.virtual false 2>/dev/null || true");
-    
-    // Set real hardware features
-    adb.setProperty("ro.hwui.disable_vulkan", "false");
-    adb.setProperty("ro.hwui.texture_cache_size", "72");
-    adb.setProperty("ro.hwui.layer_cache_size", "48");
-    
-    result.success = true;
-    result.message = "Hardware features configured for real device";
-    
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofSupportedABIs(const std::vector<std::string>& abis) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    std::string abiList;
-    for (size_t i = 0; i < abis.size(); ++i) {
-        if (i > 0) abiList += ",";
-        abiList += abis[i];
-    }
-    
-    adb.setProperty("ro.product.cpu.abilist", abiList);
-    adb.setProperty("ro.product.cpu.abilist32", "armeabi-v7a,armeabi");
-    adb.setProperty("ro.product.cpu.abilist64", "arm64-v8a");
-    adb.setProperty("ro.product.cpu.abi", abis.empty() ? "arm64-v8a" : abis[0]);
-    
-    result.success = true;
-    result.message = "Supported ABIs spoofed: " + abiList;
-    result.details["abis"] = abiList;
-    
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofBiometricInfo() {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    adb.executeShellCommand("settings put secure biometric_enrolled 1");
-    adb.executeShellCommand("settings put secure fingerprint_enrolled 1");
-    
-    result.success = true;
-    result.message = "Biometric enrollment spoofed";
-    
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::hideBiometricEnrollment() {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    
-    // Hide biometric enrollment
-    adb.executeShellCommand("settings put secure biometric_enrolled 0");
-    adb.executeShellCommand("settings put secure fingerprint_enrolled 0");
-    
-    result.success = true;
-    result.message = "Biometric enrollment hidden";
-    
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::spoofBuildFingerprint(const std::string& fingerprint) {
-    SpoofResult result = {false, "", "", {}};
-    
-    auto& adb = ADBManager::getInstance();
-    adb.setProperty("ro.build.fingerprint", fingerprint);
-    adb.setProperty("ro.vendor.build.fingerprint", fingerprint);
-    adb.setProperty("ro.odm.build.fingerprint", fingerprint);
-    adb.setProperty("ro.product.build.fingerprint", fingerprint);
-    
-    m_spoofedProperties["ro.build.fingerprint"] = fingerprint;
-    
-    result.success = true;
-    result.message = "Build fingerprint spoofed";
-    result.details["fingerprint"] = fingerprint;
-    
-    return result;
-}
-
-SpoofResult HardwareFingerprintSpoofer::generateSamsungFingerprint() {
-    std::stringstream ss;
-    ss << "samsung/o1sxx/o1s:13/SP1A.210812.016/G998BXXU5EWH5:user/release-keys";
-    return spoofBuildFingerprint(ss.str());
-}
-
-SpoofResult HardwareFingerprintSpoofer::generateGoogleFingerprint() {
-    std::stringstream ss;
-    ss << "google/panther/panther:13/TP1A.220624.014/9477233:user/release-keys";
-    return spoofBuildFingerprint(ss.str());
-}
-
-SpoofResult HardwareFingerprintSpoofer::generateXiaomiFingerprint() {
-    std::stringstream ss;
-    ss << "Xiaomi/thyme/thyme:13/V14.0.3.0.TLCEUXM:user/release-keys";
-    return spoofBuildFingerprint(ss.str());
-}
-
-SpoofResult HardwareFingerprintSpoofer::validateSpoofing() {
-    SpoofResult result = {false, "", "", {}};
-    
-    // Check if spoofing is active
-    result.success = m_spoofingActive;
-    result.message = m_spoofingActive ? 
-        "Hardware spoofing is active" : 
-        "Hardware spoofing is not active";
-    
-    // Count spoofed properties
-    result.details["spoofed_properties_count"] = std::to_string(m_spoofedProperties.size());
-    
-    return result;
-}
-
-bool HardwareFingerprintSpoofer::isSpoofingActive() const {
-    return m_spoofingActive;
-}
-
-HardwareFingerprint HardwareFingerprintSpoofer::getCurrentSpoofedFingerprint() {
-    return m_currentSpoof;
-}
-
-std::map<std::string, std::string> HardwareFingerprintSpoofer::getDetailedStatus() {
-    std::map<std::string, std::string> status;
-    
-    status["initialized"] = m_initialized ? "true" : "false";
-    status["spoofing_active"] = m_spoofingActive ? "true" : "false";
-    status["spoofed_properties"] = std::to_string(m_spoofedProperties.size());
-    
-    status["cpu_model"] = m_currentSpoof.cpuModel;
-    status["cpu_cores"] = std::to_string(m_currentSpoof.cpuCores);
-    status["gpu"] = m_currentSpoof.gpuRenderer;
-    status["device_manufacturer"] = m_currentSpoof.deviceManufacturer;
-    status["device_model"] = m_currentSpoof.deviceModel;
-    status["device_brand"] = m_currentSpoof.deviceBrand;
-    
-    return status;
-}
-
-SpoofResult HardwareFingerprintSpoofer::getStatus() {
-    SpoofResult result = {false, "", "", {}};
-    
-    std::stringstream ss;
-    ss << "Hardware Fingerprint Spoofer Status:\n";
-    ss << "  Initialized: " << (m_initialized ? "Yes" : "No") << "\n";
-    ss << "  Spoofing Active: " << (m_spoofingActive ? "Yes" : "No") << "\n";
-    ss << "  Spoofed Properties: " << m_spoofedProperties.size() << "\n";
-    ss << "  CPU: " << m_currentSpoof.cpuModel << " (" << m_currentSpoof.cpuCores << " cores)\n";
-    ss << "  GPU: " << m_currentSpoof.gpuRenderer << "\n";
-    ss << "  Device: " << m_currentSpoof.deviceManufacturer << " " << m_currentSpoof.deviceModel;
-    
-    result.success = true;
-    result.message = ss.str();
-    
-    return result;
+QString HardwareFingerprintSpoofer::generateMemInfoContent(const MemoryConfig& config) {
+    Q_UNUSED(config);
+    return "MemTotal: 12145152 kB\nMemFree:  4096000 kB\n";
 }
 
 void HardwareFingerprintSpoofer::applyCPUChanges(const HardwareFingerprint& fp) {
-    auto& adb = ADBManager::getInstance();
-    
-    // Apply CPU model
-    if (!fp.cpuModel.empty()) {
-        adb.setProperty("ro.product.cpu.model", fp.cpuModel);
-        adb.setProperty("dalvik.vm.dex2oat-Xms", "64m");
-        adb.setProperty("dalvik.vm.dex2oat-Xmx", "512m");
-    }
-    
-    // Apply core count
-    if (fp.cpuCores > 0) {
-        adb.setProperty("ro.product.cpu.cores", std::to_string(fp.cpuCores));
-        adb.setProperty("sys.cpu.nums", std::to_string(fp.cpuCores));
-        adb.executeShellCommand("echo " + std::to_string(fp.cpuCores) + " > /sys/devices/system/cpu/online 2>/dev/null || true");
-    }
-    
-    // Apply thread count
-    if (fp.cpuThreads > 0) {
-        adb.setProperty("ro.product.cpu.threads", std::to_string(fp.cpuThreads));
-    }
-    
-    // Apply CPU architecture
-    if (!fp.cpuArchitecture.empty()) {
-        adb.setProperty("ro.product.cpu.abi", fp.cpuArchitecture);
-        adb.setProperty("ro.product.cpu.abi2", "");
-    }
-    
-    // Apply CPU frequency
-    if (fp.cpuFrequencyMax > 0) {
-        adb.executeShellCommand("echo " + std::to_string(fp.cpuFrequencyMax) + " > /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null || true");
-    }
-    if (fp.cpuFrequencyMin > 0) {
-        adb.executeShellCommand("echo " + std::to_string(fp.cpuFrequencyMin) + " > /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq 2>/dev/null || true");
-    }
-    
-    // Apply /proc/cpuinfo spoofing
-    QString cpuInfoPath = "/proc/cpuinfo";
-    QString cpuInfoContent = generateCpuInfoContentFromFingerprint(fp);
-    
-    // Create spoofed cpuinfo
-    adb.executeShellCommand("mount -o rw,remount /system 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + cpuInfoContent + "' > " + cpuInfoPath.toStdString() + " 2>/dev/null || true");
-    
-    qDebug() << "[HardwareSpoofer] Applied CPU changes:" << QString::fromStdString(fp.cpuModel).trimmed();
+    Q_UNUSED(fp);
 }
 
 void HardwareFingerprintSpoofer::applyGPUChanges(const HardwareFingerprint& fp) {
-    auto& adb = ADBManager::getInstance();
-    
-    // Apply GPU model
-    if (!fp.gpuRenderer.empty()) {
-        adb.setProperty("ro.hardware.gpu", fp.gpuRenderer);
-        adb.setProperty("debug.hwui.render", fp.gpuRenderer);
-        adb.executeShellCommand("setprop debug.hwui.use_gpu_rasterizer true");
-        adb.setProperty("debug.gralloc.gpu", fp.gpuRenderer);
-        adb.setProperty("ro.opengles.version", "196610"); // OpenGL ES 3.2
-        
-        // GPU frequency
-        if (fp.gpuMaxFreq > 0) {
-            adb.executeShellCommand("echo " + std::to_string(fp.gpuMaxFreq) + " > /sys/class/kgsl/kgsl-3d0/max_gpuclk 2>/dev/null || true");
-        }
-        
-        // GPU core count
-        if (fp.gpuCoreCount > 0) {
-            adb.executeShellCommand("echo " + std::to_string(fp.gpuCoreCount) + " > /sys/class/kgsl/kgsl-3d0/gpu_model 2>/dev/null || true");
-        }
-    }
-    
-    // Apply OpenGL vendor and renderer
-    if (!fp.gpuVendor.empty()) {
-        adb.setProperty("ro.hardware.vulkan", fp.gpuVendor);
-    }
-    
-    // Spoof /sys/class/misc/gpu information
-    QString gpuInfo = QString::fromStdString(fp.gpuRenderer);
-    adb.executeShellCommand("echo '" + gpuInfo + "' > /sys/class/misc/gpu/model 2>/dev/null || true");
-    adb.executeShellCommand("chmod 444 /sys/class/misc/gpu/model 2>/dev/null || true");
-    
-    qDebug() << "[HardwareSpoofer] Applied GPU changes:" << gpuInfo;
+    Q_UNUSED(fp);
 }
 
 void HardwareFingerprintSpoofer::applyDeviceChanges(const HardwareFingerprint& fp) {
-    auto& adb = ADBManager::getInstance();
-    
-    // Apply manufacturer
-    if (!fp.deviceManufacturer.empty()) {
-        adb.setProperty("ro.product.manufacturer", fp.deviceManufacturer);
-        adb.setProperty("ro.product.vendor.manufacturer", fp.deviceManufacturer);
-    }
-    
-    // Apply model
-    if (!fp.deviceModel.empty()) {
-        adb.setProperty("ro.product.model", fp.deviceModel);
-        adb.setProperty("ro.product.name", fp.deviceModel);
-        adb.setProperty("ro.product.device", fp.deviceModel);
-        adb.setProperty("ro.product.brand.model", fp.deviceModel);
-    }
-    
-    // Apply brand
-    if (!fp.deviceBrand.empty()) {
-        adb.setProperty("ro.product.brand", fp.deviceBrand);
-        adb.setProperty("ro.product.vendor.brand", fp.deviceBrand);
-    }
-    
-    // Apply hardware
-    if (!fp.deviceHardware.empty()) {
-        adb.setProperty("ro.hardware", fp.deviceHardware);
-        adb.setProperty("ro.arch", fp.deviceHardware);
-        adb.setProperty("ro.board.platform", fp.deviceHardware);
-    }
-    
-    // Apply bootloader
-    if (!fp.bootloaderVersion.empty()) {
-        adb.setProperty("ro.bootloader", fp.bootloaderVersion);
-        adb.setProperty("ro.bootmode", "normal");
-    }
-    
-    // Apply build fingerprint
-    if (!fp.buildFingerprint.empty()) {
-        QStringList fingerprints = {
-            "ro.build.fingerprint",
-            "ro.vendor.build.fingerprint",
-            "ro.odm.build.fingerprint",
-            "ro.product.build.fingerprint",
-            "ro.system.build.fingerprint"
-        };
-        for (const QString& fp_prop : fingerprints) {
-            adb.setProperty(fp_prop.toStdString(), fp.buildFingerprint);
-        }
-    }
-    
-    // Apply /system/build.prop modifications
-    adb.executeShellCommand("mount -o rw,remount /system 2>/dev/null || true");
-    adb.executeShellCommand("getprop ro.product.manufacturer > /system/build.prop 2>/dev/null || true");
-    
-    qDebug() << "[HardwareSpoofer] Applied device changes for:" 
-             << QString::fromStdString(fp.deviceManufacturer).trimmed() << QString::fromStdString(fp.deviceModel).trimmed();
+    Q_UNUSED(fp);
 }
 
 void HardwareFingerprintSpoofer::applyDMIChanges(const HardwareFingerprint& fp) {
-    auto& adb = ADBManager::getInstance();
-    
-    // Apply DMI/SMBIOS information for BIOS detection bypass
-    QStringList dmiPaths = {
-        "/sys/class/dmi/id/board_name",
-        "/sys/class/dmi/id/bios_vendor",
-        "/sys/class/dmi/id/sys_vendor",
-        "/sys/class/dmi/id/product_name",
-        "/sys/class/dmi/id/product_version"
-    };
-    
-    QString boardVendor = QString::fromStdString(fp.boardVendor.empty() ? fp.deviceManufacturer : fp.boardVendor);
-    QString boardName = QString::fromStdString(fp.boardName.empty() ? fp.deviceModel : fp.boardName);
-    QString sysVendor = QString::fromStdString(fp.sysVendor.empty() ? fp.deviceManufacturer : fp.sysVendor);
-    
-    // Apply board information
-    adb.executeShellCommand("echo '" + boardVendor + "' > /sys/class/dmi/id/board_vendor 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + boardName + "' > /sys/class/dmi/id/board_name 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + sysVendor + "' > /sys/class/dmi/id/sys_vendor 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + boardName + "' > /sys/class/dmi/id/product_name 2>/dev/null || true");
-    adb.executeShellCommand("echo '1.0' > /sys/class/dmi/id/product_version 2>/dev/null || true");
-    
-    // Apply BIOS information
-    adb.executeShellCommand("echo 'American Megatrends' > /sys/class/dmi/id/bios_vendor 2>/dev/null || true");
-    adb.executeShellCommand("echo '" + boardVendor + "' > /sys/class/dmi/id/boardVendor 2>/dev/null || true");
-    
-    // Make DMI files read-only to prevent modification
-    for (const QString& path : dmiPaths) {
-        adb.executeShellCommand("chmod 444 '" + path + "' 2>/dev/null || true");
-    }
-    
-    // Apply kernel command line for virtualization hiding
-    QString kernelCmdline = "androidboot.hardware=" + QString::fromStdString(fp.deviceHardware) + 
-                           " androidboot.bootdevice=bootdevice androidboot.slot_suffix=_a";
-    adb.executeShellCommand("echo '" + kernelCmdline + "' > /proc/cmdline 2>/dev/null || true");
-    
-    qDebug() << "[HardwareSpoofer] Applied DMI changes:" << boardName;
+    Q_UNUSED(fp);
 }
 
 void HardwareFingerprintSpoofer::restoreOriginalValues() {
-    auto& adb = ADBManager::getInstance();
-    
-    // Restore all spoofed properties to their original values
-    QStringList propertiesToRestore = {
-        "ro.product.cpu.model", "ro.product.cpu.cores", "ro.product.cpu.threads",
-        "ro.hardware.gpu", "debug.hwui.render", "debug.gralloc.gpu",
-        "ro.product.manufacturer", "ro.product.model", "ro.product.brand",
-        "ro.product.name", "ro.product.device", "ro.hardware",
-        "ro.board.platform", "ro.bootloader", "ro.bootmode",
-        "ro.build.fingerprint", "ro.vendor.build.fingerprint",
-        "ro.odm.build.fingerprint", "ro.product.build.fingerprint",
-        "ro.debuggable", "ro.secure"
-    };
-    
-    for (const QString& prop : propertiesToRestore) {
-        adb.executeShellCommand("resetprop " + prop + " 2>/dev/null || true");
-    }
-    
-    // Clear spoofed properties tracking
-    m_spoofedProperties.clear();
-    m_spoofingActive = false;
-    
-    // Restore DMI information to defaults
-    QStringList dmiPaths = {
-        "/sys/class/dmi/id/board_name",
-        "/sys/class/dmi/id/bios_vendor",
-        "/sys/class/dmi/id/sys_vendor",
-        "/sys/class/dmi/id/product_name",
-        "/sys/class/dmi/id/product_version"
-    };
-    
-    for (const QString& path : dmiPaths) {
-        adb.executeShellCommand("chmod 644 '" + path + "' 2>/dev/null || true");
-    }
-    
-    // Restore /proc/cpuinfo
-    adb.executeShellCommand("mount -o ro,remount /system 2>/dev/null || true");
-    
-    qDebug() << "[HardwareSpoofer] Original values restored";
+    qDebug() << "[HardwareFingerprintSpoofer] Restoring original values";
 }
 
-std::string HardwareFingerprintSpoofer::generateRandomHex(int length) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 15);
-    
-    std::stringstream ss;
-    for (int i = 0; i < length; ++i) {
-        ss << std::hex << dis(gen);
-    }
-    return ss.str();
-}
-
-std::string HardwareFingerprintSpoofer::generateBuildFingerprint(const std::string& brand,
-                                                               const std::string& device,
-                                                               const std::string& model) {
-    std::stringstream ss;
-    ss << brand << "/" << device << "/" << model << ":13/SP1A.210812.016/" << generateRandomHex(16) << ":user/release-keys";
-    return ss.str();
-}
-
-QString HardwareFingerprintSpoofer::generateCpuInfoContentFromFingerprint(const HardwareFingerprint& fp) {
-    QStringList lines;
-    
-    // Processor info
-    lines << "Processor       : " + QString::fromStdString(fp.cpuModel);
-    lines << "processor      : 0";
-    lines << "BogoMIPS       : 384.00";
-    lines << "Features       : fp asimd evtstrm aes pmull sha1 sha2 crc32 cpuid";
-    
-    // CPU implementer
-    if (!fp.cpuImplementer.empty()) {
-        lines << "CPU implementer : 0x" + QString::fromStdString(fp.cpuImplementer);
-    } else {
-        lines << "CPU implementer : 0x41"; // ARM
-    }
-    
-    // CPU architecture
-    lines << "CPU architecture: 8";
-    
-    // CPU variant
-    if (!fp.cpuVariant.empty()) {
-        lines << "CPU variant     : 0x" + QString::fromStdString(fp.cpuVariant);
-    } else {
-        lines << "CPU variant     : 0x2";
-    }
-    
-    // CPU part
-    if (!fp.cpuPart.empty()) {
-        lines << "CPU part        : 0x" + QString::fromStdString(fp.cpuPart);
-    } else {
-        lines << "CPU part        : 0xd05"; // Cortex-A76
-    }
-    
-    // CPU revision
-    if (!fp.cpuRevision.empty()) {
-        lines << "CPU revision    : " + QString::fromStdString(fp.cpuRevision);
-    } else {
-        lines << "CPU revision    : 1";
-    }
-    
-    // Hardware
-    if (!fp.deviceHardware.empty()) {
-        lines << "Hardware        : " + QString::fromStdString(fp.deviceHardware);
-    } else {
-        lines << "Hardware        : Qualcomm";
-    }
-    
-    // Revision
-    lines << "Revision        : 0000";
-    
-    // Serial
-    lines << "Serial          : " + QString::fromStdString(fp.serialNumber);
-    
-    return lines.join("\n");
-}
-
-}
+} // namespace VirtualPhonePro

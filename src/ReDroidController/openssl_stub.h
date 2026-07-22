@@ -75,4 +75,13 @@ unsigned char* SHA512(const unsigned char* d, size_t n, unsigned char* md);
 #define TLS1_2_VERSION 0x0303
 #define TLS1_3_VERSION 0x0304
 
+
+// RAND stubs
+#include <cstdlib>
+inline int  RAND_bytes(unsigned char* buf, int num) {
+    for (int i = 0; i < num; i++) buf[i] = static_cast<unsigned char>(rand() & 0xFF);
+    return 1;
+}
+inline void RAND_seed(const void*, int) {}
+
 #endif // OPENSSL_STUB_H

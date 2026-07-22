@@ -27,8 +27,7 @@ MagiskPatcher& MagiskPatcher::instance() {
     return *s_instance;
 }
 
-MagiskPatcher::MagiskPatcher(QObject* parent)
-    : QObject(parent)
+MagiskPatcher::MagiskPatcher()
 {
 }
 

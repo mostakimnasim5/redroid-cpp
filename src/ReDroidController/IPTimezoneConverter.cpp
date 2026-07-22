@@ -1,5 +1,5 @@
-#include "IPTimezoneConverter.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/IPTimezoneConverter.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <sstream>
 #include <algorithm>
 #include <cctype>

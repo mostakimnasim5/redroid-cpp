@@ -1,6 +1,6 @@
-#include "HypervisorBypass.hpp"
-#include "ADBManager.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/HypervisorBypass.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <random>
 #include <fstream>
 #include <sstream>
@@ -97,7 +97,7 @@ HypervisorType HypervisorBypass::detectCurrentHypervisor() {
     auto& adb = ADBManager::getInstance();
     
     // Check for common hypervisor indicators
-    std::string cpuinfo = adb.executeShellCommand("cat /proc/cpuinfo");
+    std::string cpuinfo = adb.executeShellCommand(std::string("cat /proc/cpuinfo"));
     
     if (cpuinfo.find("QEMU") != std::string::npos || 
         cpuinfo.find("TCG") != std::string::npos ||
@@ -129,7 +129,7 @@ HypervisorType HypervisorBypass::detectCurrentHypervisor() {
     }
     
     // Check for emulator-specific features
-    std::string features = adb.executeShellCommand("cat /proc/cpuinfo | grep -i flag");
+    std::string features = adb.executeShellCommand(std::string("cat /proc/cpuinfo | grep -i flag"));
     if (features.find("hypervisor") != std::string::npos) {
         if (features.find("svm") != std::string::npos) {
             return HypervisorType::AMD_V;
@@ -196,20 +196,20 @@ HypervisorResult HypervisorBypass::setDeviceAsRealHardware() {
     auto& adb = ADBManager::getInstance();
     
     // Remove all VM/hypervisor indicators
-    adb.executeShellCommand("setprop ro.hardware exynos2100");
-    adb.executeShellCommand("setprop ro.product.device o1s");
-    adb.executeShellCommand("setprop ro.product.model SM-G998B");
-    adb.executeShellCommand("setprop ro.product.brand samsung");
-    adb.executeShellCommand("setprop ro.product.manufacturer samsung");
-    adb.executeShellCommand("setprop ro.product.name o1sxx");
+    adb.executeShellCommand(std::string("setprop ro.hardware exynos2100"));
+    adb.executeShellCommand(std::string("setprop ro.product.device o1s"));
+    adb.executeShellCommand(std::string("setprop ro.product.model SM-G998B"));
+    adb.executeShellCommand(std::string("setprop ro.product.brand samsung"));
+    adb.executeShellCommand(std::string("setprop ro.product.manufacturer samsung"));
+    adb.executeShellCommand(std::string("setprop ro.product.name o1sxx"));
     
     // Remove kernel indicators
-    adb.executeShellCommand("setprop ro.kernel.qemu 0");
-    adb.executeShellCommand("setprop ro.boot.vm.bootloaded 0");
+    adb.executeShellCommand(std::string("setprop ro.kernel.qemu 0"));
+    adb.executeShellCommand(std::string("setprop ro.boot.vm.bootloaded 0"));
     
     // Hide goldfish/qemu specific files
-    adb.executeShellCommand("rm -f /system/lib/hw/goldfish*.so 2>/dev/null || true");
-    adb.executeShellCommand("rm -f /system/lib64/hw/goldfish*.so 2>/dev/null || true");
+    adb.executeShellCommand(std::string("rm -f /system/lib/hw/goldfish*.so 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("rm -f /system/lib64/hw/goldfish*.so 2>/dev/null || true"));
     
     m_modifiedProperties["ro.hardware"] = "exynos2100";
     m_modifiedProperties["ro.product.device"] = "o1s";
@@ -304,8 +304,8 @@ HypervisorResult HypervisorBypass::spoofCPUInfo(const std::string& cpuModel, int
     m_spoofedCPUCores = cores;
     
     // Set CPU-related properties
-    adb.executeShellCommand("setprop ro.product.cpu.abilist64 \"arm64-v8a\"");
-    adb.executeShellCommand("setprop ro.product.cpu.abilist32 \"armeabi-v7a,armeabi\"");
+    adb.executeShellCommand(std::string("setprop ro.product.cpu.abilist64 arm64-v8a"));
+    adb.executeShellCommand(std::string("setprop ro.product.cpu.abilist32 armeabi-v7a,armeabi"));
     adb.executeShellCommand("setprop ro.product.cpu.abi " + std::string("\"") + 
                            (cpuModel.find("64") != std::string::npos ? "arm64-v8a" : "armeabi-v7a") + "\"");
     
@@ -330,7 +330,7 @@ HypervisorResult HypervisorBypass::spoofGPUInfo(const std::string& gpuModel) {
     // Spoof GPU properties
     adb.setProperty("ro.hardware.gpu", gpuModel);
     adb.setProperty("debug.hwui.render", gpuModel);
-    adb.executeShellCommand("setprop debug.hwui.use_gpu_rasterizer true");
+    adb.executeShellCommand(std::string("setprop debug.hwui.use_gpu_rasterizer true"));
     
     m_modifiedProperties["ro.hardware.gpu"] = gpuModel;
     
@@ -364,14 +364,14 @@ HypervisorResult HypervisorBypass::disableVMDetection() {
     auto& adb = ADBManager::getInstance();
     
     // Disable common VM detection triggers
-    adb.executeShellCommand("setprop ro.kernel.qemu 0");
-    adb.executeShellCommand("setprop ro.boot.vm.bootloaded 0");
-    adb.executeShellCommand("setprop ro.debuggable 0");
-    adb.executeShellCommand("setprop init.svc.console disabled");
+    adb.executeShellCommand(std::string("setprop ro.kernel.qemu 0"));
+    adb.executeShellCommand(std::string("setprop ro.boot.vm.bootloaded 0"));
+    adb.executeShellCommand(std::string("setprop ro.debuggable 0"));
+    adb.executeShellCommand(std::string("setprop init.svc.console disabled"));
     
     // Remove VM-specific files
-    adb.executeShellCommand("rm -rf /data/property/vm_info 2>/dev/null || true");
-    adb.executeShellCommand("rm -rf /data/system/vm_info 2>/dev/null || true");
+    adb.executeShellCommand(std::string("rm -rf /data/property/vm_info 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("rm -rf /data/system/vm_info 2>/dev/null || true"));
     
     result.success = true;
     result.message = "VM detection disabled";
@@ -387,12 +387,12 @@ HypervisorResult HypervisorBypass::hideHypervisorIndicators() {
     auto& adb = ADBManager::getInstance();
     
     // Hide hypervisor CPU flags
-    std::string cpuinfo = adb.executeShellCommand("cat /proc/cpuinfo");
+    std::string cpuinfo = adb.executeShellCommand(std::string("cat /proc/cpuinfo"));
     
     if (cpuinfo.find("hypervisor") != std::string::npos) {
         // This would require kernel-level changes
         // For now, we can only set properties
-        adb.executeShellCommand("stop");
+        adb.executeShellCommand(std::string("stop"));
     }
     
     // Set real hardware properties
@@ -446,20 +446,20 @@ HypervisorResult HypervisorBypass::bypassQEMUDetection() {
     auto& adb = ADBManager::getInstance();
     
     // Remove QEMU-specific indicators
-    adb.executeShellCommand("setprop ro.kernel.qemu 0");
-    adb.executeShellCommand("setprop ro.boot.vm.bootloaded 0");
-    adb.executeShellCommand("setprop ro.hardware goldfish 2>/dev/null || true");
-    adb.executeShellCommand("setprop ro.hardware ranchu 2>/dev/null || true");
+    adb.executeShellCommand(std::string("setprop ro.kernel.qemu 0"));
+    adb.executeShellCommand(std::string("setprop ro.boot.vm.bootloaded 0"));
+    adb.executeShellCommand(std::string("setprop ro.hardware goldfish 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("setprop ro.hardware ranchu 2>/dev/null || true"));
     
     // Remove QEMU-specific files
-    adb.executeShellCommand("rm -f /init.goldfish.rc 2>/dev/null || true");
-    adb.executeShellCommand("rm -f /system/etc/init.goldfish.sh 2>/dev/null || true");
-    adb.executeShellCommand("rm -f /system/build.prop.qemu 2>/dev/null || true");
+    adb.executeShellCommand(std::string("rm -f /init.goldfish.rc 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("rm -f /system/etc/init.goldfish.sh 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("rm -f /system/build.prop.qemu 2>/dev/null || true"));
     
     // Set real device properties
-    adb.executeShellCommand("setprop ro.hardware exynos2100");
-    adb.executeShellCommand("setprop ro.product.device o1s");
-    adb.executeShellCommand("setprop ro.product.model SM-G998B");
+    adb.executeShellCommand(std::string("setprop ro.hardware exynos2100"));
+    adb.executeShellCommand(std::string("setprop ro.product.device o1s"));
+    adb.executeShellCommand(std::string("setprop ro.product.model SM-G998B"));
     
     m_modifiedProperties["ro.hardware"] = "exynos2100";
     m_modifiedProperties["ro.kernel.qemu"] = "0";
@@ -505,9 +505,9 @@ HypervisorResult HypervisorBypass::bypassVMDetection() {
     auto& adb = ADBManager::getInstance();
     
     // Disable VM-specific services
-    adb.executeShellCommand("stop vmware-tools 2>/dev/null || true");
-    adb.executeShellCommand("stop vboxadd-service 2>/dev/null || true");
-    adb.executeShellCommand("stop vboxadd 2>/dev/null || true");
+    adb.executeShellCommand(std::string("stop vmware-tools 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("stop vboxadd-service 2>/dev/null || true"));
+    adb.executeShellCommand(std::string("stop vboxadd 2>/dev/null || true"));
     
     // Set real hardware properties
     adb.setProperty("ro.hardware", "exynos2100");
@@ -539,7 +539,7 @@ HypervisorResult HypervisorBypass::hideVMArtifacts() {
     };
     
     for (const auto& path : vmPaths) {
-        adb.executeShellCommand("rm -rf " + path + " 2>/dev/null || true");
+        adb.executeShellCommand("rm -rf " + path + std::string(" 2>/dev/null || true"));
     }
     
     result.success = true;
@@ -554,15 +554,15 @@ HypervisorResult HypervisorBypass::enableARMSimulation() {
     auto& adb = ADBManager::getInstance();
     
     // Set ARM-specific properties
-    adb.executeShellCommand("setprop ro.product.cpu.abi arm64-v8a");
-    adb.executeShellCommand("setprop ro.product.cpu.abilist64 arm64-v8a");
-    adb.executeShellCommand("setprop ro.product.cpu.abilist32 armeabi-v7a,armeabi");
-    adb.executeShellCommand("setprop ro.arch arm64");
-    adb.executeShellCommand("setprop ro.hardware.arch arm64");
-    adb.executeShellCommand("setprop ro.board.platform exynos2100");
+    adb.executeShellCommand(std::string("setprop ro.product.cpu.abi arm64-v8a"));
+    adb.executeShellCommand(std::string("setprop ro.product.cpu.abilist64 arm64-v8a"));
+    adb.executeShellCommand(std::string("setprop ro.product.cpu.abilist32 armeabi-v7a,armeabi"));
+    adb.executeShellCommand(std::string("setprop ro.arch arm64"));
+    adb.executeShellCommand(std::string("setprop ro.hardware.arch arm64"));
+    adb.executeShellCommand(std::string("setprop ro.board.platform exynos2100"));
     
     // Set CPU implementation
-    adb.executeShellCommand("setprop ro.cpu.implementation Exynos2100");
+    adb.executeShellCommand(std::string("setprop ro.cpu.implementation Exynos2100"));
     
     m_armSimulationEnabled = true;
     m_modifiedProperties["ro.product.cpu.abi"] = "arm64-v8a";

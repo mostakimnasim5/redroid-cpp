@@ -4,6 +4,8 @@
 #define VIRTUALPHONEPRO_MAGISK_PATCHER_H
 
 #include <QString>
+#include <QObject>
+#include <QJsonObject>
 #include <QStringList>
 #include <QMap>
 #include <QJsonObject>
@@ -125,8 +127,14 @@ public:
      */
     bool patchZygisk(const QString& instanceId);
     
+    // Additional methods used in implementation
+    bool isMagiskInstalled(const QString& instanceId);
+    QJsonObject getMagiskStatus(const QString& instanceId);
+
 private:
-    MagiskPatcher() = default;
+    MagiskPatcher();
+    ~MagiskPatcher();
+    static MagiskPatcher* s_instance;
     
     bool executeCommand(const QString& instanceId, const QString& command);
     QString executeCommandSync(const QString& instanceId, const QString& command);

@@ -260,6 +260,7 @@ public:
     
 private:
     SSLCertificateManager();
+    static SSLCertificateManager* s_instance;
     
     // Helper methods
     void initializePredefinedCertificates();

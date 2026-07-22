@@ -1,6 +1,6 @@
-#include "RealPhoneHardening.hpp"
-#include "ADBManager.hpp"
-#include "Logger.hpp"
+#include "VirtualPhonePro/RealPhoneHardening.hpp"
+#include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/Logger.hpp"
 #include <random>
 #include <chrono>
 

@@ -110,9 +110,9 @@ bool OEMDeepSpoofing::applyToInstance(const QString& instanceId) {
     if (state.type == OEMType::XIAOMI || state.xiaomi.isMIUISupported) {
         commands += {
             // MIUI
-            "setprop ro.miui.ui.version.name " + state.miuiVersion,
-            "setprop ro.miui.ui.version.code " + state.miuiBuildVersion,
-            "setprop ro.miui.build.version.incremental " + state.miuiBuildVersion,
+            "setprop ro.miui.ui.version.name " + state.oemId,
+            "setprop ro.miui.ui.version.code " + state.oemBrand,
+            "setprop ro.miui.build.version.incremental " + state.oemBrand,
             "setprop ro.miui.build.version.sdk 34",
             
             // Mi Pay
@@ -296,8 +296,8 @@ bool OEMDeepSpoofing::enableMIUI(const QString& instanceId) {
     
     state.xiaomi.isMIUISupported = true;
     state.xiaomi.isMIUIEnhanced = true;
-    state.xiaomi.miuiVersion = "V14.0";
-    state.xiaomi.miuiBuildVersion = "14.0.24";
+    state.xiaomi.oemId = "V14.0";
+    state.xiaomi.oemBrand = "14.0.24";
     state.xiaomi.isMiPaySupported = true;
     state.xiaomi.isGameTurboEnabled = true;
     
@@ -424,10 +424,10 @@ bool OEMDeepSpoofing::setDeviceCertification(const QString& instanceId, bool cer
 
 OEMState OEMDeepSpoofing::getOEMState(const QString& instanceId) const {
     if (m_oemStates.contains(instanceId)) {
-        return m_oemStates[instanceId];
+        return m_oemStates.value(instanceId);  // .value() is const-safe
     }
     
-    return getDefaultsForType(OEMType::GENERIC);
+    return OEMState{};  // Return default state
 }
 
 QMap<QString, QString> OEMDeepSpoofing::getAllOEMProperties(const QString& instanceId) {
@@ -447,7 +447,7 @@ QMap<QString, QString> OEMDeepSpoofing::getAllOEMProperties(const QString& insta
     
     // Xiaomi
     props["xiaomi.miui.enabled"] = state.xiaomi.isMIUISupported ? "true" : "false";
-    props["xiaomi.miui.version"] = state.xiaomi.miuiVersion;
+    props["xiaomi.miui.version"] = state.xiaomi.oemId;
     props["xiaomi.mipay.supported"] = state.xiaomi.isMiPaySupported ? "true" : "false";
     props["xiaomi.gameturbo.enabled"] = state.xiaomi.isGameTurboEnabled ? "true" : "false";
     
@@ -522,8 +522,8 @@ OEMState OEMDeepSpoofing::getDefaultsForType(OEMType type) {
             
             state.xiaomi.isMIUISupported = true;
             state.xiaomi.isMIUIEnhanced = true;
-            state.xiaomi.miuiVersion = "V14.0";
-            state.xiaomi.miuiBuildVersion = "14.0.24";
+            state.xiaomi.oemId = "V14.0";
+            state.xiaomi.oemBrand = "14.0.24";
             state.xiaomi.isMiPaySupported = true;
             state.xiaomi.isGameTurboEnabled = true;
             

@@ -25,6 +25,7 @@
 #include <QString>
 #include <QMap>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QMutex>
 #include <QByteArray>
 #include <QVector>
@@ -76,7 +77,8 @@ enum class IntegrityVerdict {
     PLAY_INTEGRITY_NONE = 0,
     PLAY_INTEGRITY_BASIC = 1,
     PLAY_INTEGRITY_DEVICE = 2,
-    PLAY_INTEGRITY_RECOMMENDATIONS = 3,
+    PLAY_INTEGRITY_STRONG = 3,
+    PLAY_INTEGRITY_RECOMMENDATIONS = 4,
     PLAY_INTEGRITY_UNSATISFIED = 4,
     
     // SafetyNet Basic Compatibility
@@ -165,6 +167,8 @@ struct IntegrityConfig {
     QString verifiedBootState = "green";
     bool isVerifiedBootEnabled = true;
     bool isBetaAutoUpdate = false;
+    bool hardwareAttestationBypassed = false;
+    QString androidVersion = "14";
     
     // System properties
     bool isSysIntegrityCheckEnabled = true;
@@ -262,9 +266,9 @@ struct IntegrityCheckResult {
     
     // Device info
     QString deviceCategory;
+    QString brand;
     QString manufacturer;
     QString model;
-    QString brand;
     QString androidVersion;
     QString buildFingerprint;
     
@@ -296,6 +300,7 @@ struct SafetyNetResponse {
     QString device;
     QString fingerprint;
     QString hardware;
+    QString brand;
     QString manufacturer;
     QString model;
     QString product;

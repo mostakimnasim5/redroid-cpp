@@ -43,7 +43,7 @@ public:
      * @param instanceId Target instance
      * @return true if spoofed successfully
      */
-    bool spoofBasicIntegrity(const QString& instanceId);
+    bool spoofBasicIntegrity(const QString& instanceId, bool isSecure = true);
     
     /**
      * @briefspoofDeviceIntegrity - Spoof device integrity flags
@@ -149,6 +149,7 @@ public:
     bool setPlayProtectionRating(const QString& instanceId, const QString& rating);
 
 private:
+    static SafetyNetSpoofer* s_instance;
     SafetyNetSpoofer() = default;
     
     // Internal helpers
