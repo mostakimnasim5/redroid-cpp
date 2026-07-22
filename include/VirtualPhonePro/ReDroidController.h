@@ -3,10 +3,10 @@
 #ifndef VIRTUALPHONEPRO_REDROIDCONTROLLER_H
 #define VIRTUALPHONEPRO_REDROIDCONTROLLER_H
 
+#include "VirtualPhonePro/NetworkConfig.h"
 #include "VirtualPhonePro/DeviceProfile.h"
 #include "VirtualPhonePro/AndroidRealismEngine.h"
 #include "VirtualPhonePro/TimingAttackPrevention.hpp"
-#include "VirtualPhonePro/NetworkConfig.h"
 
 #include <QObject>
 #include <QString>

@@ -345,7 +345,7 @@ signals:
 
 private:
     explicit EmulatorDetectionBypass(QObject* parent = nullptr);
-    ~EmulatorDetectionBypass() = default;
+    ~EmulatorDetectionBypass();
     
     EmulatorDetectionBypass(const EmulatorDetectionBypass&) = delete;
     EmulatorDetectionBypass& operator=(const EmulatorDetectionBypass&) = delete;

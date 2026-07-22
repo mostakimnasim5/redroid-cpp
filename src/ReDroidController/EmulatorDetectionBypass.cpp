@@ -1,3 +1,4 @@
+#include "VirtualPhonePro/PlayIntegrityManager.hpp"
 /**
  * @file EmulatorDetectionBypass.cpp
  * @brief Emulator Detection Bypass Implementation

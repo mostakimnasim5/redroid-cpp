@@ -394,7 +394,6 @@ private:
     void cacheProfile(TLSProfile profile);
     void initializeAllProfiles();
 
-    static TLSFingerprint* s_instance;
 };
 
 } // namespace VirtualPhonePro

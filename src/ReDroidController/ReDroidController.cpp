@@ -1829,65 +1829,6 @@ bool ReDroidController::testForLeaks(const QString& instanceId) {
 // PROFILE LOADING HELPER
 // ============================================================================
 
-QJsonObject ReDroidController::loadProfile(const QString& profileName) {
-    QStringList searchPaths = {
-        QCoreApplication::applicationDirPath() + "/profiles/" + profileName + ".json",
-        QCoreApplication::applicationDirPath() + "/../profiles/" + profileName + ".json",
-        QString("/workspace/project/redroid-cpp/profiles/") + profileName + ".json",
-        ":/profiles/" + profileName + ".json"
-    };
-    
-    for (const QString& path : searchPaths) {
-        QFile file(path);
-        if (file.exists()) {
-            if (file.open(QIODevice::ReadOnly)) {
-                QByteArray data = file.readAll();
-                file.close();
-                
-                QJsonParseError error;
-                QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-                if (error.error == QJsonParseError::NoError) {
-                    qDebug() << "[ProfileLoader] Loaded profile from:" << path;
-                    return doc.object();
-                } else {
-                    qWarning() << "[ProfileLoader] JSON parse error in" << path << ":" << error.errorString();
-                }
-            }
-        }
-    }
-    
-    // Try to find by ID in profile directory
-    QDir profileDir(QString("/workspace/project/redroid-cpp/profiles/"));
-    if (profileDir.exists()) {
-        QStringList filters;
-        filters << "*.json";
-        QFileInfoList files = profileDir.entryInfoList(filters);
-        
-        for (const QFileInfo& fileInfo : files) {
-            QFile file(fileInfo.absoluteFilePath());
-            if (file.open(QIODevice::ReadOnly)) {
-                QByteArray data = file.readAll();
-                file.close();
-                
-                QJsonParseError error;
-                QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-                if (error.error == QJsonParseError::NoError) {
-                    QJsonObject obj = doc.object();
-                    if (obj["id"].toString() == profileName || 
-                        obj["name"].toString() == profileName ||
-                        fileInfo.baseName() == profileName) {
-                        qDebug() << "[ProfileLoader] Found profile by ID/name:" << profileName << "at" << fileInfo.absoluteFilePath();
-                        return obj;
-                    }
-                }
-            }
-        }
-    }
-    
-    qWarning() << "[ProfileLoader] Profile not found:" << profileName;
-    return QJsonObject();
-}
-
 // ============================================================================
 // UNIQUE DEVICE PROFILE GENERATION & APPLICATION
 // ============================================================================

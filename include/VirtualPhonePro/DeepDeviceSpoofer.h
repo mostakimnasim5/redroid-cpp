@@ -225,7 +225,6 @@ private:
     QString generateRealisticKernelVersion();
     QString generateRealisticBootParams();
 
-    static DeepDeviceSpoofer* s_instance;
 };
 
 } // namespace VirtualPhonePro

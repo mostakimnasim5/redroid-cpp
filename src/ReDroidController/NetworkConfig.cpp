@@ -6,7 +6,7 @@
  * Handles network isolation and proxy configuration.
  */
 
-#include "VirtualPhonePro/NetworkConfig.h"
+#include "VirtualPhonePro/NetworkConfigManager.h"
 #include "VirtualPhonePro/ReDroidController.h"
 
 #include <QDebug>
@@ -17,24 +17,23 @@
 
 namespace VirtualPhonePro {
 
-NetworkConfig* NetworkConfig::s_instance = nullptr;
+NetworkConfigManager* NetworkConfigManager::s_instance = nullptr;
 
-NetworkConfig& NetworkConfig::instance() {
+NetworkConfigManager& NetworkConfigManager::instance() {
     if (!s_instance) {
-        s_instance = new NetworkConfig();
+        s_instance = new NetworkConfigManager();
     }
     return *s_instance;
 }
 
-NetworkConfig::NetworkConfig(QObject* parent)
-    : QObject(parent)
+NetworkConfigManager::NetworkConfigManager()
 {
 }
 
-NetworkConfig::~NetworkConfig() {
+NetworkConfigManager::~NetworkConfigManager() {
 }
 
-bool NetworkConfig::configureProxy(const QString& instanceId, const ProxyConfig& proxy) {
+bool NetworkConfigManager::configureProxy(const QString& instanceId, const ProxyConfig& proxy) {
     if (instanceId.isEmpty()) {
         return false;
     }
@@ -42,24 +41,24 @@ bool NetworkConfig::configureProxy(const QString& instanceId, const ProxyConfig&
     ReDroidController& ctrl = ReDroidController::instance();
     
     // Set HTTP proxy
-    if (!proxy.httpProxy.isEmpty()) {
+    if (!proxy.host.isEmpty()) {
         QString cmd = QString("settings put global http_proxy %1:%2")
-                          .arg(proxy.httpProxy)
-                          .arg(proxy.httpPort);
+                          .arg(proxy.host)
+                          .arg(proxy.port);
         ctrl.executeShell(instanceId, cmd);
     }
     
     // Set HTTPS proxy
-    if (!proxy.httpsProxy.isEmpty()) {
+    if (!proxy.host.isEmpty()) {
         QString cmd = QString("settings put global https_proxy %1:%2")
-                          .arg(proxy.httpsProxy)
-                          .arg(proxy.httpsPort);
+                          .arg(proxy.host)
+                          .arg(proxy.port);
         ctrl.executeShell(instanceId, cmd);
     }
     
     // Set proxy exclusions
-    if (!proxy.exclusionList.isEmpty()) {
-        QString exclusions = proxy.exclusionList.join(",");
+    if (!proxy.noProxy.isEmpty()) {
+        QString exclusions = proxy.noProxy;
         QString cmd = QString("settings put global global_http_proxy_exclusion_list %1")
                           .arg(exclusions);
         ctrl.executeShell(instanceId, cmd);
@@ -69,7 +68,7 @@ bool NetworkConfig::configureProxy(const QString& instanceId, const ProxyConfig&
     return true;
 }
 
-bool NetworkConfig::removeProxy(const QString& instanceId) {
+bool NetworkConfigManager::removeProxy(const QString& instanceId) {
     if (instanceId.isEmpty()) {
         return false;
     }
@@ -89,7 +88,7 @@ bool NetworkConfig::removeProxy(const QString& instanceId) {
     return true;
 }
 
-bool NetworkConfig::spoofMacAddress(const QString& instanceId, const QString& interface, 
+bool NetworkConfigManager::spoofMacAddress(const QString& instanceId, const QString& interface, 
                                     const QString& macAddress) {
     if (instanceId.isEmpty() || macAddress.isEmpty()) {
         return false;
@@ -113,7 +112,7 @@ bool NetworkConfig::spoofMacAddress(const QString& instanceId, const QString& in
     return true;
 }
 
-QString NetworkConfig::getMacAddress(const QString& instanceId, const QString& interface) {
+QString NetworkConfigManager::getMacAddress(const QString& instanceId, const QString& interface) {
     if (instanceId.isEmpty()) {
         return QString();
     }
@@ -134,7 +133,7 @@ QString NetworkConfig::getMacAddress(const QString& instanceId, const QString& i
     return QString();
 }
 
-bool NetworkConfig::setupVPN(const QString& instanceId, const VPNConfig& vpn) {
+bool NetworkConfigManager::setupVPN(const QString& instanceId, const VPNConfig& vpn) {
     if (instanceId.isEmpty()) {
         return false;
     }
@@ -148,13 +147,9 @@ bool NetworkConfig::setupVPN(const QString& instanceId, const VPNConfig& vpn) {
     }
     
     // Configure VPN settings
-    QStringList commands = {
-        // Set VPN DNS
-        QString("settings put global vpn_dns %1").arg(vpn.dnsServers.join(",")),
-        
-        // Enable VPN
-        "svc vpn enable"
-    };
+    QStringList commands;
+    commands << QString("settings put global vpn_dns %1").arg(vpn.dns.join(","))
+             << QString("svc vpn enable");
     
     for (const QString& cmd : commands) {
         ctrl.executeShell(instanceId, cmd);
@@ -163,7 +158,7 @@ bool NetworkConfig::setupVPN(const QString& instanceId, const VPNConfig& vpn) {
     return true;
 }
 
-bool NetworkConfig::disconnectVPN(const QString& instanceId) {
+bool NetworkConfigManager::disconnectVPN(const QString& instanceId) {
     if (instanceId.isEmpty()) {
         return false;
     }
@@ -176,7 +171,7 @@ bool NetworkConfig::disconnectVPN(const QString& instanceId) {
     return true;
 }
 
-bool NetworkConfig::blockIPv6(const QString& instanceId) {
+bool NetworkConfigManager::blockIPv6(const QString& instanceId) {
     if (instanceId.isEmpty()) {
         return false;
     }
@@ -197,7 +192,7 @@ bool NetworkConfig::blockIPv6(const QString& instanceId) {
     return true;
 }
 
-bool NetworkConfig::enableIPv6(const QString& instanceId) {
+bool NetworkConfigManager::enableIPv6(const QString& instanceId) {
     if (instanceId.isEmpty()) {
         return false;
     }
@@ -217,7 +212,7 @@ bool NetworkConfig::enableIPv6(const QString& instanceId) {
     return true;
 }
 
-bool NetworkConfig::setDNSServers(const QString& instanceId, const QStringList& servers) {
+bool NetworkConfigManager::setDNSServers(const QString& instanceId, const QStringList& servers) {
     if (instanceId.isEmpty() || servers.isEmpty()) {
         return false;
     }
@@ -242,7 +237,7 @@ bool NetworkConfig::setDNSServers(const QString& instanceId, const QStringList& 
     return true;
 }
 
-QStringList NetworkConfig::getDNSServers(const QString& instanceId) {
+QStringList NetworkConfigManager::getDNSServers(const QString& instanceId) {
     QStringList servers;
     
     if (instanceId.isEmpty()) {
@@ -263,7 +258,7 @@ QStringList NetworkConfig::getDNSServers(const QString& instanceId) {
     return servers;
 }
 
-bool NetworkConfig::testNetworkLeak(const QString& instanceId) {
+bool NetworkConfigManager::testNetworkLeak(const QString& instanceId) {
     if (instanceId.isEmpty()) {
         return false;
     }
@@ -285,7 +280,7 @@ bool NetworkConfig::testNetworkLeak(const QString& instanceId) {
     return !hasIpv6 && !hasDNS;
 }
 
-QJsonObject NetworkConfig::getNetworkInfo(const QString& instanceId) {
+QJsonObject NetworkConfigManager::getNetworkInfo(const QString& instanceId) {
     QJsonObject info;
     
     if (instanceId.isEmpty()) {

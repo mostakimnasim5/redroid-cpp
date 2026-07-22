@@ -115,65 +115,35 @@ bool NetworkRealismEnhancer::applyToInstance(const QString& instanceId) {
     QStringList commands;
     
     // Network technology
-    commands += {
-        QString("setprop ro.telephony.default.network %1").arg(
-            state.currentTechnology == NetworkTechnology::NR_5G ? "11" :
-            state.currentTechnology == NetworkTechnology::LTE_ADVANCED ? "9" :
-            state.currentTechnology == NetworkTechnology::LTE_4G ? "10" :
-            state.currentTechnology == NetworkTechnology::UMTS_3G ? "3" : "2"),
-    };
+    commands << QString("setprop ro.telephony.default.network %1").arg(
+        state.currentTechnology == NetworkTechnology::NR_5G ? "11" :
+        state.currentTechnology == NetworkTechnology::LTE_ADVANCED ? "9" :
+        state.currentTechnology == NetworkTechnology::LTE_4G ? "10" :
+        state.currentTechnology == NetworkTechnology::UMTS_3G ? "3" : "2");
     
     // Dual SIM
     if (state.dualSIM.isDualSIMEnabled) {
-        commands += {
-            "setprop persist.radio.multisim.config dsds",
-            "setprop ro.telephony.default.dsda false",
-            QString("setprop gsm.sim.operator.num %1").arg(state.dualSIM.sim1Operator),
-            QString("setprop gsm.sim.operator.alpha %1").arg(state.dualSIM.sim1OperatorName),
-            QString("setprop gsm.sim.operator.iso-country %1").arg(state.networkCountryCode),
-        };
+        commands << "setprop persist.radio.multisim.config dsds" << "setprop ro.telephony.default.dsda false" << QString("setprop gsm.sim.operator.num %1").arg(state.dualSIM.sim1Operator) << QString("setprop gsm.sim.operator.alpha %1").arg(state.dualSIM.sim1OperatorName) << QString("setprop gsm.sim.operator.iso-country %1").arg(state.networkCountryCode);
     } else {
-        commands += {
-            "setprop persist.radio.multisim.config ssss",
-            "setprop gsm.sim.operator.num " + state.simOperatorCode,
-            "setprop gsm.sim.operator.alpha " + state.simOperatorName,
-        };
+        commands << "setprop persist.radio.multisim.config ssss" << "setprop gsm.sim.operator.num " + state.simOperatorCode << "setprop gsm.sim.operator.alpha " + state.simOperatorName;
     }
     
     // Wi-Fi Calling
-    commands += {
-        QString("setprop persist.wfc.enable %1").arg(state.wifiCalling.isEnabled ? "true" : "false"),
-        QString("setprop ro.config.wifi_callingsvc %1").arg(state.wifiCalling.isSupported ? "true" : "false"),
-        QString("setprop ro.wfc.enable %1").arg(state.wifiCalling.isEnabled ? "true" : "false"),
-    };
+    commands << QString("setprop persist.wfc.enable %1").arg(state.wifiCalling.isEnabled ? "true" : "false") << QString("setprop ro.config.wifi_callingsvc %1").arg(state.wifiCalling.isSupported ? "true" : "false") << QString("setprop ro.wfc.enable %1").arg(state.wifiCalling.isEnabled ? "true" : "false");
     
     // VoLTE
-    commands += {
-        QString("setprop persist.volte.enable %1").arg(state.volte.isEnabled ? "true" : "false"),
-        QString("ro.config.hw_volte_activated %1").arg(state.volte.isEnabled ? "true" : "false"),
-        "setprop persist.dbg.volte_avail_ovr true",
-        "setprop persist.dbg.wfc_avail_ovr true",
-    };
+    commands << QString("setprop persist.volte.enable %1").arg(state.volte.isEnabled ? "true" : "false") << QString("ro.config.hw_volte_activated %1").arg(state.volte.isEnabled ? "true" : "false") << "setprop persist.dbg.volte_avail_ovr true" << "setprop persist.dbg.wfc_avail_ovr true";
     
     // Carrier Aggregation
     if (state.bands.isCAEnabled) {
-        commands += {
-            "setprop persist.radio.enable_ca true",
-            "setprop ro.lte.ca.enabled true",
-        };
+        commands << "setprop persist.radio.enable_ca true" << "setprop ro.lte.ca.enabled true";
     }
     
     // Roaming
-    commands += {
-        QString("setprop persist.roaming %1").arg(state.isRoaming ? "true" : "false"),
-        QString("setprop persist.data_roaming %1").arg(state.isDataRoamingEnabled ? "1" : "0"),
-    };
+    commands << QString("setprop persist.roaming %1").arg(state.isRoaming ? "true" : "false") << QString("setprop persist.data_roaming %1").arg(state.isDataRoamingEnabled ? "1" : "0");
     
     // Network country
-    commands += {
-        "setprop persist.sys.timezone " + getenv("TZ") ? getenv("TZ") : "UTC",
-        "setprop gsm.network.countrycode " + state.networkCountryCode,
-    };
+    commands << QString("setprop persist.sys.timezone ") + (getenv("TZ") ? getenv("TZ") : "UTC") << "setprop gsm.network.countrycode " + state.networkCountryCode;
     
     // Execute all commands
     for (const QString& cmd : commands) {
