@@ -289,7 +289,7 @@ signals:
 
 private:
     explicit SELinuxManager(QObject* parent = nullptr);
-    ~SELinuxManager() = default;
+    ~SELinuxManager();
     
     SELinuxManager(const SELinuxManager&) = delete;
     SELinuxManager& operator=(const SELinuxManager&) = delete;

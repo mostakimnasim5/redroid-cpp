@@ -1,3 +1,4 @@
+#include <QThread>
 /**
  * @file CarrierNetworkSimulator.cpp
  * @brief Realistic Carrier & Network Simulation Implementation

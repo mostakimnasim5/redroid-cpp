@@ -307,6 +307,7 @@ public:
     bool resetScreen(const QString& instanceId);
     
 private:
+    static ScreenStateManager* s_instance;
     ScreenStateManager();
     
     int calculateAutoBrightness(int lux, const BrightnessProfile& profile);

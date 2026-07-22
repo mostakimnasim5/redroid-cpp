@@ -231,6 +231,7 @@ private:
     // Generate attestation data
     QString generateAttestationData(const QString& instanceId);
     QString generateDeviceKey(const QString& instanceId);
+
 };
 
 } // namespace VirtualPhonePro

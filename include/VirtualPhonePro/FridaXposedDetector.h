@@ -26,7 +26,7 @@
 namespace VirtualPhonePro {
 
 // Detection Type
-enum class DetectionType {
+enum class FridaDetectionType {
     FRIDA,
     XPOSED,
     SUBSTRATE,
@@ -40,7 +40,7 @@ enum class DetectionType {
 
 // Detection Bypass Configuration
 struct BypassConfig {
-    DetectionType type;
+    FridaDetectionType type;
     bool isEnabled;
     bool isAutoApply;
     QString bypassMethod;
@@ -76,7 +76,7 @@ struct DetectionBypassState {
 };
 
 // Detection Callback
-typedef std::function<void(DetectionType, bool)> DetectionBypassCallback;
+typedef std::function<void(FridaDetectionType, bool)> DetectionBypassCallback;
 
 class FridaXposedDetector {
 public:
@@ -272,8 +272,8 @@ public:
     bool reset(const QString& instanceId);
     
 signals:
-    void bypassApplied(const QString& instanceId, DetectionType type, bool success);
-    void detectionTriggered(const QString& instanceId, DetectionType type);
+    void bypassApplied(const QString& instanceId, FridaDetectionType type, bool success);
+    void detectionTriggered(const QString& instanceId, FridaDetectionType type);
     
 private:
     FridaXposedDetector();

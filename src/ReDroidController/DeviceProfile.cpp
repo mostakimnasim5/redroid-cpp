@@ -94,10 +94,10 @@ void BuildInfo::fromVariantMap(const QVariantMap& map) {
 }
 
 // ============================================================================
-// NetworkConfig Implementation
+// DeviceNetworkConfig Implementation
 // ============================================================================
 
-QVariantMap NetworkConfig::toVariantMap() const {
+QVariantMap DeviceNetworkConfig::toVariantMap() const {
     QVariantMap map;
     map["hostname"] = hostname;
     map["wifiMac"] = wifiMac;
@@ -109,7 +109,7 @@ QVariantMap NetworkConfig::toVariantMap() const {
     return map;
 }
 
-void NetworkConfig::fromVariantMap(const QVariantMap& map) {
+void DeviceNetworkConfig::fromVariantMap(const QVariantMap& map) {
     hostname = map.value("hostname").toString();
     wifiMac = map.value("wifiMac").toString();
     bluetoothMac = map.value("bluetoothMac").toString();

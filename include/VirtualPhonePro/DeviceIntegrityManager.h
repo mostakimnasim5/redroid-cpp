@@ -383,6 +383,8 @@ private:
     
     QMap<QString, DeviceIntegrityState> m_states;
     QMap<QString, QList<IntegrityCheckResult>> m_checkResults;
+
+    static DeviceIntegrityManager* s_instance;
 };
 
 } // namespace VirtualPhonePro

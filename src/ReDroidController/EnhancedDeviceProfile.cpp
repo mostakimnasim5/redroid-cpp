@@ -138,7 +138,7 @@ void EnhancedBuildInfo::generateForDevice(const QString& mfr, const QString& mdl
         androidVersion = 14;
         sdkVersion = 34;
         securityPatchLevel = 20240101;
-    } else if (manufacturer.toLower() == "google") {
+    } else if (mfr.toLower() == "google") {
         brand = "google";
         this->manufacturer = "google";
         device = "husky";
@@ -156,15 +156,15 @@ void EnhancedBuildInfo::generateForDevice(const QString& mfr, const QString& mdl
         sdkVersion = 34;
         securityPatchLevel = 20240101;
     } else {
-        brand = manufacturer.toLower();
+        brand = mfr.toLower();
         this->manufacturer = manufacturer;
-        device = manufacturer.toLower();
-        product = manufacturer.toLower();
-        board = manufacturer.toLower();
+        device = mfr.toLower();
+        product = mfr.toLower();
+        board = mfr.toLower();
         hardware = "qcom";
         this->model = manufacturer + " Device";
         deviceName = manufacturer + " Device";
-        fingerprint = manufacturer.toLower() + "/" + manufacturer.toLower() + "/" + manufacturer.toLower() + 
+        fingerprint = mfr.toLower() + "/" + mfr.toLower() + "/" + mfr.toLower() + 
                      ":14/UP1A.231005.007/20240115.200015:user/release-keys";
         bootloader = "bootloader";
         buildId = "UP1A.231005.007";
@@ -296,7 +296,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
     if (manufacturer.toLower() == "samsung") {
         accelerometer.name = "STMicroelectronics Accelerometer";
         accelerometer.vendor = "STMicroelectronics";
-        accelerometer.version = "1";
+        accelerometer.version = 1;
         accelerometer.resolution = 0.001196f;
         accelerometer.maxRange = 78.4532f;
         accelerometer.power = 0.15f;
@@ -304,7 +304,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         gyroscope.name = "STMicroelectronics Gyroscope";
         gyroscope.vendor = "STMicroelectronics";
-        gyroscope.version = "1";
+        gyroscope.version = 1;
         gyroscope.resolution = 0.000f;
         gyroscope.maxRange = 2000.0f;
         gyroscope.power = 0.25f;
@@ -312,7 +312,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         magnetometer.name = "STMicroelectronics Magnetometer";
         magnetometer.vendor = "STMicroelectronics";
-        magnetometer.version = "1";
+        magnetometer.version = 1;
         magnetometer.resolution = 0.150f;
         magnetometer.maxRange = 4900.0f;
         magnetometer.power = 0.50f;
@@ -320,7 +320,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         proximity.name = "Samsung Proximity Sensor";
         proximity.vendor = "Samsung";
-        proximity.version = "1";
+        proximity.version = 1;
         proximity.resolution = 1.0f;
         proximity.maxRange = 5.0f;
         proximity.power = 0.10f;
@@ -328,7 +328,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         light.name = "Samsung Light Sensor";
         light.vendor = "Samsung";
-        light.version = "1";
+        light.version = 1;
         light.resolution = 0.010f;
         light.maxRange = 10000.0f;
         light.power = 0.25f;
@@ -336,7 +336,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         pressure.name = "Samsung Pressure Sensor";
         pressure.vendor = "Samsung";
-        pressure.version = "1";
+        pressure.version = 1;
         pressure.resolution = 0.001f;
         pressure.maxRange = 1100.0f;
         pressure.power = 1.0f;
@@ -344,7 +344,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         stepCounter.name = "Samsung Step Counter";
         stepCounter.vendor = "Samsung";
-        stepCounter.version = "1";
+        stepCounter.version = 1;
         stepCounter.resolution = 1.0f;
         stepCounter.maxRange = 0.0f;
         stepCounter.power = 0.50f;
@@ -352,7 +352,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         heartRate.name = "Samsung Heart Rate Sensor";
         heartRate.vendor = "Samsung";
-        heartRate.version = "1";
+        heartRate.version = 1;
         heartRate.resolution = 1.0f;
         heartRate.maxRange = 200.0f;
         heartRate.power = 1.0f;
@@ -360,7 +360,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
     } else {
         accelerometer.name = "BMI260 Accelerometer";
         accelerometer.vendor = "Bosch";
-        accelerometer.version = "1";
+        accelerometer.version = 1;
         accelerometer.resolution = 0.001196f;
         accelerometer.maxRange = 78.4532f;
         accelerometer.power = 0.15f;
@@ -368,7 +368,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         gyroscope.name = "BMI260 Gyroscope";
         gyroscope.vendor = "Bosch";
-        gyroscope.version = "1";
+        gyroscope.version = 1;
         gyroscope.resolution = 0.001f;
         gyroscope.maxRange = 2000.0f;
         gyroscope.power = 0.25f;
@@ -376,7 +376,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         magnetometer.name = "AK09916 Magnetometer";
         magnetometer.vendor = "Asahi Kasei";
-        magnetometer.version = "1";
+        magnetometer.version = 1;
         magnetometer.resolution = 0.150f;
         magnetometer.maxRange = 4900.0f;
         magnetometer.power = 0.50f;
@@ -384,7 +384,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         proximity.name = "Proximity Sensor";
         proximity.vendor = "Generic";
-        proximity.version = "1";
+        proximity.version = 1;
         proximity.resolution = 1.0f;
         proximity.maxRange = 5.0f;
         proximity.power = 0.10f;
@@ -392,7 +392,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         light.name = "Light Sensor";
         light.vendor = "Generic";
-        light.version = "1";
+        light.version = 1;
         light.resolution = 0.010f;
         light.maxRange = 10000.0f;
         light.power = 0.25f;
@@ -400,7 +400,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         pressure.name = "Barometer";
         pressure.vendor = "Generic";
-        pressure.version = "1";
+        pressure.version = 1;
         pressure.resolution = 0.001f;
         pressure.maxRange = 1100.0f;
         pressure.power = 1.0f;
@@ -408,7 +408,7 @@ void EnhancedSensorInfo::generateAll(const QString& manufacturer) {
         
         stepCounter.name = "Step Counter";
         stepCounter.vendor = "Generic";
-        stepCounter.version = "1";
+        stepCounter.version = 1;
         stepCounter.resolution = 1.0f;
         stepCounter.maxRange = 0.0f;
         stepCounter.power = 0.50f;

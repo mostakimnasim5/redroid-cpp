@@ -236,6 +236,7 @@ public:
     bool resetBattery(const QString& instanceId);
     
 private:
+    static BatteryPowerManager* s_instance;
     BatteryPowerManager();
     
     PowerProfile getDefaultProfile(const QString& manufacturer);

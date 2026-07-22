@@ -58,10 +58,10 @@ private:
     void loadManufacturerModels();
     
     QString m_instanceId;
+    bool m_isProtected = false;
     DeviceProfile m_profile;
     QString m_manufacturer;
     QString m_androidVersion;
-    bool m_isProtected;
     
     QComboBox* m_manufacturerCombo;
     QComboBox* m_modelCombo;

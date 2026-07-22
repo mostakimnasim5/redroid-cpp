@@ -32,6 +32,7 @@
 #include <QTimer>
 #include <QUrl>
 #include <QHostAddress>
+#include "VirtualPhonePro/NetworkConfig.h"
 #include <QtConcurrent>
 
 #include "VirtualPhonePro/NetworkConfig.h"
@@ -187,6 +188,8 @@ struct TCPFingerprint {
     
     static TCPFingerprint getForCountry(const QString& countryCode);
     static TCPFingerprint getDefault();
+    QJsonObject toJson() const;
+    void fromJson(const QJsonObject& json);
 };
 
 /**
@@ -199,8 +202,10 @@ struct DNSCOnfig {
     QStringList doh;              // DNS over HTTPS endpoints
     QStringList dot;              // DNS over TLS endpoints
     
-    static DNSCOnfig getForCountry(const QString& countryCode);
-    static DNSCOnfig getDefault();
+    static DNSConfig getForCountry(const QString& countryCode);
+    static DNSConfig getDefault();
+    QJsonObject toJson() const;
+    void fromJson(const QJsonObject& json);
 };
 
 /**
@@ -232,7 +237,7 @@ struct NetworkProfile {
     
     // TCP/DNS configuration
     TCPFingerprint tcpFingerprint;
-    DNSCOnfig dnsConfig;
+    DNSConfig dnsConfig;
     
     // Telephony properties for cellular spoofing
     QMap<QString, QString> telephonyProperties;
@@ -434,7 +439,7 @@ public:
      * @param countryCode Country code
      * @return DNS configuration
      */
-    DNSCOnfig generateDNSConfig(const QString& countryCode);
+    DNSConfig generateDNSConfig(const QString& countryCode);
     
     /**
      * @brief Generate WebRTC configuration for IP spoofing

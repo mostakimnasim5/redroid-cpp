@@ -186,6 +186,7 @@ signals:
     void gpsLocationChanged(const QString& instanceId, const GPSLocation& location);
 
 private:
+    static SensorSimulator* s_instance;
     explicit SensorSimulator(QObject* parent = nullptr);
     
     struct SensorState {

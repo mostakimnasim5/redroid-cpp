@@ -163,7 +163,7 @@ void SecurityMitigationManager::initializeKnownSignatures() {
 
 void SecurityMitigationManager::initializeDeviceProfiles() {
     // Samsung Galaxy S24 Ultra
-    DeviceIdentity samsung24;
+    DeviceBuildIdentity samsung24;
     samsung24.manufacturer = "samsung";
     samsung24.brand = "samsung";
     samsung24.model = "SM-S928B";
@@ -181,7 +181,7 @@ void SecurityMitigationManager::initializeDeviceProfiles() {
     m_deviceProfiles["samsung_s24_ultra"] = samsung24;
     
     // Google Pixel 8 Pro
-    DeviceIdentity pixel8;
+    DeviceBuildIdentity pixel8;
     pixel8.manufacturer = "google";
     pixel8.brand = "google";
     pixel8.model = "Pixel 8 Pro";
@@ -199,7 +199,7 @@ void SecurityMitigationManager::initializeDeviceProfiles() {
     m_deviceProfiles["google_pixel_8_pro"] = pixel8;
     
     // Xiaomi 14 Pro
-    DeviceIdentity xiaomi14;
+    DeviceBuildIdentity xiaomi14;
     xiaomi14.manufacturer = "xiaomi";
     xiaomi14.brand = "xiaomi";
     xiaomi14.model = "23116PN5BC";
@@ -662,7 +662,7 @@ bool SecurityMitigationManager::setRetailBuildProperties(const QString& instance
     return true;
 }
 
-bool SecurityMitigationManager::spoofDeviceIdentity(const QString& instanceId, const DeviceIdentity& identity) {
+bool SecurityMitigationManager::spoofDeviceIdentity(const QString& instanceId, const DeviceBuildIdentity& identity) {
     ReDroidController& ctrl = ReDroidController::instance();
     
     QStringList properties = {
@@ -795,14 +795,14 @@ bool SecurityMitigationManager::mockSELinuxEnforcing(const QString& instanceId, 
     return true;
 }
 
-SELinuxState SecurityMitigationManager::getSELinuxState(const QString& instanceId) const {
+SELinuxStatusInfo SecurityMitigationManager::getSELinuxState(const QString& instanceId) const {
     QMutexLocker locker(&m_stateMutex);
     
     if (m_states.contains(instanceId)) {
         return m_states[instanceId].selinux;
     }
     
-    SELinuxState defaultState;
+    SELinuxStatusInfo defaultState;
     defaultState.isEnforcing = true;
     defaultState.currentMode = "Enforcing";
     return defaultState;
@@ -1912,7 +1912,7 @@ KernelSpoofConfig SecurityMitigationManager::getKernelConfigForDevice(const QStr
     return defaultConfig;
 }
 
-DeviceIdentity SecurityMitigationManager::getDeviceIdentityForProfile(const QString& profile) {
+DeviceBuildIdentity SecurityMitigationManager::getDeviceIdentityForProfile(const QString& profile) {
     if (m_deviceProfiles.contains(profile)) {
         return m_deviceProfiles[profile];
     }

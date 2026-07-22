@@ -219,6 +219,7 @@ public:
      * @brief Get current JA3 hash
      */
     QString getCurrentJA3() const;
+    QString getCurrentJA3();
     
     /**
      * @brief Set JA3 hash (for spoofing)
@@ -248,6 +249,7 @@ public:
      * @brief Get current JA4 fingerprint
      */
     QString getCurrentJA4() const;
+    QString getCurrentJA4();
     
     /**
      * @brief Set JA4 fingerprint (for spoofing)
@@ -391,6 +393,7 @@ private:
     
     void cacheProfile(TLSProfile profile);
     void initializeAllProfiles();
+
 };
 
 } // namespace VirtualPhonePro

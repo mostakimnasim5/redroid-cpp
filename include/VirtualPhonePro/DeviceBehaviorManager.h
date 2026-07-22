@@ -372,6 +372,8 @@ private:
     qint64 estimateBatterySavings(const QStringList& hibernatedApps) const;
     
     QMap<QString, DeviceBehaviorState> m_states;
+
+    static DeviceBehaviorManager* s_instance;
 };
 
 } // namespace VirtualPhonePro

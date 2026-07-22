@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QJsonDocument>
 
+namespace VirtualPhonePro {
+
 
 using namespace VirtualPhonePro;
 
@@ -102,7 +104,7 @@ QJsonObject TCPFingerprint::toJson() const {
     return obj;
 }
 
-QJsonObject DNSCOnfig::toJson() const {
+QJsonObject DNSConfig::toJson() const {
     QJsonObject obj;
     obj["primary"] = QJsonArray::fromStringList(primary);
     obj["secondary"] = QJsonArray::fromStringList(secondary);
@@ -220,6 +222,9 @@ bool NetworkProfile::fromJson(const QJsonObject& json) {
     }
     
     return true;
+}
+
+    }
 }
 
 // ========================================================================

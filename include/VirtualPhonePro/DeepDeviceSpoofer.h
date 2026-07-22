@@ -224,6 +224,7 @@ private:
     bool executeCommand(const QString& instanceId, const QString& command);
     QString generateRealisticKernelVersion();
     QString generateRealisticBootParams();
+
 };
 
 } // namespace VirtualPhonePro

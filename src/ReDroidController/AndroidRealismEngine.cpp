@@ -1282,8 +1282,8 @@ CryptoConfig AndroidRealismEngine::getCryptoConfigForDevice(const QString& manuf
     return config;
 }
 
-SELinuxConfig AndroidRealismEngine::getSELinuxConfigForDevice(const QString& manufacturer) {
-    SELinuxConfig config;
+SELinuxBasicConfig AndroidRealismEngine::getSELinuxConfigForDevice(const QString& manufacturer) {
+    SELinuxBasicConfig config;
     
     config.isEnforcing = true;
     config.mode = "Enforcing";

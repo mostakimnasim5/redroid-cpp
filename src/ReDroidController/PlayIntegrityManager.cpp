@@ -26,6 +26,7 @@
 #include <QDateTime>
 #include <QRandomGenerator>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QProcess>
 #include <QFile>
 #include <QFileDevice>

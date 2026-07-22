@@ -286,6 +286,7 @@ public:
     bool reset(const QString& instanceId);
     
 private:
+    static SystemAppSimulator* s_instance;
     SystemAppSimulator();
     
     // Pre-built carrier configurations

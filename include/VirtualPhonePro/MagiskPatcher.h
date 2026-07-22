@@ -1,4 +1,6 @@
 #pragma once
+#include <QObject>
+#include <QJsonObject>
 
 #ifndef VIRTUALPHONEPRO_MAGISK_PATCHER_H
 #define VIRTUALPHONEPRO_MAGISK_PATCHER_H
@@ -31,7 +33,8 @@ struct MagiskModule {
  * Provides Magisk/Zygisk module installation and management
  * for enhanced system modifications.
  */
-class MagiskPatcher {
+class MagiskPatcher : public QObject {
+    Q_OBJECT
 public:
     static MagiskPatcher& instance();
     

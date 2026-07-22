@@ -106,7 +106,7 @@ struct CryptoConfig {
 // SELINUX CONFIGURATION
 // ========================================================================
 
-struct SELinuxConfig {
+struct SELinuxBasicConfig {
     bool isEnforcing;
     QString mode;                // Enforcing, Permissive, Disabled
     QString policyVersion;
@@ -431,7 +431,7 @@ private:
     // Device-specific configs
     VbootConfig getVbootConfigForDevice(const QString& manufacturer);
     CryptoConfig getCryptoConfigForDevice(const QString& manufacturer);
-    SELinuxConfig getSELinuxConfigForDevice(const QString& manufacturer);
+    SELinuxBasicConfig getSELinuxConfigForDevice(const QString& manufacturer);
     HALDaemonConfig getHALConfigForDevice(const QString& manufacturer, const QString& model);
     SystemPropertiesConfig getSystemPropsForDevice(const QString& manufacturer, const QString& model);
     GMSCertification getGMSConfigForDevice(const QString& manufacturer);
@@ -439,7 +439,7 @@ private:
     // State storage
     QMap<QString, VbootConfig> m_vbootConfigs;
     QMap<QString, CryptoConfig> m_cryptoConfigs;
-    QMap<QString, SELinuxConfig> m_selinuxConfigs;
+    QMap<QString, SELinuxBasicConfig> m_selinuxConfigs;
     QMap<QString, HALDaemonConfig> m_halConfigs;
     QMap<QString, GMSCertification> m_gmsConfigs;
     QMap<QString, SystemPropertiesConfig> m_systemPropConfigs;

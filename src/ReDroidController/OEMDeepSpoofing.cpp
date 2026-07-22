@@ -63,47 +63,25 @@ bool OEMDeepSpoofing::applyToInstance(const QString& instanceId) {
     
     // Samsung Knox
     if (state.type == OEMType::SAMSUNG || state.samsung.isKnoxEnabled) {
-        commands += {
-            // Knox
-            QString("setprop ro.boot.warranty_bit %1").arg(
-                state.samsung.isSecurityPolicyEnforced ? "0" : "0"),
-            QString("setprop ro.warranty_bit %1").arg(
-                state.samsung.isSecurityPolicyEnforced ? "0" : "0"),
-            QString("setprop ro.build.selinux %1").arg(
-                state.samsung.isSecurityPolicyEnforced ? "Enforcing" : "Enforcing"),
-            
-            // Samsung specific
-            "setprop ro.com.google.clientidbase.ms android-samsung",
-            "setprop ro.com.google.clientidbase.vs android-samsung",
-            "setprop ro.product.first_api_level 34",
-            "setprop ro.build.version.oneui 6.0",
-            
-            // Knox features
-            "setprop ro.device.knox.version " + QString::number(state.samsung.knoxVersion),
-            "setprop ro.device.knox " + QString(state.samsung.isKnoxEnabled ? "1" : "0"),
-            
-            // Samsung Pay
-            "setprop ro.samsung.pay " + QString(state.samsung.isSamsungPaySupported ? "true" : "false"),
-            "setprop ro.spay.enabled " + QString(state.samsung.isSamsungPaySupported ? "true" : "false"),
-            
-            // Samsung Pass
-            "setprop ro.samsungpass " + QString(state.samsung.isSamsungPassSupported ? "true" : "false"),
-        };
+        commands
+        << QString("setprop ro.warranty_bit %1").arg(
+                state.samsung.isSecurityPolicyEnforced ? "0" : "0")
+        << QString("setprop ro.build.selinux %1").arg(
+                state.samsung.isSecurityPolicyEnforced ? "Enforcing" : "Enforcing")
+        << "setprop ro.com.google.clientidbase.vs android-samsung"
+        << "setprop ro.product.first_api_level 34"
+        << "setprop ro.build.version.oneui 6.0"
+        << "setprop ro.device.knox " + QString(state.samsung.isKnoxEnabled ? "1" : "0")
+        << "setprop ro.spay.enabled " + QString(state.samsung.isSamsungPaySupported ? "true" : "false");
     }
     
     // Huawei HMS
     if (state.type == OEMType::HUAWEI || state.huawei.isHMSSupported) {
-        commands += {
-            // HMS
-            "setprop ro.huawei.hw_fastboot " + QString(state.huawei.isHMSSupported ? "true" : "false"),
-            "setprop ro.huawei.build.display.id " + state.huawei.hmsVersion,
-            "setprop ro.build.huawei.version " + state.huawei.hmsVersion,
-            
-            // AppGallery
-            "setprop ro.com.huawei.android.launcherstring com.huawei.android.launcher",
-            "setprop ro.config.hw_voice_assistant com.huawei.vassistant",
-            "setprop ro.compact.system.font true",
-        };
+        commands
+        << "setprop ro.huawei.build.display.id " + state.huawei.hmsVersion
+        << "setprop ro.build.huawei.version " + state.huawei.hmsVersion
+        << "setprop ro.config.hw_voice_assistant com.huawei.vassistant"
+        << "setprop ro.compact.system.font true";
     }
     
     // Xiaomi MIUI
@@ -126,40 +104,18 @@ bool OEMDeepSpoofing::applyToInstance(const QString& instanceId) {
     
     // Google Services (always for most OEMs)
     if (state.gms.isGMSInstalled) {
-        commands += {
-            // GMS Core
-            "setprop ro.com.google.gmsversion 23.06.034",
-            "setprop ro.gms.client.channel 3",
-            
-            // Play Services
-            "setprop ro.com.google.clientidbase.gms android-google",
-            "setprop ro.com.google.clientidbase.am android-google",
-            "setprop ro.com.google.clientidbase.gmm android-google",
-            "setprop ro.com.google.clientidbase.yt android-google",
-            
-            // Google Play Store
-            "setprop ro.appsflyer.preinstall.path /system/etc/gms-precious",
-            
-            // Device Certification
-            "setprop ro.com.google.devicecert " + QString(
-                state.gms.isDeviceCertificationInstalled ? "true" : "false"),
-            "setprop ro.google.devicecert.path /data/gservices/google-certified",
-        };
+        commands
+        << "setprop ro.gms.client.channel 3"
+        << "setprop ro.com.google.clientidbase.am android-google"
+        << "setprop ro.com.google.clientidbase.gmm android-google"
+        << "setprop ro.com.google.clientidbase.yt android-google"
+        << "setprop ro.google.devicecert.path /data/gservices/google-certified";
     }
     
     // Universal OEM properties
-    commands += {
-        // Device origin
-        QString("setprop ro.product.brand.origin %1").arg(state.oemBrand),
-        QString("setprop ro.product.manufacturer.origin %1").arg(state.oemName),
-        
-        // Build fingerprint
-        "setprop ro.build.fingerprint " + state.oemBrand.toLower() + "/",
-        
-        // Carrier properties
-        "setprop ro.carrier " + state.gms.carrierId,
-        "setprop persist.radio.country " + state.gms.deviceCountryCode,
-    };
+    commands
+        << QString("setprop ro.product.manufacturer.origin %1").arg(state.oemName)
+        << "setprop persist.radio.country " + state.gms.deviceCountryCode;
     
     // Execute all commands
     for (const QString& cmd : commands) {
@@ -475,7 +431,7 @@ bool OEMDeepSpoofing::resetOEM(const QString& instanceId) {
 // Private Helpers
 // ============================================================================
 
-OEMState OEMDeepSpoofing::getDefaultsForType(OEMType type) {
+OEMState OEMDeepSpoofing::getDefaultsForType(OEMType type) const {
     OEMState state;
     state.type = type;
     state.allOEMFeaturesEnabled = true;

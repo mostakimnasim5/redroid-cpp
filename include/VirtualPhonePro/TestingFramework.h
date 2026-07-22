@@ -197,6 +197,7 @@ signals:
     void progress(int current, int total);
 
 private:
+    static TestingFramework* s_instance;
     TestingFramework() = default;
     
     bool m_stopRequested = false;

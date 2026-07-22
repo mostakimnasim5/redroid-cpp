@@ -69,7 +69,7 @@ struct BuildInfo {
 /**
  * @brief Network Configuration
  */
-struct NetworkConfig {
+struct DeviceNetworkConfig {
     QString hostname;          // e.g., "android-dm3q"
     QString wifiMac;
     QString bluetoothMac;
@@ -184,7 +184,7 @@ public:
     DeviceIdentity identity;
     MACAddresses mac;
     BuildInfo build;
-    NetworkConfig network;
+    DeviceNetworkConfig network;
     SIMConfig sim;
     GPSConfig gps;
     HardwareInfo hardware;

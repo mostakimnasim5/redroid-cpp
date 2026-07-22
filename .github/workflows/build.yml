@@ -67,14 +67,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Qt ${{ env.QT_VERSION }}
-        shell: pwsh
-        run: |
-          pip install aqtinstall --quiet
-          python -m aqt install-qt windows desktop ${{ env.QT_VERSION }} win64_msvc2022_64 `
-            --outputdir C:\Qt
-          echo "C:\Qt\${{ env.QT_VERSION }}\msvc2022_64\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-          echo "CMAKE_PREFIX_PATH=C:\Qt\${{ env.QT_VERSION }}\msvc2022_64" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+      - name: Install Qt 6.8.2
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.2'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+          cache-key-prefix: qt-win-6.8.2
 
       - name: Configure
         shell: pwsh
@@ -82,8 +83,7 @@ jobs:
           cmake -B build `
             -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
-            -DBUILD_QT6_GUI=ON `
-            -DCMAKE_PREFIX_PATH="C:\Qt\${{ env.QT_VERSION }}\msvc2022_64"
+            -DBUILD_QT6_GUI=ON
 
       - name: Build
         shell: pwsh

@@ -80,6 +80,7 @@ enum class IntegrityVerdict {
     PLAY_INTEGRITY_STRONG = 3,
     PLAY_INTEGRITY_RECOMMENDATIONS = 4,
     PLAY_INTEGRITY_UNSATISFIED = 4,
+    PLAY_INTEGRITY_STRONG = 5,
     
     // SafetyNet Basic Compatibility
     SAFETYNET_COMPATIBLE = 0,
@@ -138,6 +139,7 @@ struct HardwareAttestationConfig {
 // ========================================================================
 
 struct IntegrityConfig {
+    QString androidVersion;
     // Target verdicts
     IntegrityVerdict targetVerdict = IntegrityVerdict::PLAY_INTEGRITY_DEVICE;
     bool requireHardwareAttestation = false;
@@ -180,6 +182,8 @@ struct IntegrityConfig {
     bool isPlayServicesValid = true;
     
     QJsonObject toJson() const;
+
+    bool hardwareAttestationBypassed = false;
 };
 
 // ========================================================================
@@ -303,6 +307,7 @@ struct SafetyNetResponse {
     QString brand;
     QString manufacturer;
     QString model;
+    QString brand;
     QString product;
     QString osVersion;
     QString securityPatch;

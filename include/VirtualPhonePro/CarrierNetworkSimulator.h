@@ -260,6 +260,7 @@ public:
     QString networkTypeToString(NetworkType type) const;
     
 private:
+    static CarrierNetworkSimulator* s_instance;
     CarrierNetworkSimulator();
     static CarrierNetworkSimulator* s_instance;
     

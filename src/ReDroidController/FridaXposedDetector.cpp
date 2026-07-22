@@ -50,7 +50,7 @@ void FridaXposedDetector::initializeBypassConfigs(const QString& instanceId) {
     
     // Frida bypass
     BypassConfig frida;
-    frida.type = DetectionType::FRIDA;
+    frida.type = FridaDetectionType::FRIDA;
     frida.isEnabled = true;
     frida.isAutoApply = true;
     frida.bypassMethod = "all";
@@ -59,7 +59,7 @@ void FridaXposedDetector::initializeBypassConfigs(const QString& instanceId) {
     
     // Xposed bypass
     BypassConfig xposed;
-    xposed.type = DetectionType::XPOSED;
+    xposed.type = FridaDetectionType::XPOSED;
     xposed.isEnabled = true;
     xposed.isAutoApply = true;
     xposed.bypassMethod = "all";
@@ -68,7 +68,7 @@ void FridaXposedDetector::initializeBypassConfigs(const QString& instanceId) {
     
     // Root bypass
     BypassConfig root;
-    root.type = DetectionType::ROOT;
+    root.type = FridaDetectionType::ROOT;
     root.isEnabled = true;
     root.isAutoApply = true;
     root.bypassMethod = "hide_su";
@@ -77,7 +77,7 @@ void FridaXposedDetector::initializeBypassConfigs(const QString& instanceId) {
     
     // Debug bypass
     BypassConfig debug;
-    debug.type = DetectionType::DEBUG;
+    debug.type = FridaDetectionType::DEBUG;
     debug.isEnabled = true;
     debug.isAutoApply = true;
     debug.bypassMethod = "hide_debug";
@@ -86,7 +86,7 @@ void FridaXposedDetector::initializeBypassConfigs(const QString& instanceId) {
     
     // Emulator bypass
     BypassConfig emulator;
-    emulator.type = DetectionType::EMULATOR;
+    emulator.type = FridaDetectionType::EMULATOR;
     emulator.isEnabled = true;
     emulator.isAutoApply = true;
     emulator.bypassMethod = "hide_emulator";
@@ -128,7 +128,7 @@ bool FridaXposedDetector::enableFridaBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::FRIDA) {
+        if (config.type == FridaDetectionType::FRIDA) {
             config.isEnabled = true;
             config.isAutoApply = true;
             return applyFridaBypass(instanceId);
@@ -144,7 +144,7 @@ bool FridaXposedDetector::disableFridaBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::FRIDA) {
+        if (config.type == FridaDetectionType::FRIDA) {
             config.isEnabled = false;
             return true;
         }
@@ -160,7 +160,7 @@ bool FridaXposedDetector::applyFridaBypass(const QString& instanceId) {
     
     bool isEnabled = false;
     for (const auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::FRIDA) {
+        if (config.type == FridaDetectionType::FRIDA) {
             isEnabled = config.isEnabled;
             break;
         }
@@ -207,7 +207,7 @@ bool FridaXposedDetector::applyFridaArtifacts(const QString& instanceId) {
         ctrl.executeShell(instanceId, cmd);
     }
     
-    emit bypassApplied(instanceId, DetectionType::FRIDA, true);
+    emit bypassApplied(instanceId, FridaDetectionType::FRIDA, true);
     
     qDebug() << "Applied Frida bypass for:" << instanceId;
     
@@ -224,7 +224,7 @@ bool FridaXposedDetector::enableXposedBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::XPOSED) {
+        if (config.type == FridaDetectionType::XPOSED) {
             config.isEnabled = true;
             config.isAutoApply = true;
             return applyXposedBypass(instanceId);
@@ -240,7 +240,7 @@ bool FridaXposedDetector::disableXposedBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::XPOSED) {
+        if (config.type == FridaDetectionType::XPOSED) {
             config.isEnabled = false;
             return true;
         }
@@ -256,7 +256,7 @@ bool FridaXposedDetector::applyXposedBypass(const QString& instanceId) {
     
     bool isEnabled = false;
     for (const auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::XPOSED) {
+        if (config.type == FridaDetectionType::XPOSED) {
             isEnabled = config.isEnabled;
             break;
         }
@@ -299,7 +299,7 @@ bool FridaXposedDetector::applyXposedArtifacts(const QString& instanceId) {
         ctrl.executeShell(instanceId, cmd);
     }
     
-    emit bypassApplied(instanceId, DetectionType::XPOSED, true);
+    emit bypassApplied(instanceId, FridaDetectionType::XPOSED, true);
     
     qDebug() << "Applied Xposed bypass for:" << instanceId;
     
@@ -316,7 +316,7 @@ bool FridaXposedDetector::enableRootBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::ROOT) {
+        if (config.type == FridaDetectionType::ROOT) {
             config.isEnabled = true;
             config.isAutoApply = true;
             return applyRootBypass(instanceId);
@@ -332,7 +332,7 @@ bool FridaXposedDetector::disableRootBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::ROOT) {
+        if (config.type == FridaDetectionType::ROOT) {
             config.isEnabled = false;
             return true;
         }
@@ -348,7 +348,7 @@ bool FridaXposedDetector::applyRootBypass(const QString& instanceId) {
     
     bool isEnabled = false;
     for (const auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::ROOT) {
+        if (config.type == FridaDetectionType::ROOT) {
             isEnabled = config.isEnabled;
             break;
         }
@@ -403,7 +403,7 @@ bool FridaXposedDetector::applyRootArtifacts(const QString& instanceId) {
         ctrl.executeShell(instanceId, cmd);
     }
     
-    emit bypassApplied(instanceId, DetectionType::ROOT, true);
+    emit bypassApplied(instanceId, FridaDetectionType::ROOT, true);
     
     qDebug() << "Applied root bypass for:" << instanceId;
     
@@ -420,7 +420,7 @@ bool FridaXposedDetector::enableDebugBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::DEBUG) {
+        if (config.type == FridaDetectionType::DEBUG) {
             config.isEnabled = true;
             config.isAutoApply = true;
             return applyDebugBypass(instanceId);
@@ -436,7 +436,7 @@ bool FridaXposedDetector::disableDebugBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::DEBUG) {
+        if (config.type == FridaDetectionType::DEBUG) {
             config.isEnabled = false;
             return true;
         }
@@ -452,7 +452,7 @@ bool FridaXposedDetector::applyDebugBypass(const QString& instanceId) {
     
     bool isEnabled = false;
     for (const auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::DEBUG) {
+        if (config.type == FridaDetectionType::DEBUG) {
             isEnabled = config.isEnabled;
             break;
         }
@@ -498,7 +498,7 @@ bool FridaXposedDetector::applyDebugArtifacts(const QString& instanceId) {
         ctrl.executeShell(instanceId, cmd);
     }
     
-    emit bypassApplied(instanceId, DetectionType::DEBUG, true);
+    emit bypassApplied(instanceId, FridaDetectionType::DEBUG, true);
     
     qDebug() << "Applied debug bypass for:" << instanceId;
     
@@ -515,7 +515,7 @@ bool FridaXposedDetector::enableEmulatorBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::EMULATOR) {
+        if (config.type == FridaDetectionType::EMULATOR) {
             config.isEnabled = true;
             config.isAutoApply = true;
             return applyEmulatorBypass(instanceId);
@@ -531,7 +531,7 @@ bool FridaXposedDetector::disableEmulatorBypass(const QString& instanceId) {
     }
     
     for (auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::EMULATOR) {
+        if (config.type == FridaDetectionType::EMULATOR) {
             config.isEnabled = false;
             return true;
         }
@@ -547,7 +547,7 @@ bool FridaXposedDetector::applyEmulatorBypass(const QString& instanceId) {
     
     bool isEnabled = false;
     for (const auto& config : m_states[instanceId].bypassConfigs) {
-        if (config.type == DetectionType::EMULATOR) {
+        if (config.type == FridaDetectionType::EMULATOR) {
             isEnabled = config.isEnabled;
             break;
         }
@@ -597,7 +597,7 @@ bool FridaXposedDetector::applyEmulatorArtifacts(const QString& instanceId) {
         ctrl.executeShell(instanceId, cmd);
     }
     
-    emit bypassApplied(instanceId, DetectionType::EMULATOR, true);
+    emit bypassApplied(instanceId, FridaDetectionType::EMULATOR, true);
     
     qDebug() << "Applied emulator bypass for:" << instanceId;
     

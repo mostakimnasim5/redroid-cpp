@@ -144,8 +144,8 @@ public:
     std::map<std::string, std::string> getDetailedStatus();
     NetworkSpoofResult2 getStatus();
 
+    void applyAllChanges();        // Apply all active spoofing changes
 private:
-    void applyAllChanges();
     void restoreOriginalSettings();
     int generateRandomMACOctet(bool multicast = false);
     
