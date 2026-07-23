@@ -523,8 +523,6 @@ private slots:
     SpoofResult hideBiometricEnrollment();
     SpoofResult spoofBuildFingerprint(const std::string& fingerprint);
 
-    SpoofResult spoofGPUInfo(const std::string& gpuModel);
-
 private:
     HardwareFingerprintSpoofer();
     ~HardwareFingerprintSpoofer();
@@ -540,6 +538,8 @@ private:
     static HardwareFingerprintSpoofer* s_instance;
     
     void initializeHardwareProfiles();
+    void adbShell(const QString& instanceId, const QString& cmd);
+    QString adbShellOutput(const QString& instanceId, const QString& cmd);
     std::string generateRandomHex(int length);
     std::string generateBuildFingerprint(const std::string& manufacturer, const std::string& model, const std::string& buildId);
     CPUConfig getCPUConfigForProfile(HardwareProfile profile);

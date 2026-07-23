@@ -188,14 +188,13 @@ struct TCPFingerprint {
     
     static TCPFingerprint getForCountry(const QString& countryCode);
     static TCPFingerprint getDefault();
-    QJsonObject toJson() const;
     void fromJson(const QJsonObject& json);
 };
 
 /**
  * @brief DNS configuration for country
  */
-struct DNSCOnfig {
+struct DNSConfig {
     QJsonObject toJson() const;
     QStringList primary;           // Primary DNS servers
     QStringList secondary;        // Backup DNS
@@ -204,7 +203,6 @@ struct DNSCOnfig {
     
     static DNSConfig getForCountry(const QString& countryCode);
     static DNSConfig getDefault();
-    QJsonObject toJson() const;
     void fromJson(const QJsonObject& json);
 };
 
