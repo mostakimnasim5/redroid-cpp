@@ -224,9 +224,6 @@ bool NetworkProfile::fromJson(const QJsonObject& json) {
     return true;
 }
 
-    }
-}
-
 // ========================================================================
 // CELLULAR NETWORK SPOOFING
 // ========================================================================
@@ -433,13 +430,13 @@ TCPFingerprint TCPFingerprint::getDefault() {
     return fp;
 }
 
-DNSCOnfig NetworkProfileManager::generateDNSConfig(const QString& countryCode) {
-    return DNSCOnfig::getForCountry(countryCode);
+DNSConfig NetworkProfileManager::generateDNSConfig(const QString& countryCode) {
+    return DNSConfig::getForCountry(countryCode);
 }
 
-DNSCOnfig DNSCOnfig::getForCountry(const QString& countryCode) {
+DNSConfig DNSConfig::getForCountry(const QString& countryCode) {
     Q_UNUSED(countryCode)
-    DNSCOnfig dns;
+    DNSConfig dns;
     dns.primary = {"8.8.8.8", "1.1.1.1"};
     dns.secondary = {"8.8.4.4", "1.0.0.1"};
     dns.doh = {
@@ -468,3 +465,5 @@ QStringList NetworkProfileManager::generateWebRTCSetupCommands(const QString& in
     
     return commands;
 }
+
+} // namespace VirtualPhonePro

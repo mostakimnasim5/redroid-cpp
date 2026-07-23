@@ -397,7 +397,6 @@ private:
     QMap<QString, NetworkRealismState> m_states;
     QList<CABandCombination> m_caCombinations;
 
-    static NetworkRealismEnhancer* s_instance;
 };
 
 } // namespace VirtualPhonePro

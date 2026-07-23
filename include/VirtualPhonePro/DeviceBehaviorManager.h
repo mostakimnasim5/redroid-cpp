@@ -373,7 +373,6 @@ private:
     
     QMap<QString, DeviceBehaviorState> m_states;
 
-    static DeviceBehaviorManager* s_instance;
 };
 
 } // namespace VirtualPhonePro

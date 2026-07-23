@@ -1,4 +1,6 @@
 #pragma once
+#ifndef VIRTUALPHONEPRO_NETWORK_CONFIG_MANAGER_H
+#define VIRTUALPHONEPRO_NETWORK_CONFIG_MANAGER_H
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QMap>
@@ -169,3 +171,5 @@ private:
 };
 
 } // namespace VirtualPhonePro
+
+#endif // VIRTUALPHONEPRO_NETWORK_CONFIG_MANAGER_H

@@ -1174,7 +1174,7 @@ SafetyNetResult SafetyNetAdvancedBypass::checkForDangerousApps() {
     }
     
     result.success = true;
-    result.message = foundApps.isEmpty() ? "No dangerous apps found" : std::string("Hidden ") + std::to_string(foundApps.size()) + std::string(" dangerous apps");
+    result.message = foundApps.empty() ? "No dangerous apps found" : std::string("Hidden ") + std::to_string(foundApps.size()) + std::string(" dangerous apps");
     result.details["found"] = std::to_string(foundApps.size());
     return result;
 }
@@ -1315,7 +1315,7 @@ SafetyNetResult SafetyNetAdvancedBypass::checkMemoryTampering() {
     QString memPermissions = QString::fromStdString(adb.executeShellCommand(std::string("cat /proc/self/status | grep -i seccomp")));
     
     // If we can read this, memory is likely not tampered
-    bool isTampered = memPermissions.empty() || memPermissions.find("0000") != std::string::npos;
+    bool isTampered = memPermissions.isEmpty() || memPermissions.contains("0000");
     
     result.success = !isTampered;
     result.message = isTampered ? "Memory tampering detected" : "Memory integrity verified";

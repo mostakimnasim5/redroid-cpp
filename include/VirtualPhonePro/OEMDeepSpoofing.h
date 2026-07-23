@@ -238,7 +238,6 @@ public:
 private:
     static OEMDeepSpoofing* s_instance;
     OEMDeepSpoofing();
-    static OEMDeepSpoofing* s_instance;
     
     OEMState getDefaultsForType(OEMType type) const;
     QString oemTypeToString(OEMType type) const;

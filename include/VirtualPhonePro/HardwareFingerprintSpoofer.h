@@ -320,6 +320,7 @@ public:
     /**
      * @brief Spoof OpenGL/Vulkan info
      */
+    bool spoofGPUInfo(const QString& instanceId);
     bool spoofGraphicsInfo(const QString& instanceId);
     
     /**
