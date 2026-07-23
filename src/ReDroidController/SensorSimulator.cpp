@@ -32,7 +32,9 @@ SensorSimulator::SensorSimulator(QObject* parent)
 }
 
 SensorSimulator::~SensorSimulator() {
-    stopAllSensors();
+    for (auto t : m_sensorTimers) { if(t){t->stop();delete t;} }
+    for (auto t : m_gpsTimers)    { if(t){t->stop();delete t;} }
+    m_sensorTimers.clear(); m_gpsTimers.clear();
 }
 
 bool SensorSimulator::setGPSLocation(const QString& instanceId, double latitude, 

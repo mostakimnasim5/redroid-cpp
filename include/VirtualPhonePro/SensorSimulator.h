@@ -140,7 +140,7 @@ public:
     /**
      * @brief Start rotation simulation
      */
-    bool startRotation(const QString& instanceId, float speedX, float speedY, float speedZ);
+    bool startRotation(const QString& instanceId);
     
     /**
      * @brief Stop gyroscope simulation
@@ -160,7 +160,7 @@ public:
     /**
      * @brief Simulate compass movement
      */
-    bool startCompass(const QString& instanceId, float heading);
+    bool startCompass(const QString& instanceId);
     
     // =========================================================================
     // Multi-Sensor Management
@@ -174,7 +174,11 @@ public:
     /**
      * @brief Stop all sensor simulations
      */
-    bool stopAllSensors(const QString& instanceId);
+    bool stopGPSRoute(const QString& instanceId);
+    bool stopCompass(const QString& instanceId);
+    void simulateNextRoutePoint(const QString& instanceId);
+    QJsonObject getSensorStatus(const QString& instanceId);
+    void stopAllSensors(const QString& instanceId);
     
     /**
      * @brief Get current sensor values
@@ -186,6 +190,15 @@ signals:
     void gpsLocationChanged(const QString& instanceId, const GPSLocation& location);
 
 private:
+    QMap<QString,bool> m_shakeActive;
+    QMap<QString,bool> m_rotationActive;
+    QMap<QString,bool> m_compassActive;
+    QMap<QString,bool> m_gpsRouteActive;
+    QMap<QString,int>  m_gpsRouteIndex;
+    QMap<QString,int>  m_gpsRouteInterval;
+    QMap<QString,QTimer*> m_sensorTimers;
+    QMap<QString,QTimer*> m_gpsTimers;
+    void enableMockLocation(const QString& instanceId);
     static SensorSimulator* s_instance;
     explicit SensorSimulator(QObject* parent = nullptr);
     

@@ -1,3 +1,4 @@
+#include <QThread>
 /**
  * @file BatteryPowerManager.cpp
  * @brief Realistic Battery & Power Management Implementation

@@ -72,7 +72,7 @@ DeviceTimingSeed DeviceTimingSeed::fromJson(const QJsonObject& obj) {
     seed.gestureSeed = obj["gestureSeed"].toString().toULongLong();
     seed.networkSeed = obj["networkSeed"].toString().toULongLong();
     seed.sensorSeed = obj["sensorSeed"].toString().toULongLong();
-    seed.createdTimestamp = obj["createdTimestamp"].toLongLong();
+    seed.createdTimestamp = obj["createdTimestamp"].toInteger();
     seed.usageCount = obj["usageCount"].toInt();
     return seed;
 }

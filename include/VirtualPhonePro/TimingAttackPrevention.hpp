@@ -447,7 +447,7 @@ signals:
 
 private:
     explicit TimingAttackPrevention(QObject* parent = nullptr);
-    ~TimingAttackPrevention() = default;
+    ~TimingAttackPrevention();
     
     TimingAttackPrevention(const TimingAttackPrevention&) = delete;
     TimingAttackPrevention& operator=(const TimingAttackPrevention&) = delete;
