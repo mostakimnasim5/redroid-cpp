@@ -683,7 +683,7 @@ void SystemAppSimulator::initializeCarrierConfigs() {
     jioConfig.countryCode = "IN";
     jioConfig.networkOperator = "40586";
     jioConfig.networkOperatorName = "Jio";
-    jioConfig.preinstalledApps = {"com.jio.jioapps", "com.jio.sa.jiojoin", "com.jiofinance.jio"];
+    jioConfig.preinstalledApps = {"com.jio.jioapps", "com.jio.sa.jiojoin", "com.jio.jiofinance.jio"};
     jioConfig.carrierServices = {"com.jio.service"};
     jioConfig.isRoamingEnabled = true;
     jioConfig.isWiFiCallingEnabled = false;

@@ -315,7 +315,7 @@ int TimingAttackPrevention::generateSwipeDuration(const QString& instanceId, int
     GestureVelocityProfile profile = m_gestureProfiles.value(instanceId);
     
     float avgVelocity = (profile.minVelocity + profile.maxVelocity) / 2.0f;
-    float velocity = QRandomGenerator::global()->bounded(profile.minVelocity, profile.maxVelocity);
+    float velocity = (profile.minVelocity + (profile.maxVelocity - profile.minVelocity) * (float)QRandomGenerator::global()->generateDouble());
     
     int duration = static_cast<int>(distance / velocity);
     
@@ -366,7 +366,7 @@ float TimingAttackPrevention::generateTouchPressure(const QString& instanceId, i
     }
     
     // Add hold variation
-    float holdVar = QRandomGenerator::global()->bounded(-config.holdVariation, config.holdVariation);
+    float holdVar = (-config.holdVariation + 2.0f * config.holdVariation * (float)QRandomGenerator::global()->generateDouble());
     pressure += holdVar;
     
     // Clamp to valid range
