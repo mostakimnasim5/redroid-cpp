@@ -71,6 +71,7 @@ class SensorSimulator : public QObject {
 
 public:
     static SensorSimulator& instance();
+    virtual ~SensorSimulator();
     
     // =========================================================================
     // GPS Simulation
@@ -81,7 +82,7 @@ public:
      */
     bool setGPSLocation(const QString& instanceId, 
                         double latitude, double longitude,
-                        double altitude = 0, float accuracy = 5);
+                        double altitude = 0, double accuracy = 5.0);
     
     /**
      * @brief Start GPS movement simulation (route)

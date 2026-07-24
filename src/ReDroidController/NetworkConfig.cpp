@@ -28,8 +28,8 @@ NetworkConfigManager& NetworkConfigManager::instance() {
 }
 
 NetworkConfigManager::NetworkConfigManager(QObject* parent)
-    : QObject(parent)
 {
+    Q_UNUSED(parent)
 }
 
 NetworkConfigManager::~NetworkConfigManager() {

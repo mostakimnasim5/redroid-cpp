@@ -40,7 +40,7 @@ SELinuxManager::SELinuxManager(QObject* parent)
 // JSON CONVERSION
 // ========================================================================
 
-QJsonObject MitigationMitigationSELinuxConfig::toJson() const {
+QJsonObject MitigationSELinuxConfig::toJson() const {
     QJsonObject obj;
     obj["state"] = static_cast<int>(state);
     obj["enforcementLevel"] = static_cast<int>(enforcementLevel);
@@ -126,13 +126,13 @@ QString SEPolicRule::toString() const {
 // CONFIGURATION
 // ========================================================================
 
-void SELinuxManager::configure(const QString& instanceId, const MitigationMitigationSELinuxConfig& config) {
+void SELinuxManager::configure(const QString& instanceId, const MitigationSELinuxConfig& config) {
     QMutexLocker locker(&m_mutex);
     m_configs[instanceId] = config;
     qDebug() << "[SELinux] Configured for:" << instanceId;
 }
 
-MitigationMitigationSELinuxConfig SELinuxManager::getConfig(const QString& instanceId) const {
+MitigationSELinuxConfig SELinuxManager::getConfig(const QString& instanceId) const {
     QMutexLocker locker(const_cast<QMutex*>(&m_mutex));
     return m_configs.value(instanceId);
 }
@@ -140,7 +140,7 @@ MitigationMitigationSELinuxConfig SELinuxManager::getConfig(const QString& insta
 void SELinuxManager::resetConfig(const QString& instanceId) {
     QMutexLocker locker(&m_mutex);
     
-    MitigationMitigationSELinuxConfig defaultConfig;
+    MitigationSELinuxConfig defaultConfig;
     defaultConfig.state = SELinuxState::ENFORCING;
     defaultConfig.enforcementLevel = SELinuxEnforcementLevel::FULL_ENFORCING;
     defaultConfig.spoofSELinuxStatus = true;
@@ -162,7 +162,7 @@ bool SELinuxManager::applyEnforcementMasking(const QString& instanceId) {
     QMutexLocker locker(&m_mutex);
     
     ReDroidController& controller = ReDroidController::instance();
-    MitigationMitigationSELinuxConfig config = m_configs.value(instanceId);
+    MitigationSELinuxConfig config = m_configs.value(instanceId);
     
     qDebug() << "[SELinux] Applying enforcement masking for:" << instanceId;
     
@@ -251,7 +251,7 @@ SELinuxState SELinuxManager::getSELinuxState(const QString& instanceId) const {
 }
 
 QString SELinuxManager::getEnforceStatus(const QString& instanceId) const {
-    MitigationMitigationSELinuxConfig config = m_configs.value(instanceId);
+    MitigationSELinuxConfig config = m_configs.value(instanceId);
     
     if (config.state == SELinuxState::ENFORCING) {
         return "Enforcing";
@@ -263,7 +263,7 @@ QString SELinuxManager::getEnforceStatus(const QString& instanceId) const {
 }
 
 QString SELinuxManager::getSEStatus(const QString& instanceId) const {
-    MitigationMitigationSELinuxConfig config = m_configs.value(instanceId);
+    MitigationSELinuxConfig config = m_configs.value(instanceId);
     
     QString status = "SELinux status:                 enabled\n";
     status += QString("Current mode:                   %1\n")
@@ -485,7 +485,7 @@ SELinuxCheckResult SELinuxManager::verifyConfiguration(const QString& instanceId
     qDebug() << "[SELinux] Verifying configuration for:" << instanceId;
     
     ReDroidController& controller = ReDroidController::instance();
-    MitigationMitigationSELinuxConfig config = getConfig(instanceId);
+    MitigationSELinuxConfig config = getConfig(instanceId);
     
     // Check current state
     result.isEnforcing = (getSELinuxState(instanceId) == SELinuxState::ENFORCING);
@@ -549,7 +549,7 @@ SELinuxCheckResult SELinuxManager::verifyConfiguration(const QString& instanceId
 
 QStringList SELinuxManager::generateADBCommands(const QString& instanceId) {
     QStringList commands;
-    MitigationMitigationSELinuxConfig config = getConfig(instanceId);
+    MitigationSELinuxConfig config = getConfig(instanceId);
     
     // SELinux state commands
     if (config.state == SELinuxState::ENFORCING) {

@@ -3,7 +3,6 @@
 #ifndef VIRTUALPHONEPRO_REDROIDCONTROLLER_H
 #define VIRTUALPHONEPRO_REDROIDCONTROLLER_H
 
-#include "VirtualPhonePro/NetworkConfig.h"
 #include "VirtualPhonePro/NetworkConfigManager.h"
 #include "VirtualPhonePro/DeviceProfile.h"
 #include "VirtualPhonePro/AndroidRealismEngine.h"

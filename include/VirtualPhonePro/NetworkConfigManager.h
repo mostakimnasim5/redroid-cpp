@@ -147,7 +147,7 @@ struct NetworkStats {
 class NetworkConfigManager {
 public:
     static NetworkConfigManager& instance();
-    NetworkConfigManager();
+    explicit NetworkConfigManager(QObject* parent = nullptr);
     ~NetworkConfigManager();
 
     bool configureProxy(const QString& instanceId, const ProxyConfig& proxy);
