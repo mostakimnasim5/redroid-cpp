@@ -66,7 +66,7 @@ TestSuite TestingFramework::loadSuite(const QString& path) {
         testCase.id = tcObj["id"].toString();
         testCase.action = tcObj["action"].toString();
         testCase.params = tcObj["params"].toObject();
-        testCase.timeout = tcObj["timeout"].toInt(5000);
+        testCase.timeoutMs = tcObj["timeoutMs"].toInt(5000);
         testCase.expectedResult = tcObj["expected"].toString();
         suite.testCases.append(testCase);
     }
@@ -85,7 +85,7 @@ bool TestingFramework::saveSuite(const TestSuite& suite, const QString& path) {
         tcObj["id"] = tc.id;
         tcObj["action"] = tc.action;
         tcObj["params"] = tc.params;
-        tcObj["timeout"] = tc.timeout;
+        tcObj["timeoutMs"] = tc.timeout;
         tcObj["expected"] = tc.expectedResult;
         testCases.append(tcObj);
     }
@@ -133,7 +133,7 @@ TestReport TestingFramework::executeSuite(const QString& instanceId, const TestS
             report.passed++;
         } else {
             report.failed++;
-            report.failures.append(result);
+            report.failed.append(result);
         }
         
         report.results.append(result);
@@ -224,11 +224,11 @@ bool TestingFramework::removeTestCase(const QString& suiteId, const QString& tes
     return false;
 }
 
-QList<TestSuite> TestingFramework::getLoadedSuites() {
+QList<VirtualPhonePro::TestSuite> TestingFramework::getLoadedSuites() {
     return m_suites.values();
 }
 
-TestSuite TestingFramework::getSuite(const QString& suiteId) {
+VirtualPhonePro::TestSuite TestingFramework::getSuite(const QString& suiteId) {
     return m_suites.value(suiteId);
 }
 
@@ -258,7 +258,7 @@ QJsonObject TestingFramework::reportToJson(const TestReport& report) {
     json["results"] = results;
     
     QJsonArray failures;
-    for (const TestResult& result : report.failures) {
+    for (const TestResult& result : report.failed) {
         QJsonObject f;
         f["testId"] = result.testId;
         f["action"] = result.action;

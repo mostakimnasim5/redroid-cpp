@@ -1,4 +1,5 @@
 #pragma once
+#include <QObject>
 
 #ifndef VIRTUALPHONEPRO_TESTING_FRAMEWORK_H
 #define VIRTUALPHONEPRO_TESTING_FRAMEWORK_H
@@ -23,7 +24,9 @@ struct TestCase {
     QString action;  // "tap", "swipe", "input", "launch", "assert"
     QVariantMap params;  // Parameters for the action
     int timeoutMs;
+    int timeout = 30000;
     bool critical;
+    QJsonObject expectedResult;
 };
 
 /**
@@ -48,6 +51,9 @@ struct TestResult {
     qint64 durationMs;
     QString screenshot;
     QJsonObject logs;
+    QString action;
+    bool success = false;
+    QDateTime timestamp;
 };
 
 /**
@@ -63,6 +69,10 @@ struct TestReport {
     int skipped;
     QList<TestResult> results;
     QMap<QString, int> metrics;
+    QString suiteName;
+    QString error;
+    qint64 duration = 0;
+    int failures = 0;
 };
 
 /**
@@ -71,8 +81,11 @@ struct TestReport {
  * Provides automated testing capabilities including UI automation,
  * screenshot comparison, and test reporting.
  */
-class TestingFramework {
+class TestingFramework : public QObject {
+    Q_OBJECT
 public:
+    explicit TestingFramework(QObject* parent = nullptr);
+    virtual ~TestingFramework();
     static TestingFramework& instance();
     
     // =========================================================================
@@ -195,6 +208,16 @@ signals:
     void suiteStarted(const QString& suiteId);
     void suiteCompleted(const TestReport& report);
     void progress(int current, int total);
+
+
+    bool executeAction(const QString& instanceId, const TestCase& testCase);
+    bool addTestCase(const QString& suiteId, const TestCase& testCase);
+    bool removeTestCase(const QString& suiteId, const QString& testCaseId);
+    QList<VirtualPhonePro::TestSuite> getLoadedSuites();
+    VirtualPhonePro::TestSuite getSuite(const QString& suiteId);
+    QJsonObject reportToJson(const TestReport& report);
+    bool saveReport(const TestReport& report, const QString& filePath);
+    QString generateHTMLReport(const TestReport& report);
 
 private:
     static TestingFramework* s_instance;
