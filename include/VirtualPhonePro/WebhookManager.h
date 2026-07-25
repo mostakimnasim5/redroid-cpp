@@ -43,6 +43,8 @@ struct WebhookConfig {
     int retryCount;
     int timeoutMs;
     bool enabled;
+    QString secretKey;
+    int retryDelayMs = 3000;
 };
 
 /**
@@ -109,6 +111,7 @@ public:
      * @brief Trigger webhook for event
      */
     void triggerEvent(WebhookEvent event, const QJsonObject& data);
+    void triggerEvent(const QString& eventName, const QJsonObject& data);
     
     /**
      * @brief Trigger all matching webhooks
@@ -124,12 +127,33 @@ public:
      */
     void testWebhook(const QString& id);
     
+
+    QList<WebhookConfig> getWebhooks() const;
+    QList<WebhookConfig> getWebhooksForEvent(const QString& event) const;
+    QJsonArray getWebhookHistory(const QString& instanceId) const;
+    void clearHistory();
+
 signals:
     void webhookTriggered(const QString& id, WebhookEvent event);
     void webhookDelivered(const QString& id, bool success);
     void webhookError(const QString& id, const QString& error);
 
+
+private slots:
+    void onInstanceStarted(const QString& instanceId);
+    void onInstanceStopped(const QString& instanceId);
+    void onInstanceError(const QString& instanceId, const QString& error);
+    void onMemoryWarning(const QString& instanceId, quint64 used, quint64 total);
+    void onSafetyNetCheck(const QString& instanceId, bool passed);
+    void webhookTestResult(QNetworkReply* reply);
 private:
+
+    void sendWebhook(const WebhookConfig& config, const QString& event, const QJsonObject& data);
+    void scheduleRetry(const WebhookConfig& config, const QString& event, const QJsonObject& data, int attempt);
+    void loadWebhooks();
+    void saveWebhooks();
+    QMap<QNetworkReply*, QJsonObject> m_pendingReplies;
+    QMap<QString, QList<QJsonObject>> m_webhookHistory;
     static WebhookManager* s_instance;
     explicit WebhookManager(QObject* parent = nullptr);
     

@@ -137,12 +137,12 @@ void WebhookManager::sendWebhook(const WebhookConfig& webhook, const QString& ev
     QNetworkReply* reply = m_networkManager->post(request, QJsonDocument(payload).toJson());
     
     // Track pending reply
-    m_pendingReplies.append(reply);
+    m_pendingReplies.insert(reply, reply);
     
     // Handle timeout
     QTimer* timeoutTimer = new QTimer(this);
     timeoutTimer->setSingleShot(true);
-    timeoutTimer->setInterval(webhook.timeout);
+    timeoutTimer->setInterval(webhook.timeoutMs);
     
     connect(timeoutTimer, &QTimer::timeout, this, [this, reply, webhook, event]() {
         qWarning() << "[WebhookManager] Webhook timeout:" << webhook.id << "for event" << event;
@@ -151,7 +151,7 @@ void WebhookManager::sendWebhook(const WebhookConfig& webhook, const QString& ev
     
     connect(reply, &QNetworkReply::finished, this, [this, reply, webhook, event, timeoutTimer]() {
         timeoutTimer->deleteLater();
-        m_pendingReplies.removeAll(reply);
+        m_pendingReplies.remove(reply);
         
         if (reply->error() == QNetworkReply::NoError) {
             qDebug() << "[WebhookManager] Webhook sent successfully:" << webhook.id << "for event" << event;
@@ -278,7 +278,7 @@ void WebhookManager::saveWebhooks() {
 
 void WebhookManager::testWebhook(const QString& webhookId) {
     if (!m_webhooks.contains(webhookId)) {
-        emit webhookTestResult(webhookId, false, "Webhook not found");
+        // emit webhookTestResult(webhookId, false, "Webhook not found");
         return;
     }
     
