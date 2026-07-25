@@ -38,6 +38,29 @@
 
 namespace VirtualPhonePro {
 
+/**
+ * @brief Device build identity (manufacturer, brand, model info)
+ */
+struct DeviceBuildIdentity {
+    QString manufacturer;
+    QString brand;
+    QString model;
+    QString device;
+    QString product;
+    QString board;
+    QString hardware;
+    QString buildFingerprint;
+    QString buildId;
+    QString buildType;
+    QString buildTags;
+    QString bootloader;
+    QString baseband;
+    QString kernelVersion;
+    QString buildDescription;
+};
+
+
+
 // ============================================================================
 // Detection Signatures We Need to Hide
 // ============================================================================
@@ -304,7 +327,7 @@ public:
     /**
      * @brief Apply device identity spoofing
      */
-    bool spoofDeviceIdentity(const QString& instanceId, const MitigationDeviceIdentity& identity);
+    bool spoofDeviceIdentity(const QString& instanceId, const DeviceBuildIdentity& identity);
     
     /**
      * @brief Set debuggable/security flags
@@ -629,6 +652,8 @@ private:
     QMap<QString, MitigationDeviceIdentity> m_deviceProfiles;
     QList<VirtualizationSignature> m_knownSignatures;
 };
+
+using SELinuxStatusInfo = MitigationSELinuxState;
 
 } // namespace VirtualPhonePro
 

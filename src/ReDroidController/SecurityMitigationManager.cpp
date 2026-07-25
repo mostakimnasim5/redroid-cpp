@@ -951,7 +951,7 @@ QJsonObject SecurityMitigationManager::mockHardwareAttestation(const QString& in
     // Signature (mock)
     QByteArray signatureData = QJsonDocument(attestation["deviceInfo"].toObject()).toJson();
     signatureData += challengeBytes;
-    QByteArray signature = QCryptographicHash::hash(signatureData, QCryptographicHash::Sha256WithRsa);
+    QByteArray signature = QCryptographicHash::hash(signatureData, QCryptographicHash::Sha256);
     attestation["signature"] = QString(signature.toBase64());
     
     qDebug() << "Generated mock hardware attestation for package:" << packageName;
@@ -1444,7 +1444,7 @@ bool SecurityMitigationManager::checkForDockerArtifacts(const QString& instanceI
     };
     
     for (const QString& cmd : checks) {
-        QString result = ctrl.executeShellSync(instanceId, cmd);
+        QString result = ctrl.executeShell(instanceId, cmd);
         if (!result.isEmpty() && !result.contains("not found")) {
             return true;
         }
@@ -1465,7 +1465,7 @@ bool SecurityMitigationManager::checkForEmulatorArtifacts(const QString& instanc
     };
     
     for (const QString& path : paths) {
-        QString result = ctrl.executeShellSync(instanceId, QString("test -f %1 && echo found || echo notfound").arg(path));
+        QString result = ctrl.executeShell(instanceId, QString("test -f %1 && echo found || echo notfound").arg(path));
         if (result.contains("found")) {
             return true;
         }
@@ -1485,7 +1485,7 @@ bool SecurityMitigationManager::checkForRootArtifacts(const QString& instanceId)
     };
     
     for (const QString& path : paths) {
-        QString result = ctrl.executeShellSync(instanceId, QString("test -f %1 && echo found || echo notfound").arg(path));
+        QString result = ctrl.executeShell(instanceId, QString("test -f %1 && echo found || echo notfound").arg(path));
         if (result.contains("found")) {
             return true;
         }
@@ -1497,7 +1497,7 @@ bool SecurityMitigationManager::checkForRootArtifacts(const QString& instanceId)
 bool SecurityMitigationManager::checkForKernelLeaks(const QString& instanceId) {
     ReDroidController& ctrl = ReDroidController::instance();
     
-    QString version = ctrl.executeShellSync(instanceId, "cat /proc/version");
+    QString version = ctrl.executeShell(instanceId, "cat /proc/version");
     
     QStringList leakPatterns = {
         "docker", "qemu", "goldfish", "ranchu", "wsl", 
