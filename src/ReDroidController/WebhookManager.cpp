@@ -42,7 +42,7 @@ WebhookManager::WebhookManager(QObject* parent)
 
 WebhookManager::~WebhookManager() {
     // Clean up pending requests
-    for (QNetworkReply* reply : m_pendingReplies) {
+    for (QNetworkReply* reply : m_pendingReplies.keys()) {
         reply->abort();
         reply->deleteLater();
     }
@@ -137,7 +137,7 @@ void WebhookManager::sendWebhook(const WebhookConfig& webhook, const QString& ev
     QNetworkReply* reply = m_networkManager->post(request, QJsonDocument(payload).toJson());
     
     // Track pending reply
-    m_pendingReplies.insert(reply, reply);
+    m_pendingReplies.insert(reply, QJsonObject());
     
     // Handle timeout
     QTimer* timeoutTimer = new QTimer(this);
@@ -225,7 +225,7 @@ void WebhookManager::loadWebhooks() {
         WebhookConfig webhook;
         webhook.id     = obj["id"].toString();
         webhook.url    = obj["url"].toString();
-        webhook.secret = obj["secret"].toString();
+        webhook.secretKey = obj["secret"].toString();
         webhook.enabled = obj["enabled"].toBool(true);
         
         QJsonArray eventsArray = obj["events"].toArray();
@@ -251,7 +251,7 @@ void WebhookManager::saveWebhooks() {
         QJsonObject obj;
         obj["id"]      = webhook.id;
         obj["url"]     = webhook.url;
-        obj["secret"]  = webhook.secret;
+        obj["secret"]  = webhook.secretKey;
         obj["enabled"] = webhook.enabled;
         
         QJsonArray eventsArray;
@@ -295,7 +295,9 @@ void WebhookManager::testWebhook(const QString& webhookId) {
 }
 
 QJsonArray WebhookManager::getWebhookHistory(const QString& webhookId) {
-    return m_webhookHistory.value(webhookId);
+    QJsonArray arr;
+    for (const QJsonObject& obj : m_webhookHistory.value(webhookId)) arr.append(obj);
+    return arr;
 }
 
 void WebhookManager::clearHistory() {

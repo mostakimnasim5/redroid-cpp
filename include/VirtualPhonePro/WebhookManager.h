@@ -130,10 +130,11 @@ public:
 
     QList<WebhookConfig> getWebhooks() const;
     QList<WebhookConfig> getWebhooksForEvent(const QString& event) const;
-    QJsonArray getWebhookHistory(const QString& instanceId) const;
+    QJsonArray getWebhookHistory(const QString& webhookId);
     void clearHistory();
 
 signals:
+    void webhookSent(const QString& webhookId, const QString& event, bool success, const QString& error);
     void webhookTriggered(const QString& id, WebhookEvent event);
     void webhookDelivered(const QString& id, bool success);
     void webhookError(const QString& id, const QString& error);
