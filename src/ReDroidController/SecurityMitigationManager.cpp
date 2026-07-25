@@ -163,7 +163,7 @@ void SecurityMitigationManager::initializeKnownSignatures() {
 
 void SecurityMitigationManager::initializeDeviceProfiles() {
     // Samsung Galaxy S24 Ultra
-    DeviceBuildIdentity samsung24;
+    MitigationDeviceIdentity samsung24;
     samsung24.manufacturer = "samsung";
     samsung24.brand = "samsung";
     samsung24.model = "SM-S928B";
@@ -181,7 +181,7 @@ void SecurityMitigationManager::initializeDeviceProfiles() {
     m_deviceProfiles["samsung_s24_ultra"] = samsung24;
     
     // Google Pixel 8 Pro
-    DeviceBuildIdentity pixel8;
+    MitigationDeviceIdentity pixel8;
     pixel8.manufacturer = "google";
     pixel8.brand = "google";
     pixel8.model = "Pixel 8 Pro";
@@ -199,7 +199,7 @@ void SecurityMitigationManager::initializeDeviceProfiles() {
     m_deviceProfiles["google_pixel_8_pro"] = pixel8;
     
     // Xiaomi 14 Pro
-    DeviceBuildIdentity xiaomi14;
+    MitigationDeviceIdentity xiaomi14;
     xiaomi14.manufacturer = "xiaomi";
     xiaomi14.brand = "xiaomi";
     xiaomi14.model = "23116PN5BC";
@@ -662,7 +662,7 @@ bool SecurityMitigationManager::setRetailBuildProperties(const QString& instance
     return true;
 }
 
-bool SecurityMitigationManager::spoofDeviceIdentity(const QString& instanceId, const DeviceBuildIdentity& identity) {
+bool SecurityMitigationManager::spoofDeviceIdentity(const QString& instanceId, const MitigationDeviceIdentity& identity) {
     ReDroidController& ctrl = ReDroidController::instance();
     
     QStringList properties = {
@@ -1298,9 +1298,9 @@ bool SecurityMitigationManager::persistLifecycleState(const QString& instanceId)
     const LifecycleState& lifecycle = m_states[instanceId].lifecycle;
     
     stateJson["systemUptimeSeconds"] = QString::number(lifecycle.systemUptimeSeconds);
-    stateJson["batteryCycleCount"] = lifecycle.batteryCycleCount;
-    stateJson["batteryHealthPercent"] = lifecycle.batteryHealthPercent;
-    stateJson["batteryLevel"] = lifecycle.batteryLevel;
+    stateJson["batteryCycleCount"] = (qint64)lifecycle.batteryCycleCount;
+    stateJson["batteryHealthPercent"] = (qint64)lifecycle.batteryHealthPercent;
+    stateJson["batteryLevel"] = (qint64)lifecycle.batteryLevel;
     stateJson["batteryStatus"] = lifecycle.batteryStatus;
     stateJson["isCharging"] = lifecycle.isCharging;
     stateJson["lastBootTime"] = lifecycle.lastBootTime.toString(Qt::ISODate);
@@ -1812,8 +1812,8 @@ QJsonObject SecurityMitigationManager::getSecurityStateJSON(const QString& insta
     // Lifecycle
     QJsonObject lifecycle;
     lifecycle["systemUptimeSeconds"] = QString::number(state.lifecycle.systemUptimeSeconds);
-    lifecycle["batteryCycles"] = state.lifecycle.batteryCycleCount;
-    lifecycle["batteryHealthPercent"] = state.lifecycle.batteryHealthPercent;
+    lifecycle["batteryCycles"] = (qint64)state.lifecycle.batteryCycleCount;
+    lifecycle["batteryHealthPercent"] = (qint64)state.lifecycle.batteryHealthPercent;
     json["lifecycle"] = lifecycle;
     
     return json;
@@ -1912,7 +1912,7 @@ KernelSpoofConfig SecurityMitigationManager::getKernelConfigForDevice(const QStr
     return defaultConfig;
 }
 
-DeviceBuildIdentity SecurityMitigationManager::getDeviceIdentityForProfile(const QString& profile) {
+MitigationDeviceIdentity SecurityMitigationManager::getDeviceIdentityForProfile(const QString& profile) {
     if (m_deviceProfiles.contains(profile)) {
         return m_deviceProfiles[profile];
     }

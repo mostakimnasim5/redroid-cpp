@@ -41,7 +41,7 @@ namespace VirtualPhonePro {
 /**
  * @brief Device build identity (manufacturer, brand, model info)
  */
-struct DeviceBuildIdentity {
+struct MitigationDeviceIdentity_Extra {  // unused
     QString manufacturer;
     QString brand;
     QString model;
@@ -327,7 +327,7 @@ public:
     /**
      * @brief Apply device identity spoofing
      */
-    bool spoofDeviceIdentity(const QString& instanceId, const DeviceBuildIdentity& identity);
+    bool spoofDeviceIdentity(const QString& instanceId, const MitigationDeviceIdentity& identity);
     
     /**
      * @brief Set debuggable/security flags
