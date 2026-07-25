@@ -12,6 +12,7 @@
 #include <QTcpSocket>
 #include <QHostAddress>
 #include <QNetworkProxy>
+#include "VirtualPhonePro/ReDroidController.h"
 
 namespace VirtualPhonePro {
 
@@ -67,6 +68,11 @@ public:
      */
     void setAuthEnabled(bool enabled);
     
+public slots:
+    void handleNewConnection();
+    void handleClientData();
+    void handleClientDisconnected();
+
 signals:
     void serverStarted(quint16 port);
     void serverStopped();
@@ -74,6 +80,13 @@ signals:
     void error(const QString& message);
 
 private:
+    void sendResponse(QTcpSocket* socket, const QJsonObject& response);
+    void sendErrorResponse(QTcpSocket* socket, const QString& error, int code = 400);
+    QJsonObject dispatchEndpoint(const QString& method, const QString& path, const QJsonObject& body);
+    QString stateToString(InstanceState state) const;
+    QJsonObject instanceToJson(const InstanceInfo& info) const;
+    QJsonObject profileToJson(const DeviceProfile& profile) const;
+    QJsonObject createProfileInfo(const QString& name, const QString& manufacturer, const QString& model) const;
     static APIServer* s_instance;
     explicit APIServer(QObject* parent = nullptr);
     

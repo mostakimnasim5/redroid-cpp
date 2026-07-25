@@ -218,6 +218,8 @@ public:
     // Factory methods
     static DeviceProfile createSamsungS24Ultra();
     static DeviceProfile createGooglePixel8Pro();
+    static DeviceProfile createGooglePixel8();
+    static DeviceProfile createXiaomi14();
     static DeviceProfile createRandom();
     
     // Property generation helpers

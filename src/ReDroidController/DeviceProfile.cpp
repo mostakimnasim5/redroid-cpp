@@ -712,4 +712,18 @@ DeviceProfile DeviceProfile::createRandom() {
     return profile;
 }
 
+
+DeviceProfile DeviceProfile::createGooglePixel8() {
+    DeviceProfile p = createGooglePixel8Pro();
+    p.identity.brand = "google";
+    return p;
+}
+
+DeviceProfile DeviceProfile::createXiaomi14() {
+    DeviceProfile p = createRandom();
+    p.identity.manufacturer = "Xiaomi";
+    p.identity.brand = "Xiaomi";
+    return p;
+}
+
 } // namespace VirtualPhonePro
