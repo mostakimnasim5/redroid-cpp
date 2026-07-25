@@ -36,14 +36,14 @@ DeviceProfile MultiInstanceManager::cloneProfile(const DeviceProfile& base,
     profile.name = QString("%1 #%2").arg(base.name).arg(index + 1);
     profile.instanceIndex = index;
     
-    if (m_maxConcurrentInstances.assignUniqueIdentity) {
+    if (true) { // Always assign unique identity per instance
         // Generate unique IMEI
         QString tac = base.identity.imei.left(8);
         profile.identity.imei = DeviceProfile::generateIMEI(tac);
         profile.identity.imei2 = DeviceProfile::generateIMEI(tac);
         profile.identity.serialNumber = DeviceProfile::generateSerial(base.manufacturer);
         profile.identity.androidId = DeviceProfile::generateAndroidId();
-        profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded(1000000000, 9999999999));
+        profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded((quint64)1000000000ULL, (quint64)9999999999ULL));
         
         // Generate unique MAC addresses
         profile.mac.wifiMac = DeviceProfile::generateMAC("8C:71:F8");
@@ -51,7 +51,7 @@ DeviceProfile MultiInstanceManager::cloneProfile(const DeviceProfile& base,
         profile.mac.ethernetMac = DeviceProfile::generateMAC("00:1A:11");
     }
     
-    if (m_maxConcurrentInstances.assignUniqueIP) {
+    if (false) { // IP assigned via Docker network
         // Unique IP would be assigned via Docker network
     }
     
@@ -359,17 +359,11 @@ int MultiInstanceManager::getRecommendedMaxInstances() const {
     // Simple heuristic based on typical system
     // In production, would check actual CPU cores and memory
     
-    SYSTEM_INFO sysInfo;
-    GetSystemInfo(&sysInfo);
-    
-    int cpuCores = sysInfo.dwNumberOfProcessors;
+    int cpuCores = QThread::idealThreadCount();
+    if (cpuCores <= 0) cpuCores = 4;
     
     // Assume 2 cores per instance, 1GB RAM per instance
-    MEMORYSTATUSEX memInfo;
-    memInfo.dwLength = sizeof(memInfo);
-    GlobalMemoryStatusEx(&memInfo);
-    
-    quint64 totalRAM = memInfo.ullTotalPhys / (1024 * 1024);  // MB
+    quint64 totalRAM = 4096; // Default 4GB assumption (cross-platform)
     
     int maxByCPU = cpuCores / 2;
     int maxByRAM = totalRAM / 1024;
@@ -435,7 +429,7 @@ QStringList MultiInstanceManager::getInstancesByState(InstanceState state) const
     return instances;
 }
 
-int MultiInstanceManager::findAvailablePort() const {
+int MultiInstanceManager::findAvailablePort() {
     QMutexLocker locker(&m_mutex);
     
     ReDroidController& ctrl = ReDroidController::instance();

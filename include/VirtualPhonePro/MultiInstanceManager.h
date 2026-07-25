@@ -209,7 +209,7 @@ public:
      * @brief Find available port for new instance
      * @return Available port number
      */
-    int findAvailablePort() const;
+    int findAvailablePort();
     
 signals:
     /**
@@ -220,6 +220,7 @@ signals:
     /**
      * @brief Emitted when instance state changes in batch
      */
+    void instanceStateChanged(const QString& instanceId, InstanceState state);
     void batchInstanceStateChanged(const QString& instanceId, InstanceState state);
     
     /**
@@ -253,7 +254,7 @@ private:
     
     // Resource tracking
     QSet<QString> m_deployedInstances;
-    QMutex m_mutex;
+    mutable QMutex m_mutex;
     
     // Port allocation
     int m_nextAvailablePort;
