@@ -1,3 +1,4 @@
+#include <QThread>
 /**
  * @file TestingFramework.cpp
  * @brief Automated Testing Framework Implementation
@@ -22,7 +23,7 @@ TestingFramework* TestingFramework::s_instance = nullptr;
 
 TestingFramework& TestingFramework::instance() {
     if (!s_instance) {
-        s_instance = new TestingFramework();
+        s_instance = new TestingFramework(nullptr);
     }
     return *s_instance;
 }
@@ -65,9 +66,9 @@ TestSuite TestingFramework::loadSuite(const QString& path) {
         TestCase testCase;
         testCase.id = tcObj["id"].toString();
         testCase.action = tcObj["action"].toString();
-        testCase.params = tcObj["params"].toObject();
+        testCase.params = tcObj["params"].toObject().toVariantMap();
         testCase.timeoutMs = tcObj["timeoutMs"].toInt(5000);
-        testCase.expectedResult = tcObj["expected"].toString();
+        testCase.expectedResult = tcObj["expected"].toObject();
         suite.testCases.append(testCase);
     }
     
@@ -84,8 +85,8 @@ bool TestingFramework::saveSuite(const TestSuite& suite, const QString& path) {
         QJsonObject tcObj;
         tcObj["id"] = tc.id;
         tcObj["action"] = tc.action;
-        tcObj["params"] = tc.params;
-        tcObj["timeoutMs"] = tc.timeout;
+        tcObj["params"] = QJsonObject::fromVariantMap(tc.params);
+        tcObj["timeoutMs"] = tc.timeoutMs;
         tcObj["expected"] = tc.expectedResult;
         testCases.append(tcObj);
     }
@@ -133,7 +134,6 @@ TestReport TestingFramework::executeSuite(const QString& instanceId, const TestS
             report.passed++;
         } else {
             report.failed++;
-            report.failed.append(result);
         }
         
         report.results.append(result);
@@ -148,7 +148,7 @@ TestReport TestingFramework::executeSuite(const QString& instanceId, const TestS
 bool TestingFramework::executeAction(const QString& instanceId, const TestCase& testCase) {
     ReDroidController& ctrl = ReDroidController::instance();
     QString action = testCase.action.toLower();
-    QJsonObject params = testCase.params;
+    QJsonObject params = QJsonObject::fromVariantMap(testCase.params);
     
     if (action == "tap") {
         int x = params["x"].toInt();
@@ -258,7 +258,8 @@ QJsonObject TestingFramework::reportToJson(const TestReport& report) {
     json["results"] = results;
     
     QJsonArray failures;
-    for (const TestResult& result : report.failed) {
+    for (const TestResult& result : report.results) {
+        if (result.passed) continue;
         QJsonObject f;
         f["testId"] = result.testId;
         f["action"] = result.action;

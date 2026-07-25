@@ -220,6 +220,8 @@ signals:
     QString generateHTMLReport(const TestReport& report);
 
 private:
+    QMap<QString, TestSuite> m_suites;
+    QMap<QString, TestReport> m_reports;
     static TestingFramework* s_instance;
     TestingFramework() = default;
     
