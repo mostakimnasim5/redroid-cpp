@@ -57,7 +57,15 @@ namespace VirtualPhonePro {
 // ========================================================================
 
 struct DeviceProfile;
-struct AppInfo;
+struct AppInfo {
+    QString packageName;
+    QString name;
+    QString version;
+    QString icon;
+    bool isSystem = false;
+    bool isEnabled = true;
+    qint64 size = 0;
+};
 
 // ========================================================================
 // App Manager Dialog
@@ -76,7 +84,17 @@ private slots:
     void onLaunchClicked();
     void onUninstallClicked();
 
+private slots:
+    void onInstallFinished(int exitCode, QProcess::ExitStatus status);
+
 private:
+    void setupControlPanel();
+    void setupActionPanel();
+    void styleButton(QPushButton* btn, const QString& style);
+    QPushButton* createControlButton(const QString& text, const QString& icon);
+    QPushButton* createActionButton(const QString& text, const QString& icon);
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
     void loadInstalledApps();
     void executeAdbCommand(const QStringList& args);
     

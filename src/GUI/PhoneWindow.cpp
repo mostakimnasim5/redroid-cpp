@@ -179,7 +179,7 @@ PhoneWindow::PhoneWindow(const QString& instanceId,
     : QMainWindow(parent)
     , m_instanceId(instanceId)
     , m_profile(profile)
-    , m_deviceName(profile.model.isEmpty() ? "Unknown Device" : profile.model)
+    , m_deviceName(profile.build.model.isEmpty() ? "Unknown Device" : profile.model)
     , m_instanceNumber(1)
     , m_screenTimer(nullptr)
     , m_fpsTimer(nullptr)
@@ -1281,19 +1281,19 @@ void PhoneWindow::onInstanceStateChanged(const QString& instanceId, InstanceStat
     if (instanceId != m_instanceId) return;
     
     switch (state) {
-        case InstanceState::STOPPED:
+        case InstanceState::Stopped:
             m_protectionStatus->setText("🛡️ State: Stopped");
             stopScreenMirror();
             break;
-        case InstanceState::STARTING:
+        case InstanceState::Starting:
             m_protectionStatus->setText("🛡️ State: Starting...");
             break;
-        case InstanceState::RUNNING:
+        case InstanceState::Running:
             m_protectionStatus->setText("🛡️ State: Running");
             startScreenMirror();
             setConnected(true);
             break;
-        case InstanceState::ERROR:
+        case InstanceState::Error:
             m_protectionStatus->setText("🛡️ State: Error");
             break;
     }
