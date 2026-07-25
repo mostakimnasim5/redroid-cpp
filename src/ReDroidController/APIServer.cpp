@@ -744,13 +744,11 @@ void APIServer::sendErrorResponse(QTcpSocket* socket, const QString& message, in
 
 QString APIServer::stateToString(InstanceState state) {
     switch (state) {
-        case InstanceState::Created: return "created";
+        case InstanceState::Stopped:  return "stopped";
         case InstanceState::Starting: return "starting";
-        case InstanceState::Running: return "running";
-        case InstanceState::Stopping: return "stopping";
-        case InstanceState::Stopped: return "stopped";
-        case InstanceState::Paused: return "paused";
-        case InstanceState::Error: return "error";
+        case InstanceState::Running:  return "running";
+        case InstanceState::Paused:   return "paused";
+        case InstanceState::Error:    return "error";
         default: return "unknown";
     }
 }
@@ -777,9 +775,9 @@ QJsonObject APIServer::profileToJson(const DeviceProfile& profile) {
     obj["id"] = profile.id;
     obj["name"] = profile.name;
     obj["manufacturer"] = profile.manufacturer;
-    obj["brand"] = profile.brand;
-    obj["model"] = profile.model;
-    obj["androidVersion"] = profile.androidVersion;
+    obj["brand"] = profile.build.brand;
+    obj["model"] = profile.build.model;
+    obj["androidVersion"] = profile.manufacturer;
     return obj;
 }
 

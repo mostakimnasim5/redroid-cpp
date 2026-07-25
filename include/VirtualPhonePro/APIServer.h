@@ -83,10 +83,10 @@ private:
     void sendResponse(QTcpSocket* socket, const QJsonObject& response);
     void sendErrorResponse(QTcpSocket* socket, const QString& error, int code = 400);
     QJsonObject dispatchEndpoint(const QString& method, const QString& path, const QJsonObject& body);
-    QString stateToString(InstanceState state) const;
-    QJsonObject instanceToJson(const InstanceInfo& info) const;
-    QJsonObject profileToJson(const DeviceProfile& profile) const;
-    QJsonObject createProfileInfo(const QString& name, const QString& manufacturer, const QString& model) const;
+    QString stateToString(InstanceState state);
+    QJsonObject instanceToJson(const InstanceInfo& info);
+    QJsonObject profileToJson(const DeviceProfile& profile);
+    QJsonObject createProfileInfo(const QString& name, const QString& manufacturer, const QString& model);
     static APIServer* s_instance;
     explicit APIServer(QObject* parent = nullptr);
     

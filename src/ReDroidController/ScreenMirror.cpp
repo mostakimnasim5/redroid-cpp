@@ -1,3 +1,4 @@
+#include <fstream>
 #include "VirtualPhonePro/ScreenMirror.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
 #include "VirtualPhonePro/Logger.hpp"

@@ -1,3 +1,4 @@
+#include <QThread>
 /**
  * @file ScreenStateManager.cpp
  * @brief Realistic Screen State & Brightness Implementation
@@ -232,7 +233,7 @@ bool ScreenStateManager::enterDoze(const QString& instanceId) {
     info.isOn = true;
     info.isDozing = true;
     info.state = ScreenState::DOZE;
-    info.displayState = DisplayState::DOZE;
+    info.displayState = DisplayState::AoD;
     info.brightness = 10; // Very dim in doze
     
     ReDroidController& ctrl = ReDroidController::instance();

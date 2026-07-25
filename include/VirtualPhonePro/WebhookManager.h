@@ -65,6 +65,7 @@ class WebhookManager : public QObject {
 
 public:
     static WebhookManager& instance();
+    virtual ~WebhookManager();
     
     // =========================================================================
     // Webhook Management
@@ -139,7 +140,7 @@ private:
     void sendWebhook(const WebhookConfig& config, const WebhookPayload& payload);
     void handleReply(const WebhookConfig& config, QNetworkReply* reply);
     
-    QList<WebhookConfig> m_webhooks;
+    QMap<QString, WebhookConfig> m_webhooks;
     QNetworkAccessManager* m_networkManager;
     QTimer* m_retryTimer;
     QMap<QString, int> m_retryCount;

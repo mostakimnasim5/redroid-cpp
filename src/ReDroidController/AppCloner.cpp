@@ -21,7 +21,7 @@ AppCloner* AppCloner::s_instance = nullptr;
 
 AppCloner& AppCloner::instance() {
     if (!s_instance) {
-        s_instance = new AppCloner();
+        s_instance = new AppCloner(nullptr);
     }
     return *s_instance;
 }

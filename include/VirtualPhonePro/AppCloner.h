@@ -1,4 +1,5 @@
 #pragma once
+#include <QObject>
 
 #ifndef VIRTUALPHONEPRO_APP_CLONER_H
 #define VIRTUALPHONEPRO_APP_CLONER_H
@@ -16,8 +17,11 @@ namespace VirtualPhonePro {
  * Enables running multiple instances of the same app with different accounts
  * by manipulating Android's package manager and data directories.
  */
-class AppCloner {
+class AppCloner : public QObject {
+    Q_OBJECT
 public:
+    explicit AppCloner(QObject* parent = nullptr);
+    ~AppCloner();
     static AppCloner& instance();
     
     // =========================================================================
@@ -30,6 +34,8 @@ public:
      * @return List of package names
      */
     QStringList getInstalledApps(const QString& instanceId);
+    QStringList listInstalledApps(const QString& instanceId);
+    bool uninstallApp(const QString& instanceId, const QString& packageName);
     
     /**
      * @brief Clone an app to new package name
@@ -51,9 +57,7 @@ public:
      * @param packageName Package name to assign
      * @return true if successful
      */
-    bool installAsPackage(const QString& instanceId,
-                         const QString& apkPath,
-                         const QString& packageName);
+    bool installAsPackage(const QString& instanceId, const QString& apkPath, const QString& packageName, const QString& label = QString());
     
     /**
      * @brief Clear app data for fresh start

@@ -715,14 +715,15 @@ DeviceProfile DeviceProfile::createRandom() {
 
 DeviceProfile DeviceProfile::createGooglePixel8() {
     DeviceProfile p = createGooglePixel8Pro();
-    p.identity.brand = "google";
+    p.build.brand = "google";
     return p;
 }
 
 DeviceProfile DeviceProfile::createXiaomi14() {
     DeviceProfile p = createRandom();
-    p.identity.manufacturer = "Xiaomi";
-    p.identity.brand = "Xiaomi";
+    p.manufacturer = "Xiaomi";
+    p.build.brand = "Xiaomi";
+    p.build.manufacturer = "Xiaomi";
     return p;
 }
 
