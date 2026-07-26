@@ -21,16 +21,17 @@
 #include <QMap>
 #include <QPixmap>
 #include <QTimer>
+#include <QMenuBar>
+#include <QMenu>
 
 #include "VirtualPhonePro/ReDroidController.h"
 #include "VirtualPhonePro/DeviceProfile.h"
 #include "VirtualPhonePro/MultiInstanceManager.h"
 #include "VirtualPhonePro/BankingAppSpoofer.h"
 #include "VirtualPhonePro/SafetyNetSpoofer.h"
+#include "PhoneWindow.h"
 
 namespace VirtualPhonePro {
-
-class PhoneWindow;
 
 /**
  * @brief Dialog for creating a new phone instance
@@ -149,6 +150,7 @@ private slots:
     void onRefreshScreenshots();
     void updateInstanceCard(const QString& instanceId, InstanceState state);
     void onAdbConnectionChanged(const QString& instanceId, bool connected);
+    void setupConnections();
 
 private:
     void setupUI();

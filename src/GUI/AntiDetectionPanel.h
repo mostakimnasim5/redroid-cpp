@@ -21,6 +21,8 @@
 #include <QTimer>
 #include <QJsonObject>
 
+#include "VirtualPhonePro/DeviceProfile.h"
+
 namespace VirtualPhonePro {
 
 // ============================================================================
@@ -88,6 +90,7 @@ private:
     void createControlButtons();
     void createStatusArea();
     void loadModuleStatus();
+    void updateOverallStatus();
     void applyModule(const QString& moduleName, bool enabled);
     
     // Module application methods
@@ -101,6 +104,7 @@ private:
     bool applyPlayIntegrity();
 
     QString m_instanceId;
+    DeviceProfile m_profile;
     QTableWidget* m_moduleTable;
     QPushButton* m_applyAllButton;
     QPushButton* m_applySelectedButton;

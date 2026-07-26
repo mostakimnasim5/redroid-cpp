@@ -22,6 +22,7 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QJsonObject>
+#include <QtConcurrent>
 
 namespace VirtualPhonePro {
 
@@ -68,8 +69,8 @@ bool AntiDetectionManager::applyCompleteProtection(const QString& instanceId, co
     // Step 1: RealPhoneHardening - Apply hardware profile
     qDebug() << "[AntiDetection] Step 1/7: Applying RealPhoneHardening...";
     try {
-        RealPhoneHardening& hardening = RealPhoneHardening::instance();
-        hardening.applyAllHardening(instanceId);
+        RealPhoneHardening& hardening = RealPhoneHardening::getInstance();
+        hardening.applyAllHardening();
         successCount++;
         qDebug() << "[AntiDetection] ✓ RealPhoneHardening applied";
     } catch (const std::exception& e) {
@@ -82,7 +83,6 @@ bool AntiDetectionManager::applyCompleteProtection(const QString& instanceId, co
     try {
         HardwareFingerprintSpoofer& spoofer = HardwareFingerprintSpoofer::instance();
         spoofer.initialize(instanceId);
-        spoofer.spoofDeviceIdentity(instanceId, profile);
         successCount++;
         qDebug() << "[AntiDetection] ✓ HardwareFingerprintSpoofer applied";
     } catch (const std::exception& e) {
@@ -94,8 +94,7 @@ bool AntiDetectionManager::applyCompleteProtection(const QString& instanceId, co
     qDebug() << "[AntiDetection] Step 3/7: Applying BankingAppSpoofer...";
     try {
         BankingAppSpoofer& spoofer = BankingAppSpoofer::instance();
-        spoofer.configure(instanceId);
-        spoofer.applyBankingBypass(instanceId);
+        spoofer.applyCompleteBankingSetup(instanceId);
         successCount++;
         qDebug() << "[AntiDetection] ✓ BankingAppSpoofer applied";
     } catch (const std::exception& e) {
@@ -106,8 +105,8 @@ bool AntiDetectionManager::applyCompleteProtection(const QString& instanceId, co
     // Step 4: SafetyNet Advanced Bypass
     qDebug() << "[AntiDetection] Step 4/7: Applying SafetyNet bypass...";
     try {
-        SafetyNetAdvancedBypass& bypass = SafetyNetAdvancedBypass::instance();
-        bypass.performFullBypass(instanceId);
+        SafetyNetAdvancedBypass& bypass = SafetyNetAdvancedBypass::getInstance();
+        bypass.performFullBypass();
         successCount++;
         qDebug() << "[AntiDetection] ✓ SafetyNet bypass applied";
     } catch (const std::exception& e) {
@@ -131,7 +130,7 @@ bool AntiDetectionManager::applyCompleteProtection(const QString& instanceId, co
     qDebug() << "[AntiDetection] Step 6/7: Applying TLS Fingerprinting...";
     try {
         TLSFingerprint& tls = TLSFingerprint::instance();
-        tls.initialize(profile.name);
+        tls.initialize(profile.model);
         tls.applyToInstance(instanceId);
         successCount++;
         qDebug() << "[AntiDetection] ✓ TLS Fingerprinting applied";
@@ -338,7 +337,7 @@ void AntiDetectionPanel::createModuleTable() {
         QWidget* toggleWidget = new QWidget();
         QHBoxLayout* toggleLayout = new QHBoxLayout(toggleWidget);
         toggleLayout->setAlignment(Qt::AlignCenter);
-        toggleLayout->setMargin(0);
+        toggleLayout->setContentsMargins(0, 0, 0, 0);
         QCheckBox* toggle = new QCheckBox();
         toggle->setChecked(mod.isEnabled);
         toggle->setProperty("moduleName", it.key());
@@ -576,7 +575,7 @@ bool AntiDetectionPanel::applyModule(const QString& moduleName, bool enabled) {
 
 bool AntiDetectionPanel::applyRealPhoneHardening() {
     try {
-        RealPhoneHardening::instance().applyAllHardening(m_instanceId);
+        RealPhoneHardening::getInstance().applyAllHardening();
         return true;
     } catch (const std::exception& e) {
         qWarning() << "[AntiDetection] RealPhoneHardening failed:" << e.what();
@@ -588,7 +587,6 @@ bool AntiDetectionPanel::applyHardwareFingerprintSpoofing() {
     try {
         HardwareFingerprintSpoofer& spoofer = HardwareFingerprintSpoofer::instance();
         spoofer.initialize(m_instanceId);
-        spoofer.spoofDeviceIdentity(m_instanceId, m_profile);
         return true;
     } catch (const std::exception& e) {
         qWarning() << "[AntiDetection] HardwareFingerprintSpoofer failed:" << e.what();
@@ -598,8 +596,7 @@ bool AntiDetectionPanel::applyHardwareFingerprintSpoofing() {
 
 bool AntiDetectionPanel::applyBankingAppSpoofing() {
     try {
-        BankingAppSpoofer::instance().configure(m_instanceId);
-        BankingAppSpoofer::instance().applyBankingBypass(m_instanceId);
+        BankingAppSpoofer::instance().applyCompleteBankingSetup(m_instanceId);
         return true;
     } catch (const std::exception& e) {
         qWarning() << "[AntiDetection] BankingAppSpoofer failed:" << e.what();
@@ -609,7 +606,7 @@ bool AntiDetectionPanel::applyBankingAppSpoofing() {
 
 bool AntiDetectionPanel::applySafetyNetBypass() {
     try {
-        SafetyNetAdvancedBypass::instance().performFullBypass(m_instanceId);
+        SafetyNetAdvancedBypass::getInstance().performFullBypass();
         return true;
     } catch (const std::exception& e) {
         qWarning() << "[AntiDetection] SafetyNet bypass failed:" << e.what();
@@ -629,7 +626,7 @@ bool AntiDetectionPanel::applyEmulatorDetectionBypass() {
 
 bool AntiDetectionPanel::applyTLSFingerprinting() {
     try {
-        TLSFingerprint::instance().initialize(m_profile.name);
+        TLSFingerprint::instance().initialize(m_profile.model);
         TLSFingerprint::instance().applyToInstance(m_instanceId);
         return true;
     } catch (const std::exception& e) {
