@@ -897,9 +897,9 @@ void UniqueDeviceGenerator::loadExistingRecords() {
     QByteArray data = file.readAll();
     file.close();
     
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-    if (error.error != QJsonParseError::NoError) {
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
         return;
     }
     
