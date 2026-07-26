@@ -793,10 +793,9 @@ bool FridaXposedDetector::reset(const QString& instanceId) {
     return true;
 }
 
-bool FridaXposedDetector::bypassApplied(const QString& instanceId, FridaDetectionType type, bool applied) {
+void FridaXposedDetector::bypassApplied(const QString& instanceId, FridaDetectionType type, bool success) {
     Q_UNUSED(instanceId);
-    qDebug() << "[FridaXposed] Bypass applied for type" << static_cast<int>(type) << ":" << applied;
-    return applied;
+    qDebug() << "[FridaXposed] Bypass applied for type" << static_cast<int>(type) << ":" << success;
 }
 
 } // namespace VirtualPhonePro
