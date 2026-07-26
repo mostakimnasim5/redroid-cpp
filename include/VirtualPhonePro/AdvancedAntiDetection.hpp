@@ -24,6 +24,9 @@
 #include <chrono>
 #include <cmath>
 
+// Forward declarations
+class OEMDeepSpoofing;
+
 namespace VirtualPhonePro {
 
 // ========================================================================
