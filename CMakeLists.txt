@@ -108,7 +108,14 @@ if(BUILD_QT6_GUI)
     # Find Qt6 - works on both Linux and Windows CI (install-qt-action sets CMAKE_PREFIX_PATH)
     find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED)
     
+    # Get Qt6 include directories
+    get_target_property(QT6_CORE_INCLUDE_DIRS Qt6::Core INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(QT6_GUI_INCLUDE_DIRS Qt6::Gui INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(QT6_WIDGETS_INCLUDE_DIRS Qt6::Widgets INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(QT6_NETWORK_INCLUDE_DIRS Qt6::Network INTERFACE_INCLUDE_DIRECTORIES)
+    
     message(STATUS "Found Qt6: ${Qt6_DIR}")
+    message(STATUS "Qt6 Network include dirs: ${QT6_NETWORK_INCLUDE_DIRS}")
     
     # =========================================================================
     # ALL ReDroidController Source Files
@@ -299,6 +306,10 @@ if(BUILD_QT6_GUI)
         ${CMAKE_SOURCE_DIR}/src/Data
         ${CMAKE_SOURCE_DIR}/src/ReDroidController
         ${Qt6_INCLUDE_DIRS}
+        ${QT6_CORE_INCLUDE_DIRS}
+        ${QT6_GUI_INCLUDE_DIRS}
+        ${QT6_WIDGETS_INCLUDE_DIRS}
+        ${QT6_NETWORK_INCLUDE_DIRS}
     )
     
     # Link Qt6 libraries
