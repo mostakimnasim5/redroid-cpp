@@ -606,23 +606,23 @@ void HardwareFingerprintSpoofer::restoreOriginalValues() {
 // Missing method implementations
 SpoofResult HardwareFingerprintSpoofer::hideBiometricEnrollment() {
     qDebug() << "[HardwareFingerprintSpoofer] Hiding biometric enrollment";
-    return SpoofResult::SUCCESS;
+    return {true, "Biometric enrollment hidden", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofBiometricInfo() {
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing biometric info";
-    return SpoofResult::SUCCESS;
+    return {true, "Biometric info spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofSupportedABIs(const std::vector<std::string>& abis) {
     Q_UNUSED(abis);
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing supported ABIs";
-    return SpoofResult::SUCCESS;
+    return {true, "Supported ABIs spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofHardwareFeatures() {
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing hardware features";
-    return SpoofResult::SUCCESS;
+    return {true, "Hardware features spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofBatteryInfo(int level, const std::string& status, const std::string& health) {
@@ -630,12 +630,12 @@ SpoofResult HardwareFingerprintSpoofer::spoofBatteryInfo(int level, const std::s
     Q_UNUSED(status);
     Q_UNUSED(health);
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing battery info";
-    return SpoofResult::SUCCESS;
+    return {true, "Battery info spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setRealHardwareDMI() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting real hardware DMI";
-    return SpoofResult::SUCCESS;
+    return {true, "Real hardware DMI set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofDMIInfo(const std::string& vendor, const std::string& product,
@@ -645,55 +645,55 @@ SpoofResult HardwareFingerprintSpoofer::spoofDMIInfo(const std::string& vendor, 
     Q_UNUSED(manufacturer);
     Q_UNUSED(version);
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing DMI info";
-    return SpoofResult::SUCCESS;
+    return {true, "DMI info spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofKernelVersion(const std::string& version) {
     Q_UNUSED(version);
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing kernel version";
-    return SpoofResult::SUCCESS;
+    return {true, "Kernel version spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofRadioVersion(const std::string& version) {
     Q_UNUSED(version);
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing radio version";
-    return SpoofResult::SUCCESS;
+    return {true, "Radio version spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofBootloaderVersion(const std::string& version) {
     Q_UNUSED(version);
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing bootloader version";
-    return SpoofResult::SUCCESS;
+    return {true, "Bootloader version spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setOnePlus10Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting OnePlus 10 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "OnePlus 10 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setXiaomi12Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting Xiaomi 12 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "Xiaomi 12 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setGooglePixel7Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting Google Pixel 7 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "Google Pixel 7 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setGooglePixel6Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting Google Pixel 6 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "Google Pixel 6 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setSamsungGalaxyS22Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting Samsung Galaxy S22 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "Samsung Galaxy S22 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setSamsungGalaxyS21Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting Samsung Galaxy S21 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "Samsung Galaxy S21 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofDeviceInfo(const std::string& manufacturer,
@@ -703,22 +703,22 @@ SpoofResult HardwareFingerprintSpoofer::spoofDeviceInfo(const std::string& manuf
     Q_UNUSED(model);
     Q_UNUSED(board);
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing device info";
-    return SpoofResult::SUCCESS;
+    return {true, "Device info spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setMaliG710Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting Mali G710 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "Mali G710 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setAdreno730Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting Adreno 730 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "Adreno 730 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::setAdreno660Profile() {
     qDebug() << "[HardwareFingerprintSpoofer] Setting Adreno 660 profile";
-    return SpoofResult::SUCCESS;
+    return {true, "Adreno 660 profile set", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::spoofCPUInfo(const std::string& cpuModel, int cores, int threads) {
@@ -726,12 +726,12 @@ SpoofResult HardwareFingerprintSpoofer::spoofCPUInfo(const std::string& cpuModel
     Q_UNUSED(cores);
     Q_UNUSED(threads);
     qDebug() << "[HardwareFingerprintSpoofer] Spoofing CPU info";
-    return SpoofResult::SUCCESS;
+    return {true, "CPU info spoofed", "", {}};
 }
 
 SpoofResult HardwareFingerprintSpoofer::disableAllSpoofing() {
     qDebug() << "[HardwareFingerprintSpoofer] Disabling all spoofing";
-    return SpoofResult::SUCCESS;
+    return {true, "All spoofing disabled", "", {}};
 }
 
 } // namespace VirtualPhonePro
