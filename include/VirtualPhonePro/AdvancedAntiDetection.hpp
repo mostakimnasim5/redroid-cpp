@@ -24,10 +24,10 @@
 #include <chrono>
 #include <cmath>
 
+namespace VirtualPhonePro {
+
 // Forward declarations
 class OEMDeepSpoofing;
-
-namespace VirtualPhonePro {
 
 // ========================================================================
 // BEHAVIORAL ANALYSIS PREVENTION
