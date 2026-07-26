@@ -14,6 +14,70 @@ find_package(Threads REQUIRED)
 # Enable testing
 enable_testing()
 
+# ReDroidController sources for tests
+set(REDROID_TEST_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/ReDroidController.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeviceProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/EnhancedDeviceProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/RealisticDeviceProfile.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/RealisticProfileGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/UniqueDeviceGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeviceIDGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/PersistentIdentityManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeviceBehaviorManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/AdvancedAntiDetection.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/AdvancedSpoofing.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/AdvancedRealisticSimulation.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/BankingAppSpoofer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/GoogleFacebookSpoofer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeepDeviceSpoofer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/TLSFingerprint.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/HardwareFingerprintSpoofer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/HardwareAttestation.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/HALSimulation.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/SafetyNetSpoofer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/SafetyNetAdvancedBypass.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/CryptoEmulator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/CryptoUtils.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/VirtualSecurityChip.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeviceIntegrityManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/PlayIntegrityManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/SSLCertificateManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/NetworkStackSpoofer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/NetworkProfileManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/NetworkRealismEnhancer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/NetworkConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/CarrierNetworkSimulator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/OEMDeepSpoofing.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/EmulatorDetectionBypass.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/HypervisorBypass.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/RealPhoneHardening.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/FridaXposedDetector.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/MagiskPatcher.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/SELinuxManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/HyperRealisticTouchEmulator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/SensorSimulator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/BatteryPowerManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/TimingAttackPrevention.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/AndroidRealismEngine.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/SystemAppSimulator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/MultiInstanceManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/ADBManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/APIServer.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/AppCloner.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/ScreenMirror.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/ScreenStateManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/IPTimezoneConverter.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/HttpClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/WebhookManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/FindMyDeviceManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/Logger.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/TestingFramework.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/SecurityMitigationManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/Data/TACDatabase.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/openssl_stub.cpp
+)
+
 # =========================================================
 # Test 1: Detection Bypass Test Suite (main tests)
 # =========================================================
@@ -40,6 +104,7 @@ add_test(NAME DetectionBypass COMMAND Test_DetectionBypass)
 # =========================================================
 add_executable(Test_UniqueDeviceGenerator
     Test_UniqueDeviceGenerator.cpp
+    ${REDROID_TEST_SOURCES}
 )
 
 target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
@@ -47,7 +112,6 @@ target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
     Qt6::Core
     Qt6::Concurrent
     Threads::Threads
-    ReDroidController
 )
 
 target_include_directories(Test_UniqueDeviceGenerator PRIVATE

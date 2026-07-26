@@ -279,43 +279,6 @@ if(BUILD_QT6_GUI)
     find_package(Threads REQUIRED)
 
     # =========================================================================
-    # ReDroidController Library (shared)
-    # =========================================================================
-    add_library(ReDroidController SHARED
-        ${REDROID_SOURCES}
-        ${REDROID_HEADERS}
-    )
-    
-    target_include_directories(ReDroidController PUBLIC
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/src/GUI
-        ${CMAKE_SOURCE_DIR}/src/Data
-        ${CMAKE_SOURCE_DIR}/src/ReDroidController
-    )
-    
-    target_link_libraries(ReDroidController PUBLIC
-        Qt6::Core
-        Qt6::Gui
-        Qt6::Widgets
-        Qt6::Network
-        Qt6::Concurrent
-        Threads::Threads
-    )
-    
-    # Windows-specific libraries for the library
-    if(WIN32)
-        target_link_libraries(ReDroidController PUBLIC
-            ws2_32
-            advapi32
-            userenv
-            iphlpapi
-            dnsapi
-            crypt32
-        )
-    endif()
-    
-    # =========================================================================
     # Main Executable - WIN32 for no console
     # =========================================================================
     set(CMAKE_AUTOMOC ON)
@@ -323,6 +286,8 @@ if(BUILD_QT6_GUI)
     set(CMAKE_AUTOUIC ON)
     
     add_executable(ReDroidCPP WIN32
+        ${REDROID_SOURCES}
+        ${REDROID_HEADERS}
         src/qtmain.cpp
     )
     
@@ -338,7 +303,6 @@ if(BUILD_QT6_GUI)
     
     # Link Qt6 libraries
     target_link_libraries(ReDroidCPP PRIVATE
-        ReDroidController
         Qt6::Core
         Qt6::Gui
         Qt6::Widgets
