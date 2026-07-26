@@ -2009,31 +2009,31 @@ QJsonObject PlayIntegrityManager::generateHardwareAttestationResponse(
 
 QString PlayIntegrityManager::generateVerifiedBootStateString(VerifiedBootState state) const {
     switch (state) {
-        case VerifiedBootState::VERIFIED: return "green";
-        case VerifiedBootState::SELF_SIGNED: return "yellow";
-        case VerifiedBootState::UNVERIFIED: return "orange";
-        case VerifiedBootState::FAILED: return "red";
+        case VerifiedBootState::GREEN: return "green";
+        case VerifiedBootState::YELLOW: return "yellow";
+        case VerifiedBootState::ORANGE: return "orange";
+        case VerifiedBootState::RED: return "red";
+        case VerifiedBootState::UNLOCKED: return "unlocked";
         default: return "unknown";
     }
 }
 
-bool PlayIntegrityManager::initializeAttestationKey(const QString& instanceId) {
+void PlayIntegrityManager::initializeAttestationKey(const QString& instanceId) {
     Q_UNUSED(instanceId);
     qDebug() << "[PlayIntegrity] Initializing attestation key";
-    return true;
 }
 
-QJsonObject PlayIntegrityManager::buildAttestationPayload(const QString& nonce, const QString& instanceId) const {
+QJsonObject PlayIntegrityManager::buildAttestationPayload(const QString& instanceId, const QString& nonce) {
     QJsonObject payload;
-    payload["nonce"] = nonce;
     payload["instanceId"] = instanceId;
+    payload["nonce"] = nonce;
     payload["timestamp"] = QDateTime::currentMSecsSinceEpoch();
     return payload;
 }
 
-int PlayIntegrityManager::getKeymasterVersion(const QString& instanceId) const {
+QString PlayIntegrityManager::getKeymasterVersion(const QString& instanceId) const {
     Q_UNUSED(instanceId);
-    return 4;
+    return "4";
 }
 
 } // namespace VirtualPhonePro
