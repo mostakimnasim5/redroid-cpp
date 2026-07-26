@@ -24,6 +24,10 @@
 #include <QDebug>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonValue>
 #include <atomic>
 
 #ifdef _WIN32

@@ -14,6 +14,11 @@ find_package(Threads REQUIRED)
 # Enable testing
 enable_testing()
 
+# Windows: Define WIN32_LEAN_AND_MEAN to reduce header size and avoid conflicts
+if(WIN32)
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOUSER)
+endif()
+
 # ReDroidController sources for tests
 set(REDROID_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/ReDroidController/ReDroidController.cpp

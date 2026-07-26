@@ -17,6 +17,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+# Windows: Define WIN32_LEAN_AND_MEAN to reduce header size and avoid conflicts
+if(WIN32)
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOUSER)
+endif()
+
 # Version info
 set(PROJECT_VERSION_MAJOR 3)
 set(PROJECT_VERSION_MINOR 0)
