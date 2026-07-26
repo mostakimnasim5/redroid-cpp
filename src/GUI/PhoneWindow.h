@@ -56,7 +56,6 @@ namespace VirtualPhonePro {
 // Forward Declarations
 // ========================================================================
 
-struct DeviceProfile;
 struct AppInfo {
     QString packageName;
     QString name;
@@ -341,19 +340,19 @@ private:
     // STYLE DEFINITIONS
     // ====================================================================
     
-    // Colors
-    static const QString COLOR_BACKGROUND;
-    static const QString COLOR_PHONE_FRAME;
-    static const QString COLOR_BEZEL;
-    static const QString COLOR_ACCENT;
-    static const QString COLOR_ACCENT_DIM;
-    static const QString COLOR_TEXT;
-    static const QString COLOR_TEXT_DIM;
-    static const QString COLOR_SUCCESS;
-    static const QString COLOR_WARNING;
-    static const QString COLOR_ERROR;
-    static const QString COLOR_BUTTON_BG;
-    static const QString COLOR_BUTTON_HOVER;
+    // Colors (using macros for easy access in all classes)
+    #define COLOR_BACKGROUND "#1a1a2e"
+    #define COLOR_PHONE_FRAME "#16213e"
+    #define COLOR_BEZEL "#0f0f23"
+    #define COLOR_ACCENT "#00ff88"
+    #define COLOR_ACCENT_DIM "#00cc6a"
+    #define COLOR_TEXT "#ffffff"
+    #define COLOR_TEXT_DIM "#8892b0"
+    #define COLOR_SUCCESS "#00ff88"
+    #define COLOR_WARNING "#ffd700"
+    #define COLOR_ERROR "#ff4757"
+    #define COLOR_BUTTON_BG "#1f4068"
+    #define COLOR_BUTTON_HOVER "#2d5a87"
     
     // Phone dimensions
     static const int PHONE_WIDTH;

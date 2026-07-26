@@ -818,7 +818,7 @@ void DashboardWindow::onPhoneCardStart(const QString& instanceId) {
     if (controller.startInstance(instanceId, profile)) {
         // Apply anti-detection
         BankingAppSpoofer::instance().applyCompleteBankingSetup(instanceId);
-        SafetyNetSpoofer::instance().spoofSafetyNet(instanceId);
+        SafetyNetSpoofer::instance().spoofSafetyNetResponse(instanceId);
     }
     
     refreshInstances();

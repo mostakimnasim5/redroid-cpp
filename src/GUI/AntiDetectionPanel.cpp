@@ -130,7 +130,7 @@ bool AntiDetectionManager::applyCompleteProtection(const QString& instanceId, co
     qDebug() << "[AntiDetection] Step 6/7: Applying TLS Fingerprinting...";
     try {
         TLSFingerprint& tls = TLSFingerprint::instance();
-        tls.initialize(profile.model);
+        tls.initialize(profile.build.model);
         tls.applyToInstance(instanceId);
         successCount++;
         qDebug() << "[AntiDetection] ✓ TLS Fingerprinting applied";
@@ -537,10 +537,10 @@ void AntiDetectionPanel::applyAllModules() {
     onApplyAllClicked();
 }
 
-bool AntiDetectionPanel::applyModule(const QString& moduleName, bool enabled) {
+void AntiDetectionPanel::applyModule(const QString& moduleName, bool enabled) {
     if (!enabled) {
         m_statusLabel->setText(QString("Module %1 disabled").arg(moduleName));
-        return true;
+        return;
     }
     
     m_statusLabel->setText(QString("Applying %1...").arg(moduleName));
@@ -569,8 +569,6 @@ bool AntiDetectionPanel::applyModule(const QString& moduleName, bool enabled) {
         m_modules[moduleName].status = QTime::currentTime().toString("HH:mm");
         loadModuleStatus();
     }
-    
-    return success;
 }
 
 bool AntiDetectionPanel::applyRealPhoneHardening() {
@@ -626,7 +624,7 @@ bool AntiDetectionPanel::applyEmulatorDetectionBypass() {
 
 bool AntiDetectionPanel::applyTLSFingerprinting() {
     try {
-        TLSFingerprint::instance().initialize(m_profile.model);
+        TLSFingerprint::instance().initialize(m_profile.build.model);
         TLSFingerprint::instance().applyToInstance(m_instanceId);
         return true;
     } catch (const std::exception& e) {

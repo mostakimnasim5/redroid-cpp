@@ -37,19 +37,6 @@ namespace VirtualPhonePro {
 // Static Style Constants
 // ========================================================================
 
-const QString PhoneWindow::COLOR_BACKGROUND = "#1a1a2e";
-const QString PhoneWindow::COLOR_PHONE_FRAME = "#16213e";
-const QString PhoneWindow::COLOR_BEZEL = "#0f0f23";
-const QString PhoneWindow::COLOR_ACCENT = "#00ff88";
-const QString PhoneWindow::COLOR_ACCENT_DIM = "#00cc6a";
-const QString PhoneWindow::COLOR_TEXT = "#ffffff";
-const QString PhoneWindow::COLOR_TEXT_DIM = "#8892b0";
-const QString PhoneWindow::COLOR_SUCCESS = "#00ff88";
-const QString PhoneWindow::COLOR_WARNING = "#ffd700";
-const QString PhoneWindow::COLOR_ERROR = "#ff4757";
-const QString PhoneWindow::COLOR_BUTTON_BG = "#1f4068";
-const QString PhoneWindow::COLOR_BUTTON_HOVER = "#2d5a87";
-
 const int PhoneWindow::PHONE_WIDTH = 420;
 const int PhoneWindow::PHONE_HEIGHT = 820;
 const int PhoneWindow::SCREEN_WIDTH = 400;
@@ -116,8 +103,7 @@ void AppManagerDialog::loadInstalledApps() {
     proc.waitForFinished(8000);
     
     QString output = proc.readAllStandardOutput();
-    QStringList packages = output.split("
-", Qt::SkipEmptyParts);
+    QStringList packages = output.split('\n', Qt::SkipEmptyParts);
     
     m_appTable->setRowCount(packages.size());
     
@@ -179,7 +165,7 @@ PhoneWindow::PhoneWindow(const QString& instanceId,
     : QMainWindow(parent)
     , m_instanceId(instanceId)
     , m_profile(profile)
-    , m_deviceName(profile.build.model.isEmpty() ? "Unknown Device" : profile.model)
+    , m_deviceName(profile.build.model.isEmpty() ? "Unknown Device" : profile.build.model)
     , m_instanceNumber(1)
     , m_screenTimer(nullptr)
     , m_fpsTimer(nullptr)
