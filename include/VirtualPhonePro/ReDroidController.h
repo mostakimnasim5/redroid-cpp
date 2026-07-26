@@ -17,7 +17,7 @@
 #include <QMutex>
 #include <QTimer>
 #include <QHostAddress>
-#include <QtNetwork/QtNetwork>
+#include <QtNetwork>
 #include <QCryptographicHash>
 
 namespace VirtualPhonePro {
