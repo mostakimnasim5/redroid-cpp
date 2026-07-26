@@ -285,47 +285,6 @@ private:
 };
 
 // ========================================================================
-// OEM DEEP SPOOFING
-// ========================================================================
-
-class OEMDeepSpoofing {
-public:
-    static OEMDeepSpoofing& instance();
-    
-    // Samsung Knox
-    bool setupSamsungKnox(const QString& instanceId);
-    QMap<QString, QString> getSamsungKnoxStatus();
-    QString getSamsungKnoxVersion();
-    
-    // Huawei HMS
-    bool setupHuaweiHMS(const QString& instanceId);
-    QString getHMSVersion();
-    
-    // Qualcomm QSEE
-    bool setupQualcommQSEE(const QString& instanceId);
-    QString getQualcommQSEEVersion();
-    
-    // Xiaomi MIUI
-    bool setupXiaomiMIUI(const QString& instanceId);
-    QString getMIUIVersion();
-    
-    // Apply all OEM spoofing
-    bool applyAllOEM(const QString& instanceId, const QString& manufacturer);
-    
-private:
-    static OEMDeepSpoofing* s_instance;
-    OEMDeepSpoofing();
-    
-    QMap<QString, QString> m_samsungProps;
-    QMap<QString, QString> m_huaweiProps;
-    QMap<QString, QString> m_xiaomiProps;
-    
-    void initializeSamsungKnox();
-    void initializeHuaweiHMS();
-    void initializeXiaomiMIUI();
-};
-
-// ========================================================================
 // MASTER ANTI-DETECTION ENGINE
 // ========================================================================
 
