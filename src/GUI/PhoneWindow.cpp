@@ -95,6 +95,13 @@ AppManagerDialog::AppManagerDialog(const QString& instanceId, QWidget* parent)
 
 AppManagerDialog::~AppManagerDialog() = default;
 
+void AppManagerDialog::styleButton(QPushButton* btn, const QString& style) {
+    btn->setStyleSheet(QString(
+        "QPushButton { background-color: %1; color: white; border: none; padding: 8px 16px; border-radius: 4px; }"
+        "QPushButton:hover { background-color: %2; }"
+    ).arg(COLOR_BUTTON_BG).arg(COLOR_BUTTON_HOVER));
+}
+
 void AppManagerDialog::loadInstalledApps() {
     m_appTable->setRowCount(0);
     
