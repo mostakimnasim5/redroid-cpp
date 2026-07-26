@@ -86,6 +86,7 @@ public:
     explicit PhoneCard(const QString& instanceId, QWidget* parent = nullptr);
     ~PhoneCard();
     
+    void setupUI();
     void setInstanceInfo(const InstanceInfo& info);
     void setProfile(const DeviceProfile& profile);
     void setScreenshot(const QPixmap& pixmap);

@@ -169,12 +169,22 @@ public slots:
 private slots:
     // Screen capture
     void onScreenProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    void onInstallFinished(int exitCode, QProcess::ExitStatus exitStatus);
     
     // Touch input
     void onScreenMousePress(QMouseEvent* event);
     void onScreenMouseMove(QMouseEvent* event);
     void onScreenMouseRelease(QMouseEvent* event);
     void onScreenDoubleClick(QMouseEvent* event);
+    
+    // UI setup
+    void setupControlPanel();
+    void setupActionPanel();
+    QPushButton* createControlButton(const QString& icon, const QString& tooltip);
+    QPushButton* createActionButton(const QString& text, const QString& color);
+    
+    // Event handling
+    bool eventFilter(QObject* obj, QEvent* event) override;
     
     // Hardware buttons
     void onBackClicked();
