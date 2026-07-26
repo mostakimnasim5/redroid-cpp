@@ -78,9 +78,9 @@ AppManagerDialog::AppManagerDialog(const QString& instanceId, QWidget* parent)
     m_launchButton = new QPushButton("🚀 Launch");
     m_uninstallButton = new QPushButton("🗑️ Uninstall");
     
-    styleButton(m_refreshButton);
-    styleButton(m_launchButton);
-    styleButton(m_uninstallButton);
+    styleButton(m_refreshButton, COLOR_ACCENT);
+    styleButton(m_launchButton, COLOR_ACCENT);
+    styleButton(m_uninstallButton, COLOR_ERROR);
     
     btnLayout->addWidget(m_refreshButton);
     btnLayout->addWidget(m_launchButton);
