@@ -126,6 +126,21 @@ bool OEMDeepSpoofing::applyToInstance(const QString& instanceId) {
     return true;
 }
 
+bool OEMDeepSpoofing::applyAllOEM(const QString& instanceId, const QString& manufacturer) {
+    if (manufacturer.contains("samsung", Qt::CaseInsensitive)) {
+        configureSamsung(instanceId);
+    } else if (manufacturer.contains("huawei", Qt::CaseInsensitive)) {
+        configureHuawei(instanceId);
+    } else if (manufacturer.contains("xiaomi", Qt::CaseInsensitive) ||
+               manufacturer.contains("redmi", Qt::CaseInsensitive)) {
+        configureXiaomi(instanceId);
+    } else if (manufacturer.contains("google", Qt::CaseInsensitive)) {
+        configureGoogle(instanceId);
+    }
+
+    return applyToInstance(instanceId);
+}
+
 // ============================================================================
 // Samsung Knox
 // ============================================================================

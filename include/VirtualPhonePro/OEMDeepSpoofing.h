@@ -149,7 +149,15 @@ public:
      * @brief Apply to instance
      */
     bool applyToInstance(const QString& instanceId);
-    
+
+    /**
+     * @brief Apply all OEM spoofing for a specific manufacturer
+     * @param instanceId Instance ID
+     * @param manufacturer Manufacturer name (e.g., "Samsung", "Xiaomi", "Huawei")
+     * @return true if successful
+     */
+    bool applyAllOEM(const QString& instanceId, const QString& manufacturer);
+
     // =========================================================================
     // Samsung Knox
     // =========================================================================
