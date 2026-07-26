@@ -201,7 +201,7 @@ public:
      * @brief Assert app installed
      */
     bool assertAppInstalled(const QString& instanceId, const QString& packageName);
-    
+
 signals:
     void testStarted(const QString& testId);
     void testCompleted(const QString& testId, bool passed);
@@ -209,7 +209,7 @@ signals:
     void suiteCompleted(const TestReport& report);
     void progress(int current, int total);
 
-
+public slots:
     bool executeAction(const QString& instanceId, const TestCase& testCase);
     bool addTestCase(const QString& suiteId, const TestCase& testCase);
     bool removeTestCase(const QString& suiteId, const QString& testCaseId);
@@ -224,9 +224,9 @@ private:
     QMap<QString, TestReport> m_reports;
     static TestingFramework* s_instance;
     TestingFramework() = default;
-    
+
     bool m_stopRequested = false;
-    
+
     bool executeCommand(const QString& instanceId, const QString& command);
     QString executeCommandSync(const QString& instanceId, const QString& command);
     
