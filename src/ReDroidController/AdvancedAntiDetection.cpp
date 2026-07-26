@@ -6,6 +6,7 @@
 
 #include "VirtualPhonePro/AdvancedAntiDetection.hpp"
 #include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/OEMDeepSpoofing.h"
 
 #include <QDebug>
 #include <QDateTime>
@@ -562,11 +563,35 @@ QString AdvancedGraphicsSpoofing::hashCanvas(const QString& data) {
 }
 
 // ========================================================================
+// UltraAntiDetectionEngine Implementation
+// ========================================================================
+
+UltraAntiDetectionEngine* UltraAntiDetectionEngine::s_instance = nullptr;
+
+UltraAntiDetectionEngine& UltraAntiDetectionEngine::instance() {
+    if (!s_instance) {
+        s_instance = new UltraAntiDetectionEngine();
+    }
+    return *s_instance;
+}
+
+UltraAntiDetectionEngine::UltraAntiDetectionEngine()
+    : m_behavioral(nullptr)
+    , m_hardware(nullptr)
+    , m_graphics(nullptr)
+    , m_oem(nullptr)
+    , m_initialized(false)
+{
+}
+
+bool UltraAntiDetectionEngine::initialize(const QString& instanceId) {
+    if (m_initialized) return true;
+
     m_behavioral = &BehavioralAnalysisPrevention::instance();
     m_hardware = &AdvancedHardwareEmulator::instance();
     m_graphics = &AdvancedGraphicsSpoofing::instance();
     m_oem = &OEMDeepSpoofing::instance();
-    
+
     m_initialized = true;
     return true;
 }
