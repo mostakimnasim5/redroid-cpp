@@ -1855,4 +1855,6 @@ bool TACDatabase::isValidTACFormat(const std::string& tac) {
 }
 
 
+TACDatabase::~TACDatabase() = default;
+
 } // namespace RedroidCPP

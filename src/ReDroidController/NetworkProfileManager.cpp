@@ -466,4 +466,27 @@ QStringList NetworkProfileManager::generateWebRTCSetupCommands(const QString& in
     return commands;
 }
 
+NetworkProfileManager& NetworkProfileManager::instance() {
+    static NetworkProfileManager inst;
+    return inst;
+}
+
+QStringList NetworkProfileManager::getAvailableCountries() const {
+    return {"US", "GB", "DE", "FR", "JP", "CN", "IN", "BR", "AU", "CA"};
+}
+
+QString NetworkProfileManager::generateMCCFromCountry(const QString& country) const {
+    static QMap<QString, QString> mccMap = {
+        {"US", "310"}, {"GB", "234"}, {"DE", "262"}, {"FR", "208"},
+        {"JP", "440"}, {"CN", "460"}, {"IN", "404"}, {"BR", "724"},
+        {"AU", "505"}, {"CA", "302"}
+    };
+    return mccMap.value(country, "310");
+}
+
+QString NetworkProfileManager::generateMNCForCarrier(const QString& carrier, const QString& country) const {
+    Q_UNUSED(carrier);
+    return generateMCCFromCountry(country) + "01";
+}
+
 } // namespace VirtualPhonePro

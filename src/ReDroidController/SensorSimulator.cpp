@@ -364,4 +364,10 @@ QJsonObject SensorSimulator::getSensorStatus(const QString& instanceId) {
     return status;
 }
 
+bool SensorSimulator::enableMockLocation(const QString& instanceId) {
+    Q_UNUSED(instanceId);
+    qDebug() << "[SensorSimulator] Enabling mock location";
+    return true;
+}
+
 } // namespace VirtualPhonePro

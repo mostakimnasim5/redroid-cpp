@@ -562,4 +562,8 @@ HardwareSecurityState HardwareAttestation::getDeviceDefaults(const QString& manu
     return state;
 }
 
+std::string HardwareAttestation::generateVerifiedBootKey() const {
+    return "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"; // 32 bytes hex
+}
+
 } // namespace VirtualPhonePro

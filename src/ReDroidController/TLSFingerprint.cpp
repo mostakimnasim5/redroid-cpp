@@ -514,4 +514,35 @@ bool TLSFingerprint::applyToInstance(const QString& instanceId) {
     return true;
 }
 
+void TLSFingerprint::initializeAllProfiles() {
+    qDebug() << "[TLSFingerprint] Initializing all TLS profiles";
+    for (int i = 0; i <= static_cast<int>(TLSProfile::LAST); ++i) {
+        TLSProfile profile = static_cast<TLSProfile>(i);
+        getConfigForProfile(profile);
+        cacheProfile(profile);
+    }
+}
+
+OSTLSConfig TLSFingerprint::getConfigForProfile(TLSProfile profile) {
+    switch (profile) {
+        case TLSProfile::MODERN:
+            return {TLSVersion::TLS_1_3, {"TLS_AES_256_GCM_SHA384"}, "13-1"};
+        case TLSProfile::COMPATIBLE:
+            return {TLSVersion::TLS_1_2, {"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}, "1201-1"};
+        case TLSProfile::ANDROID_12:
+            return {TLSVersion::TLS_1_3, {"TLS_AES_128_GCM_SHA256"}, "13-256"};
+        case TLSProfile::ANDROID_13:
+            return {TLSVersion::TLS_1_3, {"TLS_AES_256_GCM_SHA384"}, "13-1"};
+        case TLSProfile::IOS_15:
+            return {TLSVersion::TLS_1_3, {"TLS_AES_256_GCM_SHA384"}, "13-1"};
+        default:
+            return {TLSVersion::TLS_1_2, {"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"}, "1201-1"};
+    }
+}
+
+void TLSFingerprint::cacheProfile(TLSProfile profile) {
+    Q_UNUSED(profile);
+    qDebug() << "[TLSFingerprint] Caching profile:" << static_cast<int>(profile);
+}
+
 } // namespace VirtualPhonePro

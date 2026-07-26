@@ -734,4 +734,11 @@ SpoofResult HardwareFingerprintSpoofer::disableAllSpoofing() {
     return {true, "All spoofing disabled", "", {}};
 }
 
+QString HardwareFingerprintSpoofer::adbShell(const QString& instanceId, const QString& command) {
+    Q_UNUSED(instanceId);
+    Q_UNUSED(command);
+    qDebug() << "[HardwareFingerprintSpoofer] ADB shell:" << command;
+    return "";
+}
+
 } // namespace VirtualPhonePro
