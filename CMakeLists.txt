@@ -8,6 +8,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Windows: Use C++20 for designated initializer support
+if(WIN32)
+    set(CMAKE_CXX_STANDARD 20)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ==============================================================================
@@ -19,7 +24,7 @@ set(CMAKE_AUTORCC ON)
 
 # Windows: Define WIN32_LEAN_AND_MEAN to reduce header size and avoid conflicts
 if(WIN32)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOUSER)
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOUSER -DWIN32)
 endif()
 
 # Version info
