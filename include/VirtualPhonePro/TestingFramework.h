@@ -209,7 +209,7 @@ signals:
     void suiteCompleted(const TestReport& report);
     void progress(int current, int total);
 
-
+public:
     bool executeAction(const QString& instanceId, const TestCase& testCase);
     bool addTestCase(const QString& suiteId, const TestCase& testCase);
     bool removeTestCase(const QString& suiteId, const QString& testCaseId);
