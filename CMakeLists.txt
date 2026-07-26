@@ -281,10 +281,17 @@ if(BUILD_QT6_GUI)
     # =========================================================================
     # ReDroidController Library (shared)
     # =========================================================================
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTORCC ON)
+    set(CMAKE_AUTOUIC ON)
+    
     add_library(ReDroidController SHARED
         ${REDROID_SOURCES}
         ${REDROID_HEADERS}
     )
+    
+    # Disable AUTOMOC for the library to avoid multiple definitions
+    set_target_properties(ReDroidController PROPERTIES AUTOMOC OFF)
     
     target_include_directories(ReDroidController PUBLIC
         ${CMAKE_SOURCE_DIR}/include
