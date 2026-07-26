@@ -471,22 +471,33 @@ NetworkProfileManager& NetworkProfileManager::instance() {
     return inst;
 }
 
-QStringList NetworkProfileManager::getAvailableCountries() const {
-    return {"US", "GB", "DE", "FR", "JP", "CN", "IN", "BR", "AU", "CA"};
+QList<CountryData> NetworkProfileManager::getAvailableCountries() const {
+    return {
+        {"United States", "US", "North America", "310", {"Verizon", "AT&T", "T-Mobile"}},
+        {"United Kingdom", "GB", "Europe", "234", {"Vodafone", "O2", "EE"}},
+        {"Germany", "DE", "Europe", "262", {"Deutsche Telekom", "Vodafone", "O2"}},
+        {"France", "FR", "Europe", "208", {"Orange", "SFR", "Bouygues"}},
+        {"Japan", "JP", "Asia", "440", {"NTT Docomo", "SoftBank", "KDDI"}},
+        {"China", "CN", "Asia", "460", {"China Mobile", "China Unicom"}},
+        {"India", "IN", "Asia", "404", {"Airtel", "Jio", "BSNL"}},
+        {"Brazil", "BR", "South America", "724", {"Vivo", "Claro", "TIM"}},
+        {"Australia", "AU", "Oceania", "505", {"Telstra", "Optus", "Vodafone"}},
+        {"Canada", "CA", "North America", "302", {"Bell", "Rogers", "Telus"}}
+    };
 }
 
-QString NetworkProfileManager::generateMCCFromCountry(const QString& country) const {
+QString NetworkProfileManager::generateMCCFromCountry(const QString& countryCode) {
     static QMap<QString, QString> mccMap = {
         {"US", "310"}, {"GB", "234"}, {"DE", "262"}, {"FR", "208"},
         {"JP", "440"}, {"CN", "460"}, {"IN", "404"}, {"BR", "724"},
         {"AU", "505"}, {"CA", "302"}
     };
-    return mccMap.value(country, "310");
+    return mccMap.value(countryCode, "310");
 }
 
-QString NetworkProfileManager::generateMNCForCarrier(const QString& carrier, const QString& country) const {
-    Q_UNUSED(carrier);
-    return generateMCCFromCountry(country) + "01";
+QString NetworkProfileManager::generateMNCForCarrier(const QString& carrierName, const QString& mcc) {
+    Q_UNUSED(carrierName);
+    return mcc + "01";
 }
 
 } // namespace VirtualPhonePro
