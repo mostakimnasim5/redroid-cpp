@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.20)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(WIN32)
+    set(CMAKE_CXX_STANDARD 20)
+endif()
 
 # Required for Q_OBJECT in test classes
 set(CMAKE_AUTOMOC ON)
@@ -115,6 +118,7 @@ add_executable(Test_UniqueDeviceGenerator
 target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
     Qt6::Test
     Qt6::Core
+    Qt6::Network
     Qt6::Concurrent
     Threads::Threads
 )
@@ -122,6 +126,9 @@ target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
 target_include_directories(Test_UniqueDeviceGenerator PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController
+    ${CMAKE_SOURCE_DIR}/src/Data
+    ${Qt6_INCLUDE_DIRS}
 )
 
 add_test(NAME UniqueDeviceGenerator COMMAND Test_UniqueDeviceGenerator)
