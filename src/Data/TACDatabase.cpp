@@ -15,19 +15,20 @@
  * Copyright (c) 2024. Licensed for authorized testing purposes only.
  */
 
+#ifdef _WIN32
+#include <windows.h>
+#include <wincrypt.h>
+#pragma comment(lib, "advapi32.lib")
+#else
+#include <sys/random.h>
+#endif
+
 #include "Data/TACDatabase.h"
 #include <random>
 #include <algorithm>
 #include <sstream>
 #include <mutex>
 #include <shared_mutex>
-
-#ifdef _WIN32
-#include <wincrypt.h>
-#pragma comment(lib, "advapi32.lib")
-#else
-#include <sys/random.h>
-#endif
 
 namespace RedroidCPP {
 
