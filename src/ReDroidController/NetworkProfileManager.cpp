@@ -468,14 +468,15 @@ QStringList NetworkProfileManager::generateWebRTCSetupCommands(const QString& in
 
 NetworkProfileManager::NetworkProfileManager(QObject* parent)
     : QObject(parent)
-    , m_running(false)
-    , m_mode(NetworkConfigMode::AUTO)
-    , m_currentCountry("US")
+    , m_initialized(false)
+    , m_profilesDir()
+    , m_scriptsDir()
 {
+    m_networkManager = new QNetworkAccessManager(this);
 }
 
 NetworkProfileManager::~NetworkProfileManager() {
-    stopAllInstances();
+    m_initialized = false;
 }
 
 NetworkProfileManager& NetworkProfileManager::instance() {
