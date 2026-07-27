@@ -34,11 +34,7 @@
 #include <QBuffer>
 #include <QThread>
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
-#include <QRandomGenerator>
-#else
-#include <QDateTime>
-#include <QJsonArray>
+#if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
 #include <QJsonObject>
 #endif
 

@@ -36,9 +36,6 @@
 #pragma comment(lib, "advapi32.lib")
 #else
 #include <sys/random.h>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #endif
 
 namespace VirtualPhonePro {
