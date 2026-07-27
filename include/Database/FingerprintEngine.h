@@ -7,7 +7,6 @@
  * from a single UUID seed. Each profile is 100% unique.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_FINGERPRINT_ENGINE_H
 #define VIRTUALPHONEPRO_FINGERPRINT_ENGINE_H
