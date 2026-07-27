@@ -9,6 +9,8 @@ endif()
 
 # Required for Q_OBJECT in test classes
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
 # Find Qt6
 find_package(Qt6 COMPONENTS Test Core Widgets Network Concurrent REQUIRED)
@@ -20,6 +22,11 @@ enable_testing()
 # Windows: Define WIN32_LEAN_AND_MEAN to reduce header size and avoid conflicts
 if(WIN32)
     add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOUSER)
+endif()
+
+# Qt6 on Windows needs this for proper linking
+if(WIN32)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
 endif()
 
 # ReDroidController sources for tests
@@ -118,6 +125,7 @@ add_executable(Test_UniqueDeviceGenerator
 target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
     Qt6::Test
     Qt6::Core
+    Qt6::Widgets
     Qt6::Network
     Qt6::Concurrent
     Threads::Threads
@@ -128,7 +136,15 @@ target_include_directories(Test_UniqueDeviceGenerator PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/ReDroidController
     ${CMAKE_SOURCE_DIR}/src/Data
+    ${CMAKE_SOURCE_DIR}/src/GUI
     ${Qt6_INCLUDE_DIRS}
+)
+
+# Force Qt to process all headers with Q_OBJECT
+set_target_properties(Test_UniqueDeviceGenerator PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
 )
 
 add_test(NAME UniqueDeviceGenerator COMMAND Test_UniqueDeviceGenerator)
