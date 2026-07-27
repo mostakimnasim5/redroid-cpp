@@ -739,4 +739,43 @@ void HardwareFingerprintSpoofer::adbShell(const QString& instanceId, const QStri
     qDebug() << "[HardwareFingerprintSpoofer] ADB shell:" << command;
 }
 
+HardwareFingerprintSpoofer& HardwareFingerprintSpoofer::getInstance() {
+    return instance();
+}
+
+SpoofResult HardwareFingerprintSpoofer::enableAllSpoofing() {
+    qDebug() << "[HardwareFingerprintSpoofer] Enabling all spoofing";
+    return {true, "All spoofing enabled", "", {}};
+}
+
+SpoofResult HardwareFingerprintSpoofer::spoofBuildFingerprint(const std::string& fingerprint) {
+    qDebug() << "[HardwareFingerprintSpoofer] Spoofing build fingerprint:" << QString::fromStdString(fingerprint);
+    return {true, "Build fingerprint spoofed", "", {}};
+}
+
+SpoofResult HardwareFingerprintSpoofer::setMaliG78Profile() {
+    qDebug() << "[HardwareFingerprintSpoofer] Setting Mali G78 GPU profile";
+    return {true, "Mali G78 profile set", "", {}};
+}
+
+SpoofResult HardwareFingerprintSpoofer::setDimensity9000Profile() {
+    qDebug() << "[HardwareFingerprintSpoofer] Setting Dimensity 9000 profile";
+    return {true, "Dimensity 9000 profile set", "", {}};
+}
+
+SpoofResult HardwareFingerprintSpoofer::setSnapdragon8Gen1Profile() {
+    qDebug() << "[HardwareFingerprintSpoofer] Setting Snapdragon 8 Gen 1 profile";
+    return {true, "Snapdragon 8 Gen 1 profile set", "", {}};
+}
+
+SpoofResult HardwareFingerprintSpoofer::setSnapdragon888Profile() {
+    qDebug() << "[HardwareFingerprintSpoofer] Setting Snapdragon 888 profile";
+    return {true, "Snapdragon 888 profile set", "", {}};
+}
+
+SpoofResult HardwareFingerprintSpoofer::setExynos2100Profile() {
+    qDebug() << "[HardwareFingerprintSpoofer] Setting Exynos 2100 profile";
+    return {true, "Exynos 2100 profile set", "", {}};
+}
+
 } // namespace VirtualPhonePro

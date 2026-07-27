@@ -466,6 +466,18 @@ QStringList NetworkProfileManager::generateWebRTCSetupCommands(const QString& in
     return commands;
 }
 
+NetworkProfileManager::NetworkProfileManager(QObject* parent)
+    : QObject(parent)
+    , m_running(false)
+    , m_mode(NetworkConfigMode::AUTO)
+    , m_currentCountry("US")
+{
+}
+
+NetworkProfileManager::~NetworkProfileManager() {
+    stopAllInstances();
+}
+
 NetworkProfileManager& NetworkProfileManager::instance() {
     static NetworkProfileManager inst;
     return inst;

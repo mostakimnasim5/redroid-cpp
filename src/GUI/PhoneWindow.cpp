@@ -94,6 +94,19 @@ AppManagerDialog::AppManagerDialog(const QString& instanceId, QWidget* parent)
 
 AppManagerDialog::~AppManagerDialog() = default;
 
+bool AppManagerDialog::eventFilter(QObject* obj, QEvent* event) {
+    if (event->type() == QEvent::KeyPress) {
+        return true;
+    }
+    return QDialog::eventFilter(obj, event);
+}
+
+void AppManagerDialog::onInstallFinished(int exitCode, QProcess::ExitStatus status) {
+    if (status == QProcess::NormalExit && exitCode == 0) {
+        loadInstalledApps();
+    }
+}
+
 void AppManagerDialog::styleButton(QPushButton* btn, const QString& style) {
     btn->setStyleSheet(QString(
         "QPushButton { background-color: %1; color: white; border: none; padding: 8px 16px; border-radius: 4px; }"

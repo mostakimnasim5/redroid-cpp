@@ -294,6 +294,18 @@ void WebhookManager::testWebhook(const QString& webhookId) {
     sendWebhook(webhook, "test", testData);
 }
 
+void WebhookManager::webhookTestResult(QNetworkReply* reply) {
+    if (!reply) return;
+    
+    QString webhookId = reply->property("webhookId").toString();
+    bool success = (reply->error() == QNetworkReply::NoError);
+    QString errorMsg = reply->errorString();
+    
+    qDebug() << "[WebhookManager] Test result for" << webhookId << ":" << (success ? "Success" : errorMsg);
+    
+    reply->deleteLater();
+}
+
 QJsonArray WebhookManager::getWebhookHistory(const QString& webhookId) {
     QJsonArray arr;
     for (const QJsonObject& obj : m_webhookHistory.value(webhookId)) arr.append(obj);

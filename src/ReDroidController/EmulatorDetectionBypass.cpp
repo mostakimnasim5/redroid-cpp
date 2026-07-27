@@ -35,6 +35,10 @@ EmulatorDetectionBypass::EmulatorDetectionBypass(QObject* parent)
     qDebug() << "[EmulatorBypass] Detection bypass module initialized";
 }
 
+EmulatorDetectionBypass::~EmulatorDetectionBypass() {
+    qDebug() << "[EmulatorBypass] Detection bypass module destroyed";
+}
+
 
 // ========================================================================
 // JSON CONVERSION

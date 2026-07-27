@@ -789,4 +789,25 @@ QJsonObject APIServer::createProfileInfo(const QString& id, const QString& name,
     return obj;
 }
 
+void APIServer::handleClientData() {
+    QTcpSocket* client = qobject_cast<QTcpSocket*>(sender());
+    if (!client) return;
+
+    if (client->bytesAvailable() > 0) {
+        QByteArray data = client->readAll();
+        qDebug() << "[APIServer] Received data from client:" << data.size() << "bytes";
+        
+        // Parse and handle the request
+        handleRequest(client);
+    }
+}
+
+void APIServer::handleClientDisconnected() {
+    QTcpSocket* client = qobject_cast<QTcpSocket*>(sender());
+    if (!client) return;
+
+    qDebug() << "[APIServer] Client disconnected:" << client->peerAddress().toString();
+    client->deleteLater();
+}
+
 } // namespace VirtualPhonePro

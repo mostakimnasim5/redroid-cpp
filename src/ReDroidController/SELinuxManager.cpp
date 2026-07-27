@@ -35,6 +35,10 @@ SELinuxManager::SELinuxManager(QObject* parent)
     qDebug() << "[SELinux] Manager initialized";
 }
 
+SELinuxManager::~SELinuxManager() {
+    qDebug() << "[SELinux] Manager destroyed";
+}
+
 
 // ========================================================================
 // JSON CONVERSION
