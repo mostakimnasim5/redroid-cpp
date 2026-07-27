@@ -11,9 +11,18 @@
  * - Persistent identity storage
  */
 
+#ifdef _WIN32
+#include <windows.h>
+#include <wincrypt.h>
+#pragma comment(lib, "advapi32.lib")
+#else
+#include <sys/random.h>
+#endif
+
 #include "VirtualPhonePro/UniqueDeviceGenerator.h"
 #include "Data/TACDatabase.h"
 
+#include <atomic>
 #include <QUuid>
 #include <QRandomGenerator>
 #include <QCryptographicHash>
@@ -28,15 +37,6 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonValue>
-#include <atomic>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <wincrypt.h>
-#pragma comment(lib, "advapi32.lib")
-#else
-#include <sys/random.h>
-#endif
 
 namespace VirtualPhonePro {
 
