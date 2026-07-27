@@ -35,9 +35,6 @@
 #include "VirtualPhonePro/NetworkConfigManager.h"
 #include <QtConcurrent>
 
-#include "VirtualPhonePro/NetworkConfig.h"
-#include "VirtualPhonePro/NetworkConfigManager.h"
-
 namespace VirtualPhonePro {
 
 // ========================================================================
