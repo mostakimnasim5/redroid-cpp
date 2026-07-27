@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "PhoneWindow.h"
+#include "VirtualPhonePro/DeviceProfile.h"
 #include <QApplication>
 #include <QCommandLineParser>
 
@@ -36,9 +37,10 @@ int main(int argc, char *argv[]) {
         // Create a demo profile
         VirtualPhonePro::DeviceProfile demoProfile;
         demoProfile.manufacturer = "Samsung";
-        demoProfile.model = "Galaxy S24 Ultra";
-        demoProfile.androidVersion = 14;
-        demoProfile.sdkVersion = 34;
+        demoProfile.name = "Samsung Galaxy S24 Ultra";
+        demoProfile.build.model = "Galaxy S24 Ultra";
+        demoProfile.build.androidVersion = 14;
+        demoProfile.build.sdkVersion = 34;
         
         VirtualPhonePro::PhoneWindow phoneWindow("demo_1", demoProfile);
         phoneWindow.show();
