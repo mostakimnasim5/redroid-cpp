@@ -24,7 +24,6 @@
 #include <QtMath>
 #include <QPainter>
 #include <QPainterPath>
-#include <QPainter>
 #include <QBrush>
 #include <QPen>
 #include <QDir>
