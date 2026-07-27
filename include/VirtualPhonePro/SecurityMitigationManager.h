@@ -15,7 +15,6 @@
  * - Uptime randomization
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_SECURITY_MITIGATION_MANAGER_H
 #define VIRTUALPHONEPRO_SECURITY_MITIGATION_MANAGER_H

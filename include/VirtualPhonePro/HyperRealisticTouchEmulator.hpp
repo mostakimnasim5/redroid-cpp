@@ -6,7 +6,6 @@
  * Provides hyper-realistic human touch patterns for anti-detection testing.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_HYPER_REALISTIC_TOUCH_EMULATOR_H
 #define VIRTUALPHONEPRO_HYPER_REALISTIC_TOUCH_EMULATOR_H

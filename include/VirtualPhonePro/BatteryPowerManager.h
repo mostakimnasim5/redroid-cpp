@@ -7,7 +7,6 @@
  * to make emulated devices appear as real physical devices.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_BATTERY_POWER_MANAGER_H
 #define VIRTUALPHONEPRO_BATTERY_POWER_MANAGER_H

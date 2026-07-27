@@ -12,7 +12,6 @@
  * - Background process behavior
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_SYSTEM_APP_SIMULATOR_H
 #define VIRTUALPHONEPRO_SYSTEM_APP_SIMULATOR_H

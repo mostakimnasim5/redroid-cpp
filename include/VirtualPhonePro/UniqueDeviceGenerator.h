@@ -11,7 +11,6 @@
  * - Persistent identity storage
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_UNIQUE_DEVICE_GENERATOR_H
 #define VIRTUALPHONEPRO_UNIQUE_DEVICE_GENERATOR_H

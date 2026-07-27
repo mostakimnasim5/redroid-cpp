@@ -11,7 +11,6 @@
  * - Certificate pinning simulation
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_SSL_CERTIFICATE_MANAGER_H
 #define VIRTUALPHONEPRO_SSL_CERTIFICATE_MANAGER_H

@@ -6,7 +6,6 @@
  * Uses system crypto functions or provides fallback implementations.
  */
 
-#pragma once
 
 #ifndef OPENSSL_STUB_H
 #define OPENSSL_STUB_H

@@ -11,7 +11,6 @@
  * - OEM-specific build properties
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_OEM_DEEP_SPOOFING_H
 #define VIRTUALPHONEPRO_OEM_DEEP_SPOOFING_H

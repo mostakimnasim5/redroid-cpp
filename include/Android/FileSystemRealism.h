@@ -7,7 +7,6 @@
  * to simulate a real human-used phone.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_FILE_SYSTEM_REALISM_H
 #define VIRTUALPHONEPRO_FILE_SYSTEM_REALISM_H

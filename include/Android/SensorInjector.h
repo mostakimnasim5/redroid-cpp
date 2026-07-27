@@ -7,7 +7,6 @@
  * Prevents static '0.0' values that indicate emulator detection.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_SENSOR_INJECTOR_H
 #define VIRTUALPHONEPRO_SENSOR_INJECTOR_H

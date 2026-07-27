@@ -12,7 +12,6 @@
  * This makes emulators appear as having real hardware capabilities.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_HAL_SIMULATION_H
 #define VIRTUALPHONEPRO_HAL_SIMULATION_H

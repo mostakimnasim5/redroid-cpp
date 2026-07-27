@@ -7,7 +7,6 @@
  * Provides debug, info, warning, error logging levels.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_LOGGER_HPP
 #define VIRTUALPHONEPRO_LOGGER_HPP

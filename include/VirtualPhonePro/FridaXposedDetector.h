@@ -12,7 +12,6 @@
  * - Emulator detection
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_FRIDA_XPOSED_DETECTOR_H
 #define VIRTUALPHONEPRO_FRIDA_XPOSED_DETECTOR_H

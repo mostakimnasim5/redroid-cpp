@@ -1,4 +1,3 @@
-#pragma once
 #include <QObject>
 
 #ifndef VIRTUALPHONEPRO_APP_CLONER_H

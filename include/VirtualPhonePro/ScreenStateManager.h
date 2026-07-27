@@ -7,7 +7,6 @@
  * and ambient light sensor simulation for authentic device behavior.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_SCREEN_STATE_MANAGER_H
 #define VIRTUALPHONEPRO_SCREEN_STATE_MANAGER_H

@@ -12,7 +12,6 @@
  * - Gatekeeper status
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_DEVICE_INTEGRITY_MANAGER_H
 #define VIRTUALPHONEPRO_DEVICE_INTEGRITY_MANAGER_H

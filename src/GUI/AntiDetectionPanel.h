@@ -5,7 +5,6 @@
  * Shows status of all anti-detection modules and allows toggling them.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_ANTIDETECTIONPANEL_H
 #define VIRTUALPHONEPRO_ANTIDETECTIONPANEL_H

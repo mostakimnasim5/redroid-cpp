@@ -14,7 +14,6 @@
  * 
  * Copyright (c) 2024. Licensed for authorized testing purposes only.
  */
-#pragma once
 
 #ifndef REDROIDCPP_TAC_DATABASE_H
 #define REDROIDCPP_TAC_DATABASE_H

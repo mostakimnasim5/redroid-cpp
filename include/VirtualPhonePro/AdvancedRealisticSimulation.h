@@ -14,7 +14,6 @@
  * For authorized testing purposes only.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_ADVANCED_REALISTIC_SIMULATION_H
 #define VIRTUALPHONEPRO_ADVANCED_REALISTIC_SIMULATION_H

@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_API_SERVER_H
 #define VIRTUALPHONEPRO_API_SERVER_H

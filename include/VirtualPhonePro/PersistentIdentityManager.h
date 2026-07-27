@@ -10,7 +10,6 @@
  * - Docker container rebuilds
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_PERSISTENT_IDENTITY_MANAGER_H
 #define VIRTUALPHONEPRO_PERSISTENT_IDENTITY_MANAGER_H

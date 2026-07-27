@@ -13,7 +13,6 @@
  * - Certificate transparency
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_TLS_FINGERPRINT_H
 #define VIRTUALPHONEPRO_TLS_FINGERPRINT_H

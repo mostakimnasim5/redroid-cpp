@@ -13,7 +13,6 @@
  * - Realistic signal strength patterns
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_NETWORK_REALISM_ENHANCER_H
 #define VIRTUALPHONEPRO_NETWORK_REALISM_ENHANCER_H

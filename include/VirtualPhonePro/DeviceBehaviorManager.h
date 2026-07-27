@@ -12,7 +12,6 @@
  * - Background process throttling
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_DEVICE_BEHAVIOR_MANAGER_H
 #define VIRTUALPHONEPRO_DEVICE_BEHAVIOR_MANAGER_H

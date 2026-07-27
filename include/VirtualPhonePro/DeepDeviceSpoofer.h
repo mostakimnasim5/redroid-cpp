@@ -7,7 +7,6 @@
  * Covers: /proc filesystem, timing analysis, Play Services, etc.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_DEEP_DEVICE_SPOOFER_H
 #define VIRTUALPHONEPRO_DEEP_DEVICE_SPOOFER_H

@@ -7,7 +7,6 @@
  * banking and security app testing without detection.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_ENHANCED_DEVICE_PROFILE_H
 #define VIRTUALPHONEPRO_ENHANCED_DEVICE_PROFILE_H

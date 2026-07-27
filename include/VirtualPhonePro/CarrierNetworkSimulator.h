@@ -7,7 +7,6 @@
  * transitions, and SIM card details for authentic device simulation.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_CARRIER_NETWORK_SIMULATOR_H
 #define VIRTUALPHONEPRO_CARRIER_NETWORK_SIMULATOR_H

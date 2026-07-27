@@ -7,7 +7,6 @@
  * that a real device would have. Makes detection 100% impossible.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_REALISTIC_DEVICE_PROFILE_H
 #define VIRTUALPHONEPRO_REALISTIC_DEVICE_PROFILE_H

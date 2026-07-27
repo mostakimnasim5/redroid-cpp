@@ -13,7 +13,6 @@
  * - System Properties Complete Set
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_ANDROID_REALISM_ENGINE_H
 #define VIRTUALPHONEPRO_ANDROID_REALISM_ENGINE_H

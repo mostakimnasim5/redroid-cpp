@@ -8,7 +8,6 @@
  * detection mechanisms used by these platforms.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_GOOGLE_FACEBOOK_SPOOFER_H
 #define VIRTUALPHONEPRO_GOOGLE_FACEBOOK_SPOOFER_H

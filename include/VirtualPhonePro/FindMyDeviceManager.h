@@ -10,7 +10,6 @@
  * - Device health indicators
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_FIND_MY_DEVICE_MANAGER_H
 #define VIRTUALPHONEPRO_FIND_MY_DEVICE_MANAGER_H

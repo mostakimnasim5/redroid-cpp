@@ -6,7 +6,6 @@
  * Includes complete bypasses for all detection mechanisms.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_BANKING_APP_SPOOFER_H
 #define VIRTUALPHONEPRO_BANKING_APP_SPOOFER_H

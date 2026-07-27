@@ -7,7 +7,6 @@
  * based on the proxy's geolocation data.
  */
 
-#pragma once
 
 #ifndef VIRTUALPHONEPRO_LOCALE_TIMEZONE_MANAGER_H
 #define VIRTUALPHONEPRO_LOCALE_TIMEZONE_MANAGER_H
