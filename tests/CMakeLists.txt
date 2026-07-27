@@ -130,13 +130,13 @@ add_executable(Test_UniqueDeviceGenerator
     # Add all Q_OBJECT headers so AUTOMOC can process them
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/ReDroidController.h
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/HardwareFingerprintSpoofer.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/PlayIntegrityManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/PlayIntegrityManager.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/NetworkProfileManager.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/EmulatorDetectionBypass.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/EmulatorDetectionBypass.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MagiskPatcher.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SELinuxManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SELinuxManager.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SensorSimulator.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TimingAttackPrevention.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TimingAttackPrevention.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/WebhookManager.h
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MultiInstanceManager.h
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SecurityMitigationManager.h
