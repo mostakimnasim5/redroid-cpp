@@ -112,6 +112,13 @@ target_include_directories(Test_DetectionBypass PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
+# Set console subsystem for Windows (required for Qt Test)
+if(WIN32)
+    set_target_properties(Test_DetectionBypass PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
+
 add_test(NAME DetectionBypass COMMAND Test_DetectionBypass)
 
 # =========================================================
@@ -120,6 +127,22 @@ add_test(NAME DetectionBypass COMMAND Test_DetectionBypass)
 add_executable(Test_UniqueDeviceGenerator
     Test_UniqueDeviceGenerator.cpp
     ${REDROID_TEST_SOURCES}
+    # Add all Q_OBJECT headers so AUTOMOC can process them
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/ReDroidController.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/HardwareFingerprintSpoofer.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/PlayIntegrityManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/NetworkProfileManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/EmulatorDetectionBypass.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MagiskPatcher.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SELinuxManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SensorSimulator.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TimingAttackPrevention.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/WebhookManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MultiInstanceManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SecurityMitigationManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/APIServer.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/AppCloner.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TestingFramework.h
 )
 
 target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
@@ -146,6 +169,13 @@ set_target_properties(Test_UniqueDeviceGenerator PROPERTIES
     AUTORCC ON
     AUTOUIC ON
 )
+
+# Set console subsystem for Windows (required for Qt Test)
+if(WIN32)
+    set_target_properties(Test_UniqueDeviceGenerator PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
 
 add_test(NAME UniqueDeviceGenerator COMMAND Test_UniqueDeviceGenerator)
 
