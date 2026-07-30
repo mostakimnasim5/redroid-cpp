@@ -184,6 +184,8 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HttpClient.hpp
     # NEW: Crypto Utils
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/CryptoUtils.hpp
+    # NEW: Device Profile Generator
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceProfileGenerator.hpp
     # NEW: Logger (centralized logging)
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/Logger.hpp
 )
@@ -274,6 +276,8 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/HttpClient.cpp
     # NEW: Crypto Utils
     ${PROJECT_SOURCE_DIR}/CryptoUtils.cpp
+    # NEW: Device Profile Generator (HMAC-SHA256 based unique profile generation)
+    ${PROJECT_SOURCE_DIR}/DeviceProfileGenerator.cpp
     # NEW: Logger (centralized logging)
     ${PROJECT_SOURCE_DIR}/Logger.cpp
     # NEW: OpenSSL Stub (crypto without OpenSSL dependency)
