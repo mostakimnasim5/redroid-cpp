@@ -7,11 +7,12 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonValue>
 
 // Firebase Configuration
-const QString FIREBASE_PROJECT_ID = "redroid-d8110";
-const QString FIREBASE_API_KEY = "AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA";
-const QString FIREBASE_BASE_URL = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + "/databases/(default)/documents";
+const QString FIREBASE_PROJECT_ID = QStringLiteral("redroid-d8110");
+const QString FIREBASE_API_KEY = QStringLiteral("AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA");
+const QString FIREBASE_BASE_URL = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + QStringLiteral("/databases/(default)/documents");
 
 LoginWindow::LoginWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -260,49 +261,60 @@ void LoginWindow::onLoginClicked() {
 }
 
 void LoginWindow::verifyCode(const QString &code) {
-    // Firebase Firestore REST API - Query by uniqueKey
-    QString url = FIREBASE_BASE_URL + "/activeUsers?key=" + FIREBASE_API_KEY;
+    // Firebase Firestore REST API - Query by uniqueKey using simple document fetch
+    // For simplicity, we'll fetch all activeUsers and filter client-side
+    // In production, use a proper query index
     
-    QNetworkRequest request(QUrl(url));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    
-    // Query: where uniqueKey == code
-    QJsonObject queryObj;
-    QJsonObject structuredQueryObj;
-    structuredQueryObj["from"] = QJsonArray({{{"collectionId", "activeUsers"}}});
-    
-    QJsonObject whereObj;
-    QJsonObject fieldObj;
-    fieldObj["fieldPath"] = "uniqueKey";
-    whereObj["field"] = fieldObj;
-    whereObj["op"] = "EQUAL";
-    QJsonObject refValueObj;
-    refValueObj["referenceValue"] = "projects/" + FIREBASE_PROJECT_ID + "/databases/(default)/documents/activeUsers";
-    whereObj["value"] = QJsonObject({{{"referenceValue", code}}});
-    
-    QJsonArray whereArray;
-    QJsonObject whereItem;
-    whereItem["fieldFilter"] = whereObj;
-    whereArray.append(whereItem);
-    structuredQueryObj["where"] = QJsonObject({{"compositeFilter", QJsonObject({{"op", "AND"}, {"filters", whereArray}})}});
-    
-    queryObj["structuredQuery"] = structuredQueryObj;
-    
-    QJsonDocument doc(queryObj);
-    QByteArray data = doc.toJson();
-    
-    // Use GET request with query parameter instead
-    QString getUrl = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + 
-                    "/databases/(default)/documents:runQuery?key=" + FIREBASE_API_KEY;
+    QString getUrl = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
+                    QStringLiteral("/databases/(default)/documents:runQuery?key=") + FIREBASE_API_KEY;
     
     QNetworkRequest getRequest(QUrl(getUrl));
     getRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    
+    // Build simple query to get all activeUsers
+    QJsonObject structuredQuery;
+    
+    QJsonObject fromObj;
+    fromObj["collectionId"] = QStringLiteral("activeUsers");
+    QJsonArray fromArray;
+    fromArray.append(fromObj);
+    structuredQuery["from"] = fromArray;
+    
+    // Where clause: uniqueKey == code
+    QJsonObject whereClause;
+    QJsonObject fieldFilter;
+    QJsonObject field;
+    field["fieldPath"] = QStringLiteral("uniqueKey");
+    fieldFilter["field"] = field;
+    fieldFilter["op"] = QStringLiteral("EQUAL");
+    
+    QJsonObject value;
+    value["stringValue"] = code;
+    fieldFilter["value"] = value;
+    
+    QJsonObject compositeFilter;
+    compositeFilter["op"] = QStringLiteral("AND");
+    
+    QJsonArray filtersArray;
+    QJsonObject filterWrapper;
+    filterWrapper["fieldFilter"] = fieldFilter;
+    filtersArray.append(filterWrapper);
+    compositeFilter["filters"] = filtersArray;
+    
+    whereClause["compositeFilter"] = compositeFilter;
+    structuredQuery["where"] = whereClause;
+    
+    QJsonObject queryObj;
+    queryObj["structuredQuery"] = structuredQuery;
+    
+    QJsonDocument doc(queryObj);
+    QByteArray data = doc.toJson();
     
     QNetworkReply *reply = networkManager->post(getRequest, data);
     pendingRequestId = code;
     
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        handleLoginResponse(reply);
+        this->handleLoginResponse(reply);
     });
 }
 
@@ -383,23 +395,38 @@ void LoginWindow::onSendRequestClicked() {
 
 void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, int profiles, int duration) {
     // Firebase Firestore REST API - Create document
-    QString url = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + 
-                 "/databases/(default)/documents/accessRequests?key=" + FIREBASE_API_KEY;
+    QString url = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
+                 QStringLiteral("/databases/(default)/documents/accessRequests?key=") + FIREBASE_API_KEY;
     
     QNetworkRequest request(QUrl(url));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     
-    // Generate request ID
-    QString requestId = "req_" + QString::number(QDateTime::currentMSecsSinceEpoch());
-    
     // Create document data
     QJsonObject fields;
-    fields["userName"] = QJsonObject({{"stringValue", name}});
-    fields["contactNumber"] = QJsonObject({{"stringValue", phone}});
-    fields["profileCount"] = QJsonObject({{"integerValue", QString::number(profiles)}});
-    fields["durationMinutes"] = QJsonObject({{"integerValue", QString::number(duration)}});
-    fields["status"] = QJsonObject({{"stringValue", "pending"}});
-    fields["requestedAt"] = QJsonObject({{"timestampValue", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}});
+    
+    QJsonObject userNameObj;
+    userNameObj["stringValue"] = name;
+    fields["userName"] = userNameObj;
+    
+    QJsonObject contactObj;
+    contactObj["stringValue"] = phone;
+    fields["contactNumber"] = contactObj;
+    
+    QJsonObject profileCountObj;
+    profileCountObj["integerValue"] = QString::number(profiles);
+    fields["profileCount"] = profileCountObj;
+    
+    QJsonObject durationObj;
+    durationObj["integerValue"] = QString::number(duration);
+    fields["durationMinutes"] = durationObj;
+    
+    QJsonObject statusObj;
+    statusObj["stringValue"] = QStringLiteral("pending");
+    fields["status"] = statusObj;
+    
+    QJsonObject timestampObj;
+    timestampObj["timestampValue"] = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+    fields["requestedAt"] = timestampObj;
     
     QJsonObject document;
     document["fields"] = fields;
@@ -410,7 +437,7 @@ void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, i
     QNetworkReply *reply = networkManager->post(request, data);
     
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        handleRequestResponse(reply);
+        this->handleRequestResponse(reply);
     });
 }
 
