@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "PhoneWindow.h"
+#include "LoginWindow.h"
 #include "VirtualPhonePro/DeviceProfile.h"
 #include <QApplication>
 #include <QCommandLineParser>
@@ -24,17 +25,16 @@ int main(int argc, char *argv[]) {
     );
     parser.addOption(demoModeOption);
     
-    QCommandLineOption phoneModeOption(
-        QStringList() << "p" << "phone",
-        "Open a specific phone instance (default: 1)"
+    QCommandLineOption skipLoginOption(
+        QStringList() << "s" << "skip-login",
+        "Skip login and show main window directly (for testing)"
     );
-    parser.addOption(phoneModeOption);
+    parser.addOption(skipLoginOption);
     
     parser.process(app);
     
     // Demo mode - show a sample phone window
     if (parser.isSet(demoModeOption)) {
-        // Create a demo profile
         VirtualPhonePro::DeviceProfile demoProfile;
         demoProfile.manufacturer = "Samsung";
         demoProfile.name = "Samsung Galaxy S24 Ultra";
@@ -47,9 +47,23 @@ int main(int argc, char *argv[]) {
         return app.exec();
     }
     
-    // Normal mode - show main window
-    MainWindow window;
-    window.show();
+    // Skip login mode - for testing
+    if (parser.isSet(skipLoginOption)) {
+        MainWindow window;
+        window.show();
+        return app.exec();
+    }
+    
+    // Normal mode - show login window first
+    LoginWindow loginWindow;
+    loginWindow.show();
+    
+    // Connect login success signal
+    QObject::connect(&loginWindow, &LoginWindow::loginSuccess, [&](const QString &userId, const QString &uniqueKey, int remainingProfiles, int totalProfiles) {
+        MainWindow *mainWindow = new MainWindow();
+        mainWindow->show();
+        loginWindow.hide();
+    });
     
     return app.exec();
 }
