@@ -5,17 +5,20 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 // Firebase Configuration
 const QString FIREBASE_PROJECT_ID = "redroid-d8110";
 const QString FIREBASE_API_KEY = "AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA";
+const QString FIREBASE_BASE_URL = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + "/databases/(default)/documents";
 
 LoginWindow::LoginWindow(QWidget *parent)
     : QMainWindow(parent)
     , networkManager(new QNetworkAccessManager(this))
 {
     setWindowTitle("ReDroidCPP - Login");
-    setFixedSize(450, 500);
+    setFixedSize(450, 550);
     setStyleSheet(R"(
         QMainWindow {
             background-color: #0f172a;
@@ -37,6 +40,10 @@ LoginWindow::LoginWindow(QWidget *parent)
         }
         QPushButton:pressed {
             background-color: #1d4ed8;
+        }
+        QPushButton:disabled {
+            background-color: #475569;
+            color: #94a3b8;
         }
         QLineEdit {
             background-color: #1e293b;
@@ -87,6 +94,10 @@ LoginWindow::LoginWindow(QWidget *parent)
             background-color: rgba(22, 163, 74, 0.2);
             color: #86efac;
             border: 1px solid rgba(22, 163, 74, 0.3);
+        }
+        QLabel#loadingLabel {
+            color: #60a5fa;
+            font-size: 12px;
         }
     )");
 
@@ -249,14 +260,109 @@ void LoginWindow::onLoginClicked() {
 }
 
 void LoginWindow::verifyCode(const QString &code) {
-    // For now, show a message about Firebase integration
-    // In production, this would call Firebase REST API
-    QMessageBox::information(this, "Firebase Integration Required",
-        "এই ফিচার কাজ করতে Firebase REST API integration প্রয়োজন।\n\n"
-        "আপনার Firebase project setup করা আছে কিনা দেখুন।");
+    // Firebase Firestore REST API - Query by uniqueKey
+    QString url = FIREBASE_BASE_URL + "/activeUsers?key=" + FIREBASE_API_KEY;
+    
+    QNetworkRequest request(QUrl(url));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    
+    // Query: where uniqueKey == code
+    QJsonObject queryObj;
+    QJsonObject structuredQueryObj;
+    structuredQueryObj["from"] = QJsonArray({{{"collectionId", "activeUsers"}}});
+    
+    QJsonObject whereObj;
+    QJsonObject fieldObj;
+    fieldObj["fieldPath"] = "uniqueKey";
+    whereObj["field"] = fieldObj;
+    whereObj["op"] = "EQUAL";
+    QJsonObject refValueObj;
+    refValueObj["referenceValue"] = "projects/" + FIREBASE_PROJECT_ID + "/databases/(default)/documents/activeUsers";
+    whereObj["value"] = QJsonObject({{{"referenceValue", code}}});
+    
+    QJsonArray whereArray;
+    QJsonObject whereItem;
+    whereItem["fieldFilter"] = whereObj;
+    whereArray.append(whereItem);
+    structuredQueryObj["where"] = QJsonObject({{"compositeFilter", QJsonObject({{"op", "AND"}, {"filters", whereArray}})}});
+    
+    queryObj["structuredQuery"] = structuredQueryObj;
+    
+    QJsonDocument doc(queryObj);
+    QByteArray data = doc.toJson();
+    
+    // Use GET request with query parameter instead
+    QString getUrl = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + 
+                    "/databases/(default)/documents:runQuery?key=" + FIREBASE_API_KEY;
+    
+    QNetworkRequest getRequest(QUrl(getUrl));
+    getRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    
+    QNetworkReply *reply = networkManager->post(getRequest, data);
+    pendingRequestId = code;
+    
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        handleLoginResponse(reply);
+    });
+}
 
+void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
+    if (reply->error() != QNetworkReply::NoError) {
+        showError("নেটওয়ার্ক সমস্যা: " + reply->errorString());
+        btnLogin->setEnabled(true);
+        btnLogin->setText("লগইন");
+        reply->deleteLater();
+        return;
+    }
+    
+    QByteArray response = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(response);
+    
+    // Parse runQuery response - it returns an array of document results
+    if (!doc.isArray()) {
+        showError("সার্ভার সমস্যা");
+        btnLogin->setEnabled(true);
+        btnLogin->setText("লগইন");
+        reply->deleteLater();
+        return;
+    }
+    
+    QJsonArray results = doc.array();
+    
+    // Check if we got a valid document
+    if (results.isEmpty() || !results[0].toObject().contains("document")) {
+        showError("এই কোডটি পাওয়া যায়নি");
+        btnLogin->setEnabled(true);
+        btnLogin->setText("লগইন");
+        reply->deleteLater();
+        return;
+    }
+    
+    QJsonObject document = results[0].toObject()["document"].toObject();
+    QJsonObject fields = document["fields"].toObject();
+    
+    // Check if blocked
+    if (fields.contains("isBlocked") && fields["isBlocked"].toObject()["booleanValue"].toBool()) {
+        showError("আপনার অ্যাকাউন্ট ব্লক করা আছে। Admin এর সাথে যোগাযোগ করুন।");
+        btnLogin->setEnabled(true);
+        btnLogin->setText("লগইন");
+        reply->deleteLater();
+        return;
+    }
+    
+    // Get user data
+    QString userId = document["name"].toString().split("/").last();
+    QString uniqueKey = fields.contains("uniqueKey") ? fields["uniqueKey"].toObject()["stringValue"].toString() : "";
+    int remainingProfiles = fields.contains("remainingProfiles") ? fields["remainingProfiles"].toObject()["integerValue"].toInt() : 0;
+    int totalProfiles = fields.contains("totalProfiles") ? fields["totalProfiles"].toObject()["integerValue"].toInt() : 0;
+    
+    // Success! Hide window and emit login success
+    hide();
+    emit loginSuccess(userId, uniqueKey, remainingProfiles, totalProfiles);
+    
     btnLogin->setEnabled(true);
     btnLogin->setText("লগইন");
+    reply->deleteLater();
 }
 
 void LoginWindow::onSendRequestClicked() {
@@ -276,16 +382,70 @@ void LoginWindow::onSendRequestClicked() {
 }
 
 void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, int profiles, int duration) {
-    // For now, show a message about Firebase integration
-    // In production, this would create a document in Firebase Firestore
-    QMessageBox::information(this, "Firebase Integration Required",
-        "এই ফিচার কাজ করতে Firebase Firestore integration প্রয়োজন।\n\n"
-        "আপনার অনুরোধ Firebase তে save হবে এবং Admin সেটি approve করলে আপনি কোড পাবেন।");
+    // Firebase Firestore REST API - Create document
+    QString url = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + 
+                 "/databases/(default)/documents/accessRequests?key=" + FIREBASE_API_KEY;
+    
+    QNetworkRequest request(QUrl(url));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    
+    // Generate request ID
+    QString requestId = "req_" + QString::number(QDateTime::currentMSecsSinceEpoch());
+    
+    // Create document data
+    QJsonObject fields;
+    fields["userName"] = QJsonObject({{"stringValue", name}});
+    fields["contactNumber"] = QJsonObject({{"stringValue", phone}});
+    fields["profileCount"] = QJsonObject({{"integerValue", QString::number(profiles)}});
+    fields["durationMinutes"] = QJsonObject({{"integerValue", QString::number(duration)}});
+    fields["status"] = QJsonObject({{"stringValue", "pending"}});
+    fields["requestedAt"] = QJsonObject({{"timestampValue", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}});
+    
+    QJsonObject document;
+    document["fields"] = fields;
+    
+    QJsonDocument doc(document);
+    QByteArray data = doc.toJson();
+    
+    QNetworkReply *reply = networkManager->post(request, data);
+    
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        handleRequestResponse(reply);
+    });
+}
 
+void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
+    if (reply->error() != QNetworkReply::NoError) {
+        showRequestError("সমস্যা হয়েছে: " + reply->errorString());
+        btnSendRequest->setEnabled(true);
+        btnSendRequest->setText("রিকোয়েস্ট পাঠান");
+        reply->deleteLater();
+        return;
+    }
+    
+    QByteArray response = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(response);
+    QJsonObject obj = doc.object();
+    
+    if (obj.contains("name")) {
+        QString docName = obj["name"].toString();
+        showRequestSuccess("রিকোয়েস্ট পাঠানো হয়েছে!\n\nআপনার অনুরোধ Admin কে জানানো হয়েছে। Admin approve করলে আপনি কোড পাবেন।");
+        
+        // Clear form
+        nameInput->clear();
+        phoneInput->clear();
+        profilesSpinBox->setValue(3);
+        durationCombo->setCurrentIndex(4); // 1 day
+        
+        // Switch to login after 3 seconds
+        QTimer::singleShot(3000, this, &LoginWindow::onSwitchToLogin);
+    } else {
+        showRequestError("রিকোয়েস্ট পাঠাতে সমস্যা হয়েছে");
+    }
+    
     btnSendRequest->setEnabled(true);
     btnSendRequest->setText("রিকোয়েস্ট পাঠান");
-
-    showRequestSuccess("রিকোয়েস্ট পাঠানো হয়েছে! Admin approve করলে আপনি কোড পাবেন।");
+    reply->deleteLater();
 }
 
 void LoginWindow::onNetworkReply(QNetworkReply *reply) {

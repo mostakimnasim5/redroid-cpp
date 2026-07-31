@@ -12,6 +12,7 @@
 #include <QComboBox>
 #include <QMessageBox>
 #include <QTimer>
+#include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -40,7 +41,9 @@ private:
     void setupLoginUI();
     void setupRequestUI();
     void verifyCode(const QString &code);
+    void handleLoginResponse(QNetworkReply *reply);
     void sendAccessRequest(const QString &name, const QString &phone, int profiles, int durationMinutes);
+    void handleRequestResponse(QNetworkReply *reply);
     void showError(const QString &message);
     void showSuccess(const QString &message);
 
