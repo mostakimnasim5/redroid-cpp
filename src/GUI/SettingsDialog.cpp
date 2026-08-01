@@ -10,6 +10,7 @@
 #include <QDesktopServices>
 #include <QUrl>
 #include <QJsonArray>
+#include <QTextEdit>
 
 namespace VirtualPhonePro {
 

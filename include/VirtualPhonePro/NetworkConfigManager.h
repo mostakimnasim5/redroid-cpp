@@ -53,7 +53,12 @@ struct ProxyConfig {
  * @brief VPN configuration for network isolation
  */
 struct VPNConfig {
-    QString type;            // "wireguard", "openvpn"
+    QString name;           // Display name for VPN connection
+    QString type;           // "wireguard", "openvpn", "ikev2", "l2tp"
+    QString server;         // VPN server hostname/IP
+    int port;               // VPN port number
+    QString username;       // Authentication username
+    QString password;       // Authentication password
     QString configPath;     // Path to VPN config file
     QString endpoint;       // VPN server endpoint (host:port)
     QString publicKey;      // Server public key
@@ -65,6 +70,7 @@ struct VPNConfig {
     
     VPNConfig()
         : type("wireguard")
+        , port(51820)
         , mtu(1420)
     {
         dns = {"8.8.8.8", "1.1.1.1"};
@@ -72,7 +78,7 @@ struct VPNConfig {
     }
     
     bool isValid() const {
-        return !configPath.isEmpty() && !endpoint.isEmpty();
+        return !server.isEmpty();
     }
 };
 

@@ -78,8 +78,14 @@ private slots:
     void onApply();
     void onReset();
 
-private:
+	private:
     void setupUI();
+    QWidget* createDockerTab();
+    QWidget* createAdbTab();
+    QWidget* createGeneralTab();
+    QWidget* createLoggingTab();
+    QWidget* createBackupTab();
+    QWidget* createAboutTab();
     void loadSettings();
     void saveSettings();
     QString getSettingsFilePath() const;

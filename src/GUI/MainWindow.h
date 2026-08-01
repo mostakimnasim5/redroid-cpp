@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QApplication>
 #include <QPushButton>
 #include <QTextEdit>
 #include <QComboBox>

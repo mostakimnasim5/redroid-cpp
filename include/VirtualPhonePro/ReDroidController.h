@@ -419,7 +419,7 @@ public:
      * @param subnet Network subnet (e.g., "172.28.1.0/24")
      * @return true if created successfully
      */
-    bool createIsolatedNetwork(const QString& instanceId, const QString& subnet);
+    bool createIsolatedNetwork(const QString& instanceId, const QString& subnet = "172.28.0.0/16");
     
     /**
      * @brief Delete isolated network for an instance

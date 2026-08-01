@@ -27,6 +27,7 @@
 #include <QTimer>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QListWidget>
 
 #include "VirtualPhonePro/ReDroidController.h"
 
@@ -87,14 +88,14 @@ private slots:
     void onLoadProfile();
     void onExportProfile();
 
-private:
+	private:
     void setupUI();
-    void setupGPSPage();
-    void setupDNSPage();
-    void setupVPNPage();
-    void setupNetworkPage();
-    void setupDeviceInfoPage();
-    void setupProfilePage();
+    QWidget* createGPSPage();
+    QWidget* createDNSPage();
+    QWidget* createVPNPage();
+    QWidget* createNetworkPage();
+    QWidget* createDeviceInfoPage();
+    QWidget* createProfilePage();
     
     void refreshDeviceInfo();
     QString executeAdbSync(const QStringList& args, int timeoutMs = 10000);
