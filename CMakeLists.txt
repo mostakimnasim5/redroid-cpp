@@ -220,6 +220,7 @@ if(BUILD_QT6_GUI)
         src/GUI/DashboardWindow.cpp
         src/GUI/AntiDetectionPanel.cpp
         src/GUI/LoginWindow.cpp
+        src/GUI/PhoneSettingsDialog.cpp
         
         # Main App
         src/qtmain.cpp
@@ -288,9 +289,15 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/NetworkConfig.h
         include/Data/TACDatabase.h
         src/GUI/PhoneWindow.h
+        src/GUI/PhoneWindow.cpp
         src/GUI/DashboardWindow.h
+        src/GUI/DashboardWindow.cpp
         src/GUI/AntiDetectionPanel.h
+        src/GUI/AntiDetectionPanel.cpp
         src/GUI/LoginWindow.h
+        src/GUI/LoginWindow.cpp
+        src/GUI/PhoneSettingsDialog.h
+        src/GUI/PhoneSettingsDialog.cpp
         src/ReDroidController/openssl_stub.h
     )
     

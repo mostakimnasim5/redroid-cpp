@@ -14,6 +14,7 @@
  */
 
 #include "PhoneWindow.h"
+#include "PhoneSettingsDialog.h"
 #include <QApplication>
 #include <QScreen>
 #include <QMessageBox>
@@ -1096,9 +1097,8 @@ void PhoneWindow::onOpenAppsClicked() {
 }
 
 void PhoneWindow::onSettingsClicked() {
-    QMessageBox::information(this, "Settings",
-        "Device Settings\n\n"
-        "Configure anti-detection settings for this device instance.");
+    PhoneSettingsDialog dialog(m_instanceId, this);
+    dialog.exec();
 }
 
 void PhoneWindow::onAntiDetectionClicked() {
