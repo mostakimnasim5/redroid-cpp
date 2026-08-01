@@ -221,6 +221,10 @@ if(BUILD_QT6_GUI)
         src/GUI/AntiDetectionPanel.cpp
         src/GUI/LoginWindow.cpp
         src/GUI/PhoneSettingsDialog.cpp
+        src/GUI/SettingsDialog.cpp
+        
+        # Utilities
+        src/ReDroidController/FileLogger.cpp
         
         # Main App
         src/qtmain.cpp
@@ -298,6 +302,10 @@ if(BUILD_QT6_GUI)
         src/GUI/LoginWindow.cpp
         src/GUI/PhoneSettingsDialog.h
         src/GUI/PhoneSettingsDialog.cpp
+        src/GUI/SettingsDialog.h
+        src/GUI/SettingsDialog.cpp
+        include/VirtualPhonePro/FileLogger.h
+        src/ReDroidController/FileLogger.cpp
         src/ReDroidController/openssl_stub.h
     )
     

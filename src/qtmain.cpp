@@ -23,8 +23,56 @@
 #include "GUI/LoginWindow.h"
 #include "VirtualPhonePro/ReDroidController.h"
 #include "VirtualPhonePro/MultiInstanceManager.h"
+#include "VirtualPhonePro/FileLogger.h"
+
+#include <csignal>
 
 using namespace VirtualPhonePro;
+
+// ============================================================================
+// Crash Handler - Catches unhandled exceptions and signals
+// ============================================================================
+
+void crashHandler(int signal) {
+    QString message;
+    
+    switch (signal) {
+        case SIGSEGV:
+            message = "Segmentation Fault (SIGSEGV)\n\n"
+                     "The application encountered a memory access error.";
+            break;
+        case SIGABRT:
+            message = "Abnormal Termination (SIGABRT)\n\n"
+                     "The application was forced to terminate.";
+            break;
+        case SIGFPE:
+            message = "Floating Point Exception (SIGFPE)\n\n"
+                     "The application encountered a math error.";
+            break;
+        default:
+            message = QString("Unexpected Signal: %1").arg(signal);
+    }
+    
+    // Log the crash
+    FileLogger::instance().critical("CrashHandler", message);
+    
+    // Save state
+    ReDroidController& controller = ReDroidController::instance();
+    QList<InstanceInfo> instances = controller.listInstances();
+    for (const InstanceInfo& info : instances) {
+        if (info.state == InstanceState::Running) {
+            controller.stopInstance(info.instanceId, true);
+        }
+    }
+    
+    // Show error dialog
+    QMessageBox::critical(nullptr, "Application Crash",
+        QString("%1\n\nError Code: %2\n\nCheck log file: %3")
+            .arg(message).arg(signal).arg(FileLogger::instance().getLogFilePath())
+    );
+    
+    exit(1);
+}
 
 // ============================================================================
 // Auto-Start Manager - Auto-start containers on app launch
@@ -186,16 +234,24 @@ AutoStartManager* g_autoStartManager = nullptr;
 // ============================================================================
 
 int main(int argc, char *argv[]) {
+    // =========================================================================
+    // Install Crash Handlers FIRST (before anything else)
+    // =========================================================================
+    signal(SIGSEGV, crashHandler);
+    signal(SIGABRT, crashHandler);
+    signal(SIGFPE, crashHandler);
+    
+    // Initialize FileLogger FIRST (before everything else)
+    FileLogger::instance().info("Startup", "========================================");
+    FileLogger::instance().info("Startup", "VirtualPhonePro v3.0.0 Starting...");
+    FileLogger::instance().info("Startup", "========================================");
+    
     // Set application info
     QCoreApplication::setApplicationName("VirtualPhonePro");
     QCoreApplication::setApplicationVersion("2.0.0");
     QCoreApplication::setOrganizationName("VirtualPhonePro");
     
-    // Enable high DPI scaling
-    
     // Create application
-    // Note: AA_EnableHighDpiScaling + AA_UseHighDpiPixmaps
-    // removed in Qt6 (auto-enabled by default)
     QApplication app(argc, argv);
     app.setStyle(QStyleFactory::create("Fusion"));
     
@@ -223,7 +279,7 @@ int main(int argc, char *argv[]) {
     ReDroidController& controller = ReDroidController::instance();
     
     // Validate Docker on startup
-    qDebug() << "[Startup] Validating Docker...";
+    FileLogger::instance().info("Startup", "Validating Docker...");
     OperationResult dockerResult = controller.validateDocker();
     
     if (!dockerResult.success) {

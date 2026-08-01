@@ -23,6 +23,7 @@
 #include <QStandardPaths>
 
 #include "VirtualPhonePro/NetworkConfigManager.h"
+#include "SettingsDialog.h"
 
 namespace VirtualPhonePro {
 
@@ -691,6 +692,16 @@ void DashboardWindow::setupMenuBar() {
     refreshAction->setShortcut(QKeySequence::Refresh);
     connect(refreshAction, &QAction::triggered, this, &DashboardWindow::onRefreshClicked);
     fileMenu->addAction(refreshAction);
+    
+    fileMenu->addSeparator();
+    
+    QAction* settingsAction = new QAction("⚙️ &Settings...", this);
+    settingsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_P));
+    connect(settingsAction, &QAction::triggered, [this]() {
+        SettingsDialog dialog(this);
+        dialog.exec();
+    });
+    fileMenu->addAction(settingsAction);
     
     fileMenu->addSeparator();
     
