@@ -10,6 +10,7 @@
 #include <QLineEdit>
 #include <QStackedWidget>
 #include <QComboBox>
+#include <QSpinBox>
 #include <QMessageBox>
 #include <QTimer>
 #include <QDateTime>
@@ -46,6 +47,8 @@ private:
     void handleRequestResponse(QNetworkReply *reply);
     void showError(const QString &message);
     void showSuccess(const QString &message);
+    void showRequestError(const QString &message);
+    void showRequestSuccess(const QString &message);
 
 private:
     QStackedWidget *stackedWidget;
@@ -66,6 +69,7 @@ private:
     QPushButton *btnSendRequest;
     QPushButton *btnSwitchToLogin;
     QLabel *requestStatusLabel;
+    QLabel *profilesLabel;
 
     QNetworkAccessManager *networkManager;
     QString pendingRequestId;
