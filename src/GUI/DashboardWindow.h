@@ -47,11 +47,19 @@ public:
     DeviceProfile getProfile() const { return m_profile; }
     QString getManufacturer() const { return m_manufacturer; }
     QString getAndroidVersion() const { return m_androidVersion; }
+    
+    // Proxy configuration
+    bool useProxy() const { return m_useProxy; }
+    QString getProxyHost() const { return m_proxyHost; }
+    int getProxyPort() const { return m_proxyPort; }
+    QString getProxyUsername() const { return m_proxyUsername; }
+    QString getProxyPassword() const { return m_proxyPassword; }
 
 private slots:
     void onManufacturerChanged(const QString& manufacturer);
     void onOk();
     void onRandomizeProfile();
+    void onProxyModeChanged(int index);
 
 private:
     void setupUI();
@@ -72,6 +80,20 @@ private:
     QLineEdit* m_imeiEdit;
     QLineEdit* m_serialEdit;
     QLineEdit* m_androidIdEdit;
+    
+    // Proxy configuration
+    QComboBox* m_proxyModeCombo;
+    QLineEdit* m_proxyHostEdit;
+    QSpinBox* m_proxyPortSpin;
+    QLineEdit* m_proxyUsernameEdit;
+    QLineEdit* m_proxyPasswordEdit;
+    QWidget* m_proxyDetailsWidget;
+    
+    bool m_useProxy;
+    QString m_proxyHost;
+    int m_proxyPort;
+    QString m_proxyUsername;
+    QString m_proxyPassword;
 };
 
 /**

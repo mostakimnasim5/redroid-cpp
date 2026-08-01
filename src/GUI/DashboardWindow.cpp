@@ -22,6 +22,8 @@
 #include <QJsonObject>
 #include <QStandardPaths>
 
+#include "VirtualPhonePro/NetworkConfigManager.h"
+
 namespace VirtualPhonePro {
 
 // ==============================================================================
@@ -72,6 +74,50 @@ void NewPhoneDialog::setupUI() {
     basicLayout->addRow("Memory:", m_memorySpin);
     
     mainLayout->addWidget(basicGroup);
+    
+    // Proxy Configuration
+    QGroupBox* proxyGroup = new QGroupBox("🌐 Network Configuration", this);
+    QFormLayout* proxyLayout = new QFormLayout(proxyGroup);
+    
+    m_proxyModeCombo = new QComboBox(this);
+    m_proxyModeCombo->addItem("Without Proxy (Random IP)",  0);
+    m_proxyModeCombo->addItem("With Proxy (Custom IP)", 1);
+    m_proxyModeCombo->addItem("With Mobile Proxy (Same Device IP)", 2);
+    proxyLayout->addRow("Network Mode:", m_proxyModeCombo);
+    
+    // Proxy details container (shown/hidden based on selection)
+    m_proxyDetailsWidget = new QWidget(this);
+    QFormLayout* proxyDetailsLayout = new QFormLayout(m_proxyDetailsWidget);
+    proxyDetailsLayout->setContentsMargins(0, 10, 0, 0);
+    
+    m_proxyHostEdit = new QLineEdit(this);
+    m_proxyHostEdit->setPlaceholderText("e.g., 192.168.1.100 or proxy.example.com");
+    proxyDetailsLayout->addRow("Proxy Host:", m_proxyHostEdit);
+    
+    m_proxyPortSpin = new QSpinBox(this);
+    m_proxyPortSpin->setRange(1, 65535);
+    m_proxyPortSpin->setValue(8080);
+    proxyDetailsLayout->addRow("Proxy Port:", m_proxyPortSpin);
+    
+    m_proxyUsernameEdit = new QLineEdit(this);
+    m_proxyUsernameEdit->setPlaceholderText("Username (optional)");
+    proxyDetailsLayout->addRow("Username:", m_proxyUsernameEdit);
+    
+    m_proxyPasswordEdit = new QLineEdit(this);
+    m_proxyPasswordEdit->setPlaceholderText("Password (optional)");
+    m_proxyPasswordEdit->setEchoMode(QLineEdit::Password);
+    proxyDetailsLayout->addRow("Password:", m_proxyPasswordEdit);
+    
+    proxyLayout->addRow("", m_proxyDetailsWidget);
+    
+    // Initially hide proxy details
+    m_proxyDetailsWidget->setVisible(false);
+    
+    // Connect proxy mode change
+    connect(m_proxyModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &NewPhoneDialog::onProxyModeChanged);
+    
+    mainLayout->addWidget(proxyGroup);
     
     // Identity Info
     QGroupBox* identityGroup = new QGroupBox("Device Identity (Auto-generated)", this);
@@ -172,6 +218,26 @@ void NewPhoneDialog::onRandomizeProfile() {
     m_androidIdEdit->setText(androidId);
 }
 
+void NewPhoneDialog::onProxyModeChanged(int index) {
+    int mode = m_proxyModeCombo->itemData(index).toInt();
+    
+    if (mode == 0) {
+        // Without Proxy - hide proxy details
+        m_proxyDetailsWidget->setVisible(false);
+        m_useProxy = false;
+    } else if (mode == 1) {
+        // With Proxy (Custom IP) - show proxy details
+        m_proxyDetailsWidget->setVisible(true);
+        m_useProxy = true;
+        m_proxyHostEdit->setPlaceholderText("Enter proxy IP or hostname");
+    } else if (mode == 2) {
+        // With Mobile Proxy (Same Device IP) - hide proxy details, use device IP
+        m_proxyDetailsWidget->setVisible(false);
+        m_useProxy = true;
+        // The IP will be set to the same as the device's IP in the controller
+    }
+}
+
 void NewPhoneDialog::onOk() {
     QString name = m_instanceNameEdit->text().trimmed();
     if (name.isEmpty()) {
@@ -179,9 +245,27 @@ void NewPhoneDialog::onOk() {
         return;
     }
     
+    // Validate proxy if using proxy mode
+    int mode = m_proxyModeCombo->itemData(m_proxyModeCombo->currentIndex()).toInt();
+    if (mode == 1) {
+        QString proxyHost = m_proxyHostEdit->text().trimmed();
+        if (proxyHost.isEmpty()) {
+            QMessageBox::warning(this, "Validation", "Please enter a proxy host address");
+            return;
+        }
+    }
+    
     m_instanceId = name;
     m_manufacturer = m_manufacturerCombo->currentText();
     m_androidVersion = m_androidVersionCombo->currentText();
+    
+    // Get proxy settings
+    int proxyMode = m_proxyModeCombo->itemData(m_proxyModeCombo->currentIndex()).toInt();
+    m_useProxy = (proxyMode != 0);
+    m_proxyHost = m_proxyHostEdit->text().trimmed();
+    m_proxyPort = m_proxyPortSpin->value();
+    m_proxyUsername = m_proxyUsernameEdit->text().trimmed();
+    m_proxyPassword = m_proxyPasswordEdit->text();
     
     // Create profile
     m_profile = DeviceProfile();
@@ -698,6 +782,50 @@ void DashboardWindow::onNewPhoneClicked() {
         ReDroidController& controller = ReDroidController::instance();
         
         if (controller.startInstance(instanceId, profile)) {
+            // Apply proxy if enabled
+            if (dialog.useProxy()) {
+                ProxyConfig proxyConfig;
+                proxyConfig.host = dialog.getProxyHost();
+                proxyConfig.port = dialog.getProxyPort();
+                proxyConfig.username = dialog.getProxyUsername();
+                proxyConfig.password = dialog.getProxyPassword();
+                proxyConfig.type = "http"; // Default to HTTP proxy
+                
+                if (proxyConfig.isValid()) {
+                    qDebug() << "[Dashboard] Applying proxy:" << proxyConfig.host << ":" << proxyConfig.port;
+                    controller.assignProxy(instanceId, proxyConfig);
+                    
+                    // Show proxy info in success message
+                    QMessageBox::information(this, "Success",
+                        QString("Phone '%1' created successfully!\n\n"
+                                "🌐 Network Mode: With Proxy\n"
+                                "📍 Proxy: %2:%3\n"
+                                "ADB Port: %4\n"
+                                "Profile: %5")
+                            .arg(instanceId)
+                            .arg(proxyConfig.host)
+                            .arg(proxyConfig.port)
+                            .arg(port)
+                            .arg(profile.name)
+                    );
+                } else {
+                    QMessageBox::warning(this, "Proxy Warning",
+                        "Phone created but proxy configuration is invalid."
+                    );
+                }
+            } else {
+                // No proxy - show normal success message
+                QMessageBox::information(this, "Success",
+                    QString("Phone '%1' created successfully!\n\n"
+                            "🌐 Network Mode: Without Proxy (Random IP)\n"
+                            "ADB Port: %2\n"
+                            "Profile: %3")
+                        .arg(instanceId)
+                        .arg(port)
+                        .arg(profile.name)
+                );
+            }
+            
             // Apply anti-detection
             BankingAppSpoofer::instance().applyCompleteBankingSetup(instanceId);
             SafetyNetSpoofer::instance().spoofSafetyNetResponse(instanceId);
@@ -705,14 +833,6 @@ void DashboardWindow::onNewPhoneClicked() {
             // Refresh and create card
             refreshInstances();
             
-            QMessageBox::information(this, "Success",
-                QString("Phone '%1' created successfully!\n"
-                        "ADB Port: %2\n"
-                        "Profile: %3")
-                    .arg(instanceId)
-                    .arg(port)
-                    .arg(profile.name)
-            );
         } else {
             QMessageBox::warning(this, "Error",
                 QString("Failed to create phone '%1'").arg(instanceId)
