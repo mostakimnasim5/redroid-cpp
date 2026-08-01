@@ -220,6 +220,7 @@ if(BUILD_QT6_GUI)
         src/GUI/DashboardWindow.cpp
         src/GUI/AntiDetectionPanel.cpp
         src/GUI/LoginWindow.cpp
+        src/GUI/MainWindow.cpp
         src/GUI/PhoneSettingsDialog.cpp
         src/GUI/SettingsDialog.cpp
         
@@ -301,6 +302,8 @@ if(BUILD_QT6_GUI)
         src/GUI/AntiDetectionPanel.cpp
         src/GUI/LoginWindow.h
         src/GUI/LoginWindow.cpp
+        src/GUI/MainWindow.h
+        src/GUI/MainWindow.cpp
         src/GUI/PhoneSettingsDialog.h
         src/GUI/PhoneSettingsDialog.cpp
         src/GUI/SettingsDialog.h

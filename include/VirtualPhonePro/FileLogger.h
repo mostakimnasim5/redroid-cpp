@@ -9,12 +9,12 @@
 
 #include <QObject>
 #include <QMutex>
-#include <QMutexLocker>
 #include <QFile>
 #include <QTextStream>
 #include <QDateTime>
 #include <QDir>
 #include <QStandardPaths>
+#include <QMutexLocker>
 
 namespace VirtualPhonePro {
 

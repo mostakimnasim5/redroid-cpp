@@ -17,6 +17,8 @@
 #include <QFile>
 #include <QStandardPaths>
 #include <QDir>
+#include <QCoreApplication>
+#include <QJsonArray>
 
 namespace VirtualPhonePro {
 

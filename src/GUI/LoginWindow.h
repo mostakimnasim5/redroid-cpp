@@ -16,9 +16,12 @@
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+
+#include "VirtualPhonePro/ConfigManager.h"
 
 class LoginWindow : public QMainWindow {
     Q_OBJECT

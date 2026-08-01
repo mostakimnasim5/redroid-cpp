@@ -30,7 +30,6 @@
 #include <QGroupBox>
 #include <QCheckBox>
 #include <QSpinBox>
-#include <QSlider>
 #include <QToolButton>
 #include <QStatusBar>
 #include <QMenuBar>
