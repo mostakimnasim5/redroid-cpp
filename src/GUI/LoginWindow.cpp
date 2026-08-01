@@ -268,8 +268,10 @@ void LoginWindow::verifyCode(const QString &code) {
     QString queryUrl = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
                     QStringLiteral("/databases/(default)/documents:runQuery?key=") + FIREBASE_API_KEY;
     
-    QNetworkRequest queryRequest(QUrl(queryUrl));
-    queryRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QUrl url(queryUrl);
+    QNetworkRequest queryRequest;
+    queryRequest.setUrl(url);
+    queryRequest.setHeader(QNetworkRequest::KnownHeaders::ContentTypeHeader, "application/json");
     
     // Build simple query to get all activeUsers
     QJsonObject structuredQuery;
@@ -395,11 +397,13 @@ void LoginWindow::onSendRequestClicked() {
 
 void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, int profiles, int duration) {
     // Firebase Firestore REST API - Create document
-    QString url = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
+    QString urlStr = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
                  QStringLiteral("/databases/(default)/documents/accessRequests?key=") + FIREBASE_API_KEY;
     
-    QNetworkRequest request(QUrl(url));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QUrl reqUrl(urlStr);
+    QNetworkRequest netRequest;
+    netRequest.setUrl(reqUrl);
+    netRequest.setHeader(QNetworkRequest::KnownHeaders::ContentTypeHeader, "application/json");
     
     // Create document data
     QJsonObject fields;
@@ -434,7 +438,7 @@ void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, i
     QJsonDocument doc(document);
     QByteArray data = doc.toJson();
     
-    QNetworkReply *reply = networkManager->post(request, data);
+    QNetworkReply *reply = networkManager->post(netRequest, data);
     
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         this->handleRequestResponse(reply);
