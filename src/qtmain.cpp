@@ -4,6 +4,7 @@
  * @version 2.0.0
  * 
  * VirtualPhonePro Qt6 GUI with Docker Auto-Start support
+ * Includes Firebase-based admin authentication
  */
 
 #include <QApplication>
@@ -19,6 +20,7 @@
 #include <QIcon>
 
 #include "GUI/DashboardWindow.h"
+#include "GUI/LoginWindow.h"
 #include "VirtualPhonePro/ReDroidController.h"
 #include "VirtualPhonePro/MultiInstanceManager.h"
 
@@ -235,51 +237,95 @@ int main(int argc, char *argv[]) {
         qDebug() << "[Startup] Docker validated:" << dockerResult.data.value("version").toString();
     }
     
-    // Create and show Dashboard window (Multi-Instance Manager)
-    DashboardWindow window;
+    // ============================================================================
+    // Authentication Flow - Show Login Window First
+    // ============================================================================
+    qDebug() << "[Startup] Showing login window...";
     
-    // Try to load icon, but don't fail if it's missing
+    LoginWindow loginWindow;
+    loginWindow.setWindowTitle("ReDroidCPP - Login");
+    loginWindow.setFixedSize(450, 550);
+    
+    // Try to load icon
     QIcon appIcon(":/icons/app.png");
     if (!appIcon.isNull()) {
-        window.setWindowIcon(appIcon);
+        loginWindow.setWindowIcon(appIcon);
     } else {
-        // Use a simple colored icon as fallback
         QPixmap pixmap(32, 32);
         pixmap.fill(Qt::blue);
-        window.setWindowIcon(QIcon(pixmap));
+        loginWindow.setWindowIcon(QIcon(pixmap));
     }
-    window.show();
     
-    // Auto-start saved instances after window is shown
-    QTimer::singleShot(1000, [&]() {
-        if (dockerResult.success) {
-            qDebug() << "[Startup] Restoring auto-start instances...";
-            
-            // Show auto-start dialog
-            QMessageBox autoStartMsg;
-            autoStartMsg.setWindowTitle("Auto-Start Containers");
-            autoStartMsg.setText("Would you like to restore previously saved container instances?");
-            autoStartMsg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-            autoStartMsg.setDefaultButton(QMessageBox::Yes);
-            
-            if (autoStartMsg.exec() == QMessageBox::Yes) {
-                g_autoStartManager->restoreSavedInstances();
+    loginWindow.show();
+    
+    // Variable to track if user is authenticated
+    bool authenticated = false;
+    
+    // Check if login window is closed without login - exit app
+    QObject::connect(&loginWindow, &QWidget::destroyed, [&]() {
+        if (!authenticated) {
+            qDebug() << "[Auth] Login window closed without authentication - exiting";
+            app.quit();
+        }
+    });
+    
+    // Also handle close event
+    QObject::connect(&loginWindow, &QObject::destroyed, [&]() {
+        if (!authenticated) {
+            qDebug() << "[Auth] Login window closed - exiting application";
+        }
+    });
+    
+    // Connect login success signal - when user successfully logs in, show Dashboard
+    QObject::connect(&loginWindow, &LoginWindow::loginSuccess,
+                     [&](const QString& userId, const QString& uniqueKey, int remainingProfiles, int totalProfiles) {
+        qDebug() << "[Auth] Login successful! User:" << userId;
+        qDebug() << "[Auth] Remaining profiles:" << remainingProfiles << "/" << totalProfiles;
+        authenticated = true;
+        Q_UNUSED(userId);
+        Q_UNUSED(uniqueKey);
+        Q_UNUSED(remainingProfiles);
+        Q_UNUSED(totalProfiles);
+        
+        // Hide login window
+        loginWindow.hide();
+        
+        // Create and show Dashboard window
+        DashboardWindow* dashboard = new DashboardWindow();
+        dashboard->setAttribute(Qt::WA_DeleteOnClose);
+        
+        if (!appIcon.isNull()) {
+            dashboard->setWindowIcon(appIcon);
+        } else {
+            QPixmap pixmap(32, 32);
+            pixmap.fill(Qt::blue);
+            dashboard->setWindowIcon(QIcon(pixmap));
+        }
+        
+        dashboard->show();
+        
+        // Auto-start saved instances after dashboard is shown
+        QTimer::singleShot(1000, [&, dashboard]() {
+            if (dockerResult.success) {
+                qDebug() << "[Startup] Restoring auto-start instances...";
+                
+                // Show auto-start dialog
+                QMessageBox autoStartMsg;
+                autoStartMsg.setWindowTitle("Auto-Start Containers");
+                autoStartMsg.setText("Would you like to restore previously saved container instances?");
+                autoStartMsg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+                autoStartMsg.setDefaultButton(QMessageBox::Yes);
+                
+                if (autoStartMsg.exec() == QMessageBox::Yes) {
+                    g_autoStartManager->restoreSavedInstances();
+                }
             }
-        }
+        });
     });
     
-    // Connect signals for auto-save
-    QObject::connect(&controller, &ReDroidController::instanceStateChanged,
-                     [&](const QString& instanceId, InstanceState state) {
-        if (state == InstanceState::Running) {
-            qDebug() << "[AutoSave] Instance running, saving state...";
-            // Get profile and save
-            InstanceInfo info = controller.getInstanceInfo(instanceId);
-            // Save instance for auto-start
-        }
-    });
-    
-    // Run application
+    // Run application event loop
+    // The login window will be shown first
+    // After successful login, loginSuccess signal is emitted and DashboardWindow is shown
     int result = app.exec();
     
     // Cleanup: Save instances before exit
