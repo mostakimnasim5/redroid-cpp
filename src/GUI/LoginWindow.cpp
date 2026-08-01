@@ -265,11 +265,11 @@ void LoginWindow::verifyCode(const QString &code) {
     // For simplicity, we'll fetch all activeUsers and filter client-side
     // In production, use a proper query index
     
-    QString getUrl = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
+    QString queryUrl = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
                     QStringLiteral("/databases/(default)/documents:runQuery?key=") + FIREBASE_API_KEY;
     
-    QNetworkRequest getRequest(QUrl(getUrl));
-    getRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QNetworkRequest queryRequest(QUrl(queryUrl));
+    queryRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     
     // Build simple query to get all activeUsers
     QJsonObject structuredQuery;
@@ -310,7 +310,7 @@ void LoginWindow::verifyCode(const QString &code) {
     QJsonDocument doc(queryObj);
     QByteArray data = doc.toJson();
     
-    QNetworkReply *reply = networkManager->post(getRequest, data);
+    QNetworkReply *reply = networkManager->post(queryRequest, data);
     pendingRequestId = code;
     
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
