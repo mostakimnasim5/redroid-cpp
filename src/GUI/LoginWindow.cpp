@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QRegularExpression>
 
 // Firebase Configuration
 const QString FIREBASE_PROJECT_ID = QStringLiteral("redroid-d8110");
@@ -385,8 +386,43 @@ void LoginWindow::onSendRequestClicked() {
     int profiles = profilesSpinBox->value();
     int duration = durationCombo->currentData().toInt();
 
+    // Validate name - must not be empty and at least 2 characters
+    if (name.isEmpty()) {
+        showRequestError("আপনার নাম দিন");
+        nameInput->setFocus();
+        return;
+    }
+    if (name.length() < 2) {
+        showRequestError("নাম কমপক্ষে ২ অক্ষরের হতে হবে");
+        nameInput->setFocus();
+        return;
+    }
+
+    // Validate phone - must not be empty and should be valid format
     if (phone.isEmpty()) {
         showRequestError("ফোন নম্বর দিন");
+        phoneInput->setFocus();
+        return;
+    }
+    
+    // Check phone format - should be at least 11 digits
+    QString digitsOnly = phone;
+    digitsOnly.replace(QRegularExpression("[^0-9]"), "");
+    if (digitsOnly.length() < 11) {
+        showRequestError("ফোন নম্বর কমপক্ষে ১১ সংখ্যার হতে হবে");
+        phoneInput->setFocus();
+        return;
+    }
+
+    // Validate profiles
+    if (profiles < 1) {
+        showRequestError("কমপক্ষে ১টি প্রোফাইল চান");
+        return;
+    }
+
+    // Validate duration
+    if (duration < 5) {
+        showRequestError("কমপক্ষে ৫ মিনিটের জন্য আবেদন করুন");
         return;
     }
 
