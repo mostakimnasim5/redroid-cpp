@@ -1,0 +1,21 @@
+{
+    "_comment": "VirtualPhonePro Configuration - Copy this to config.json in AppData",
+    "firebase": {
+        "projectId": "redroid-d8110",
+        "apiKey": "AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA"
+    },
+    "api": {
+        "serverPort": 8080,
+        "apiKey": "your-api-key-here"
+    },
+    "docker": {
+        "path": "docker",
+        "host": "",
+        "timeout": 30
+    },
+    "adb": {
+        "path": "adb",
+        "portStart": 5555,
+        "autoConnect": true
+    }
+}

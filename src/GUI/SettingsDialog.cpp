@@ -7,6 +7,9 @@
 #include "VirtualPhonePro/FileLogger.h"
 #include <QHostInfo>
 #include <QProcess>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QJsonArray>
 
 namespace VirtualPhonePro {
 

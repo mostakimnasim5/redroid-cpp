@@ -10,10 +10,12 @@
 #include <QJsonValue>
 #include <QRegularExpression>
 
-// Firebase Configuration
-const QString FIREBASE_PROJECT_ID = QStringLiteral("redroid-d8110");
-const QString FIREBASE_API_KEY = QStringLiteral("AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA");
-const QString FIREBASE_BASE_URL = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + QStringLiteral("/databases/(default)/documents");
+#include "VirtualPhonePro/ConfigManager.h"
+
+// Firebase Configuration - Loaded from config file for security
+#define getFirebaseProjectId() VirtualPhonePro::ConfigManager::instance().getFirebaseProjectId()
+#define getFirebaseApiKey() VirtualPhonePro::ConfigManager::instance().getFirebaseApiKey()
+#define getFirebaseBaseUrl() VirtualPhonePro::ConfigManager::instance().getFirebaseBaseUrl()
 
 LoginWindow::LoginWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -266,8 +268,7 @@ void LoginWindow::verifyCode(const QString &code) {
     // For simplicity, we'll fetch all activeUsers and filter client-side
     // In production, use a proper query index
     
-    QString queryUrl = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
-                    QStringLiteral("/databases/(default)/documents:runQuery?key=") + FIREBASE_API_KEY;
+    QString queryUrl = getFirebaseBaseUrl() + QStringLiteral(":runQuery?key=") + getFirebaseApiKey();
     
     QUrl url(queryUrl);
     QNetworkRequest queryRequest;
@@ -433,8 +434,7 @@ void LoginWindow::onSendRequestClicked() {
 
 void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, int profiles, int duration) {
     // Firebase Firestore REST API - Create document
-    QString urlStr = QStringLiteral("https://firestore.googleapis.com/v1/projects/") + FIREBASE_PROJECT_ID + 
-                 QStringLiteral("/databases/(default)/documents/accessRequests?key=") + FIREBASE_API_KEY;
+    QString urlStr = getFirebaseBaseUrl() + QStringLiteral("/accessRequests?key=") + getFirebaseApiKey();
     
     QUrl reqUrl(urlStr);
     QNetworkRequest netRequest;

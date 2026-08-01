@@ -180,6 +180,34 @@ endif()
 add_test(NAME UniqueDeviceGenerator COMMAND Test_UniqueDeviceGenerator)
 
 # =========================================================
+# Test 3: Validation Tests (Login, Proxy, VPN, DNS)
+# =========================================================
+add_executable(Test_Validation
+    Test_Validation.cpp
+)
+
+target_link_libraries(Test_Validation PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+    Threads::Threads
+)
+
+target_include_directories(Test_Validation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+# Set console subsystem for Windows (required for Qt Test)
+if(WIN32)
+    set_target_properties(Test_Validation PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
+
+add_test(NAME Validation COMMAND Test_Validation)
+
+# =========================================================
 # Copy test profiles
 # =========================================================
 if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")
@@ -187,4 +215,4 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")
          DESTINATION ${CMAKE_BINARY_DIR}/profiles/)
 endif()
 
-message(STATUS "Tests configured: DetectionBypass + UniqueDeviceGenerator")
+message(STATUS "Tests configured: DetectionBypass + UniqueDeviceGenerator + Validation")
