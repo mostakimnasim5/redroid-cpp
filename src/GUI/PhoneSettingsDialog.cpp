@@ -209,7 +209,7 @@ QWidget* PhoneSettingsDialog::createDNSPage() {
     connect(m_resetDNSBtn, &QPushButton::clicked, this, &PhoneSettingsDialog::onResetDNS);
     buttonLayout->addWidget(m_resetDNSBtn);
     
-    layout->addWidget(buttonLayout);
+    layout->addLayout(buttonLayout);
     layout->addStretch();
     
     return page;
@@ -275,7 +275,7 @@ QWidget* PhoneSettingsDialog::createVPNPage() {
     connect(m_importVPNBtn, &QPushButton::clicked, this, &PhoneSettingsDialog::onImportVPNConfig);
     buttonLayout->addWidget(m_importVPNBtn);
     
-    layout->addWidget(buttonLayout);
+    layout->addLayout(buttonLayout);
     layout->addStretch();
     
     return page;
