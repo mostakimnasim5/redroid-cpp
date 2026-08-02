@@ -112,7 +112,7 @@ ReDroidController::ReDroidController(QObject* parent)
 }
 
 ReDroidController::~ReDroidController() {
-    // Stop all running instances first
+    // Stop monitoring first
     stopMonitoring();
     
     // Stop all running instances
@@ -127,8 +127,6 @@ ReDroidController::~ReDroidController() {
     
     // Clear all data structures
     m_instances.clear();
-    m_instanceProcesses.clear();
-    m_instanceProfiles.clear();
     
     // Clean up timers
     if (m_monitoringTimer) {
