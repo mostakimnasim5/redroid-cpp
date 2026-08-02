@@ -1,8 +1,9 @@
 {
     "_comment": "VirtualPhonePro Configuration - Copy this to config.json in AppData",
+    "_security_note": "NEVER commit your actual API keys to version control!",
     "firebase": {
-        "projectId": "redroid-d8110",
-        "apiKey": "AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA"
+        "projectId": "your-firebase-project-id",
+        "apiKey": "your-firebase-api-key"
     },
     "api": {
         "serverPort": 8080,

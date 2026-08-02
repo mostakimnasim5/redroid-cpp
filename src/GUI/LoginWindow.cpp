@@ -22,7 +22,7 @@ LoginWindow::LoginWindow(QWidget *parent)
     , networkManager(new QNetworkAccessManager(this))
 {
     setWindowTitle("ReDroidCPP - Login");
-    setFixedSize(450, 550);
+    setFixedSize(500, 650);
     setStyleSheet(R"(
         QMainWindow {
             background-color: #0f172a;
@@ -34,9 +34,9 @@ LoginWindow::LoginWindow(QWidget *parent)
             background-color: #3b82f6;
             color: white;
             border: none;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
         }
         QPushButton:hover {
@@ -53,9 +53,9 @@ LoginWindow::LoginWindow(QWidget *parent)
             background-color: #1e293b;
             color: white;
             border: 1px solid #334155;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
         }
         QLineEdit:focus {
             border-color: #3b82f6;
@@ -64,25 +64,25 @@ LoginWindow::LoginWindow(QWidget *parent)
             background-color: #1e293b;
             color: white;
             border: 1px solid #334155;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
         }
         QSpinBox {
             background-color: #1e293b;
             color: white;
             border: 1px solid #334155;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
         }
         QLabel#titleLabel {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             color: #60a5fa;
         }
         QLabel#subtitleLabel {
-            font-size: 14px;
+            font-size: 16px;
             color: #94a3b8;
         }
         QLabel#statusLabel {
@@ -135,12 +135,12 @@ void LoginWindow::setupLoginUI() {
     subtitleLabel->setAlignment(Qt::AlignCenter);
 
     // Code Input
-    QLabel *codeLabel = new QLabel("আপনার ৮-সংখ্যার কোড দিন:", loginPage);
+    QLabel *codeLabel = new QLabel("Enter your 8-digit access code:", loginPage);
     codeInput = new QLineEdit(loginPage);
     codeInput->setPlaceholderText("XXXXXXXX");
     codeInput->setMaxLength(8);
     codeInput->setAlignment(Qt::AlignCenter);
-    codeInput->setFont(QFont("Segoe UI", 18, QFont::Bold));
+    codeInput->setFont(QFont("Segoe UI", 20, QFont::Bold));
 
     // Status
     statusLabel = new QLabel(loginPage);
@@ -149,8 +149,8 @@ void LoginWindow::setupLoginUI() {
     statusLabel->setVisible(false);
 
     // Buttons
-    btnLogin = new QPushButton("লগইন", loginPage);
-    btnSwitchToRequest = new QPushButton("নতুন অ্যাকাউন্ট চান? রিকোয়েস্ট পাঠান", loginPage);
+    btnLogin = new QPushButton("LOGIN", loginPage);
+    btnSwitchToRequest = new QPushButton("Don't have a code? Request Access", loginPage);
     btnSwitchToRequest->setStyleSheet("background-color: transparent; color: #60a5fa; font-size: 12px;");
 
     mainLayout->addWidget(titleLabel);
@@ -180,40 +180,40 @@ void LoginWindow::setupRequestUI() {
     titleLabel->setObjectName("titleLabel");
     titleLabel->setAlignment(Qt::AlignCenter);
 
-    QLabel *subtitleLabel = new QLabel("নতুন অ্যাকাউন্টের জন্য আবেদন করুন", loginPage);
+    QLabel *subtitleLabel = new QLabel("Request a new account to use ReDroidCPP", loginPage);
     subtitleLabel->setObjectName("subtitleLabel");
     subtitleLabel->setAlignment(Qt::AlignCenter);
 
     // Name
-    QLabel *nameLabel = new QLabel("আপনার নাম:", loginPage);
+    QLabel *nameLabel = new QLabel("Full Name:", loginPage);
     nameInput = new QLineEdit(requestPage);
-    nameInput->setPlaceholderText("আপনার নাম লিখুন");
+    nameInput->setPlaceholderText("Full Name লিখুন");
 
     // Phone
-    QLabel *phoneLabel = new QLabel("ফোন নম্বর:", loginPage);
+    QLabel *phoneLabel = new QLabel("Phone Number:", loginPage);
     phoneInput = new QLineEdit(requestPage);
-    phoneInput->setPlaceholderText("01XXXXXXXXX");
+    phoneInput->setPlaceholderText("+8801XXXXXXXXX");
 
     // Profiles
-    QLabel *profilesLabel = new QLabel("কতটি প্রোফাইল চান?", loginPage);
+    QLabel *profilesLabel = new QLabel("Number of Profiles (1-100)?", loginPage);
     profilesSpinBox = new QSpinBox(requestPage);
     profilesSpinBox->setMinimum(1);
     profilesSpinBox->setMaximum(10);
     profilesSpinBox->setValue(3);
 
     // Duration
-    QLabel *durationLabel = new QLabel("কতক্ষণ চান?", loginPage);
+    QLabel *durationLabel = new QLabel("Duration?", loginPage);
     durationCombo = new QComboBox(requestPage);
-    durationCombo->addItem("৫ মিনিট", 5);
-    durationCombo->addItem("১৫ মিনিট", 15);
-    durationCombo->addItem("৩০ মিনিট", 30);
-    durationCombo->addItem("৬০ মিনিট (১ ঘণ্টা)", 60);
-    durationCombo->addItem("১ দিন", 1440);
-    durationCombo->addItem("৩ দিন", 4320);
-    durationCombo->addItem("৭ দিন (১ সপ্তাহ)", 10080);
-    durationCombo->addItem("১৫ দিন", 21600);
-    durationCombo->addItem("১ মাস", 43200);
-    durationCombo->addItem("১ বছর", 525600);
+    durationCombo->addItem("5 minutes", 5);
+    durationCombo->addItem("১5 minutes", 15);
+    durationCombo->addItem("30 minutes", 30);
+    durationCombo->addItem("1 hour", 60);
+    durationCombo->addItem("1 day", 1440);
+    durationCombo->addItem("3 days", 4320);
+    durationCombo->addItem("7 days (1 week)", 10080);
+    durationCombo->addItem("15 days", 21600);
+    durationCombo->addItem("30 days (1 month)", 43200);
+    durationCombo->addItem("1 year", 525600);
 
     // Status
     requestStatusLabel = new QLabel(requestPage);
@@ -222,8 +222,8 @@ void LoginWindow::setupRequestUI() {
     requestStatusLabel->setVisible(false);
 
     // Buttons
-    btnSendRequest = new QPushButton("রিকোয়েস্ট পাঠান", requestPage);
-    btnSwitchToLogin = new QPushButton("আগে থেকে কোড আছে? লগইন করুন", requestPage);
+    btnSendRequest = new QPushButton("SUBMIT REQUEST", requestPage);
+    btnSwitchToLogin = new QPushButton("আগে থেকে কোড আছে? LOGIN করুন", requestPage);
     btnSwitchToLogin->setStyleSheet("background-color: transparent; color: #60a5fa; font-size: 12px;");
 
     mainLayout->addWidget(titleLabel);
@@ -249,7 +249,7 @@ void LoginWindow::onLoginClicked() {
     QString code = codeInput->text().trimmed();
 
     if (code.isEmpty()) {
-        showError("কোড দিন");
+        showError("Please enter your access code");
         return;
     }
 
@@ -324,9 +324,9 @@ void LoginWindow::verifyCode(const QString &code) {
 
 void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     if (reply->error() != QNetworkReply::NoError) {
-        showError("নেটওয়ার্ক সমস্যা: " + reply->errorString());
+        showError("Network error: " + reply->errorString());
         btnLogin->setEnabled(true);
-        btnLogin->setText("লগইন");
+        btnLogin->setText("LOGIN");
         reply->deleteLater();
         return;
     }
@@ -338,7 +338,7 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     if (!doc.isArray()) {
         showError("সার্ভার সমস্যা");
         btnLogin->setEnabled(true);
-        btnLogin->setText("লগইন");
+        btnLogin->setText("LOGIN");
         reply->deleteLater();
         return;
     }
@@ -347,9 +347,9 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     
     // Check if we got a valid document
     if (results.isEmpty() || !results[0].toObject().contains("document")) {
-        showError("এই কোডটি পাওয়া যায়নি");
+        showError("Invalid access code. Please check and try again.");
         btnLogin->setEnabled(true);
-        btnLogin->setText("লগইন");
+        btnLogin->setText("LOGIN");
         reply->deleteLater();
         return;
     }
@@ -359,9 +359,9 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     
     // Check if blocked
     if (fields.contains("isBlocked") && fields["isBlocked"].toObject()["booleanValue"].toBool()) {
-        showError("আপনার অ্যাকাউন্ট ব্লক করা আছে। Admin এর সাথে যোগাযোগ করুন।");
+        showError("Your account has been blocked. Please contact Admin.");
         btnLogin->setEnabled(true);
-        btnLogin->setText("লগইন");
+        btnLogin->setText("LOGIN");
         reply->deleteLater();
         return;
     }
@@ -377,7 +377,7 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     emit loginSuccess(userId, uniqueKey, remainingProfiles, totalProfiles);
     
     btnLogin->setEnabled(true);
-    btnLogin->setText("লগইন");
+    btnLogin->setText("LOGIN");
     reply->deleteLater();
 }
 
@@ -389,19 +389,19 @@ void LoginWindow::onSendRequestClicked() {
 
     // Validate name - must not be empty and at least 2 characters
     if (name.isEmpty()) {
-        showRequestError("আপনার নাম দিন");
+        showRequestError("Please enter your full name");
         nameInput->setFocus();
         return;
     }
     if (name.length() < 2) {
-        showRequestError("নাম কমপক্ষে ২ অক্ষরের হতে হবে");
+        showRequestError("Name must be at least 2 characters long");
         nameInput->setFocus();
         return;
     }
 
     // Validate phone - must not be empty and should be valid format
     if (phone.isEmpty()) {
-        showRequestError("ফোন নম্বর দিন");
+        showRequestError("Please enter your phone number");
         phoneInput->setFocus();
         return;
     }
@@ -410,25 +410,25 @@ void LoginWindow::onSendRequestClicked() {
     QString digitsOnly = phone;
     digitsOnly.replace(QRegularExpression("[^0-9]"), "");
     if (digitsOnly.length() < 11) {
-        showRequestError("ফোন নম্বর কমপক্ষে ১১ সংখ্যার হতে হবে");
+        showRequestError("Phone Number কমপক্ষে ১১ সংখ্যার হতে হবে");
         phoneInput->setFocus();
         return;
     }
 
     // Validate profiles
     if (profiles < 1) {
-        showRequestError("কমপক্ষে ১টি প্রোফাইল চান");
+        showRequestError("At least 1 profile is required");
         return;
     }
 
     // Validate duration
     if (duration < 5) {
-        showRequestError("কমপক্ষে ৫ মিনিটের জন্য আবেদন করুন");
+        showRequestError("কমপক্ষে 5 minutesের জন্য আবেদন করুন");
         return;
     }
 
     btnSendRequest->setEnabled(false);
-    btnSendRequest->setText("পাঠানো হচ্ছে...");
+    btnSendRequest->setText("Submitting...");
     sendAccessRequest(name, phone, profiles, duration);
 }
 
@@ -483,9 +483,9 @@ void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, i
 
 void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
     if (reply->error() != QNetworkReply::NoError) {
-        showRequestError("সমস্যা হয়েছে: " + reply->errorString());
+        showRequestError("Network error: " + reply->errorString());
         btnSendRequest->setEnabled(true);
-        btnSendRequest->setText("রিকোয়েস্ট পাঠান");
+        btnSendRequest->setText("SUBMIT REQUEST");
         reply->deleteLater();
         return;
     }
@@ -496,7 +496,7 @@ void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
     
     if (obj.contains("name")) {
         QString docName = obj["name"].toString();
-        showRequestSuccess("রিকোয়েস্ট পাঠানো হয়েছে!\n\nআপনার অনুরোধ Admin কে জানানো হয়েছে। Admin approve করলে আপনি কোড পাবেন।");
+        showRequestSuccess("Request submitted successfully!\n\nYour request has been sent to Admin. You will receive an 8-digit access code after Admin approval.");
         
         // Clear form
         nameInput->clear();
@@ -507,19 +507,19 @@ void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
         // Switch to login after 3 seconds
         QTimer::singleShot(3000, this, &LoginWindow::onSwitchToLogin);
     } else {
-        showRequestError("রিকোয়েস্ট পাঠাতে সমস্যা হয়েছে");
+        showRequestError("Failed to submit request. Please try again.");
     }
     
     btnSendRequest->setEnabled(true);
-    btnSendRequest->setText("রিকোয়েস্ট পাঠান");
+    btnSendRequest->setText("SUBMIT REQUEST");
     reply->deleteLater();
 }
 
 void LoginWindow::onNetworkReply(QNetworkReply *reply) {
     if (reply->error() != QNetworkReply::NoError) {
-        showError("নেটওয়ার্ক সমস্যা: " + reply->errorString());
+        showError("Network error: " + reply->errorString());
         btnLogin->setEnabled(true);
-        btnLogin->setText("লগইন");
+        btnLogin->setText("LOGIN");
         return;
     }
 
@@ -530,7 +530,7 @@ void LoginWindow::onNetworkReply(QNetworkReply *reply) {
     if (obj.contains("documents")) {
         QJsonArray docs = obj["documents"].toArray();
         if (docs.isEmpty()) {
-            showError("এই কোডটি পাওয়া যায়নি");
+            showError("Invalid access code. Please check and try again.");
         } else {
             QJsonObject userDoc = docs.first().toObject();
             QJsonObject fields = userDoc["fields"].toObject();
@@ -538,7 +538,7 @@ void LoginWindow::onNetworkReply(QNetworkReply *reply) {
             bool isBlocked = fields.contains("isBlocked") && fields["isBlocked"].toObject()["booleanValue"].toBool();
 
             if (isBlocked) {
-                showError("আপনার অ্যাকাউন্ট ব্লক করা আছে। Admin এর সাথে যোগাযোগ করুন।");
+                showError("Your account has been blocked. Please contact Admin.");
             } else {
                 QString userId = userDoc["name"].toString().split("/").last();
                 QString uniqueKey = fields.contains("uniqueKey") ? fields["uniqueKey"].toObject()["stringValue"].toString() : "";
@@ -550,11 +550,11 @@ void LoginWindow::onNetworkReply(QNetworkReply *reply) {
             }
         }
     } else {
-        showError("কোড যাচাই ব্যর্থ");
+        showError("Code verification failed");
     }
 
     btnLogin->setEnabled(true);
-    btnLogin->setText("লগইন");
+    btnLogin->setText("LOGIN");
     reply->deleteLater();
 }
 
