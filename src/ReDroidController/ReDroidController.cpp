@@ -112,12 +112,32 @@ ReDroidController::ReDroidController(QObject* parent)
 }
 
 ReDroidController::~ReDroidController() {
+    // Stop all running instances first
     stopMonitoring();
     
     // Stop all running instances
-    for (const QString& id : m_instances.keys()) {
-        stopInstance(id, true);
+    QStringList instanceIds = m_instances.keys();
+    for (const QString& id : instanceIds) {
+        try {
+            stopInstance(id, true);
+        } catch (const std::exception& e) {
+            qWarning() << "Error stopping instance" << id << ":" << e.what();
+        }
     }
+    
+    // Clear all data structures
+    m_instances.clear();
+    m_instanceProcesses.clear();
+    m_instanceProfiles.clear();
+    
+    // Clean up timers
+    if (m_monitoringTimer) {
+        m_monitoringTimer->stop();
+        delete m_monitoringTimer;
+        m_monitoringTimer = nullptr;
+    }
+    
+    qDebug() << "[ReDroidController] All resources cleaned up";
 }
 
 // ============================================================================

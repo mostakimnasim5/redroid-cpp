@@ -98,6 +98,7 @@ private slots:
     void on_actionExit_triggered();
     void on_actionSaveForAutoStart_triggered();
     void on_actionRemoveFromAutoStart_triggered();
+    void on_adminControlPanel_triggered();
     
     // Toolbar actions
     void on_newInstanceButton_clicked();

@@ -255,69 +255,81 @@ std::string ADBManager::executeADBCommand(const std::vector<std::string>& args) 
 std::string ADBManager::executeADBCommand(const std::vector<std::string>& args, int timeoutMs) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    std::string cmd = m_adbPath;
-    
-    if (!m_selectedDevice.empty()) {
-        cmd += " -s " + m_selectedDevice;
-    }
-    
-    for (const auto& arg : args) {
-        cmd += " " + arg;
-    }
-    
-    Logger::getInstance().debug("Executing: " + cmd);
-    
-    std::array<char, 128> buffer;
-    std::string result;
-    
+    try {
+        std::string cmd = m_adbPath;
+        
+        if (!m_selectedDevice.empty()) {
+            cmd += " -s " + m_selectedDevice;
+        }
+        
+        for (const auto& arg : args) {
+            cmd += " " + arg;
+        }
+        
+        Logger::getInstance().debug("Executing: " + cmd);
+        
+        std::array<char, 128> buffer;
+        std::string result;
+        
 #ifdef _WIN32
-    FILE* pipe = _popen(cmd.c_str(), "r");
+        FILE* pipe = _popen(cmd.c_str(), "r");
 #else
-    FILE* pipe = popen(cmd.c_str(), "r");
+        FILE* pipe = popen(cmd.c_str(), "r");
 #endif
-    
-    if (!pipe) {
-        m_lastError = "Failed to execute command: " + cmd;
+        
+        if (!pipe) {
+            m_lastError = "Failed to execute command: " + cmd;
+            Logger::getInstance().error(m_lastError);
+            return "";
+        }
+        
+        auto startTime = std::chrono::steady_clock::now();
+        
+        while (true) {
+            if (std::chrono::steady_clock::now() - startTime > std::chrono::milliseconds(timeoutMs)) {
+                Logger::getInstance().warning("Command timeout exceeded");
+#ifdef _WIN32
+                _pclose(pipe);
+#else
+                pclose(pipe);
+#endif
+                return result;
+            }
+            
+#ifdef _WIN32
+            char* fgetsResult = fgets(buffer.data(), buffer.size(), pipe);
+#else
+            char* fgetsResult = fgets(buffer.data(), buffer.size(), pipe);
+#endif
+            
+            if (fgetsResult == nullptr) {
+                break;
+            }
+            result += fgetsResult;
+        }
+        
+#ifdef _WIN32
+        int exitCode = _pclose(pipe);
+#else
+        int exitCode = pclose(pipe);
+#endif
+        
+        if (exitCode != 0) {
+            Logger::getInstance().warning("Command returned non-zero exit code: " + std::to_string(exitCode));
+        }
+        
+        return result;
+    }
+    catch (const std::exception& e) {
+        m_lastError = std::string("Exception during ADB command: ") + e.what();
         Logger::getInstance().error(m_lastError);
         return "";
     }
-    
-    auto startTime = std::chrono::steady_clock::now();
-    
-    while (true) {
-        if (std::chrono::steady_clock::now() - startTime > std::chrono::milliseconds(timeoutMs)) {
-            Logger::getInstance().warning("Command timeout exceeded");
-#ifdef _WIN32
-            _pclose(pipe);
-#else
-            pclose(pipe);
-#endif
-            return result;
-        }
-        
-#ifdef _WIN32
-        char* fgetsResult = fgets(buffer.data(), buffer.size(), pipe);
-#else
-        char* fgetsResult = fgets(buffer.data(), buffer.size(), pipe);
-#endif
-        
-        if (fgetsResult == nullptr) {
-            break;
-        }
-        result += fgetsResult;
+    catch (...) {
+        m_lastError = "Unknown exception during ADB command";
+        Logger::getInstance().error(m_lastError);
+        return "";
     }
-    
-#ifdef _WIN32
-    int exitCode = _pclose(pipe);
-#else
-    int exitCode = pclose(pipe);
-#endif
-    
-    if (exitCode != 0) {
-        Logger::getInstance().warning("Command returned non-zero exit code: " + std::to_string(exitCode));
-    }
-    
-    return result;
 }
 
 bool ADBManager::runADBCommand(const std::vector<std::string>& args) {

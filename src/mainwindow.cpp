@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "gui/admin_control_panel.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -29,6 +30,8 @@
 #include <QTimer>
 #include <QDebug>
 #include <QStandardPaths>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 using namespace VirtualPhonePro;
 
@@ -115,6 +118,12 @@ void MainWindow::setupMenuBar() {
     autoStartAction->setShortcut(Qt::CTRL + Qt::Key_A);
     connect(autoStartAction, &QAction::triggered, this, &MainWindow::on_actionAutoStart_triggered);
     fileMenu->addAction(autoStartAction);
+    
+    // Admin Control Panel
+    QAction* adminPanelAction = new QAction("👤 Admin Control Panel...", this);
+    adminPanelAction->setShortcut(Qt::CTRL + Qt::Key_P);
+    connect(adminPanelAction, &QAction::triggered, this, &MainWindow::on_adminControlPanel_triggered);
+    fileMenu->addAction(adminPanelAction);
     
     fileMenu->addSeparator();
     
@@ -566,6 +575,39 @@ void MainWindow::onScreenProcessFinished(int exitCode, QProcess::ExitStatus exit
         if (m_screenMirrorActive) {
             QTimer::singleShot(100, this, &MainWindow::startScreenMirror);
         }
+    }
+}
+
+void MainWindow::on_adminControlPanel_triggered() {
+    qDebug() << "[MainWindow] Opening Admin Control Panel";
+    
+    AdminControlPanel dialog(this);
+    connect(&dialog, &AdminControlPanel::configurationSubmitted, 
+            this, [](const QJsonObject& config) {
+                qDebug() << "[AdminControlPanel] Configuration submitted:" << config;
+            });
+    
+    if (dialog.exec() == QDialog::Accepted) {
+        QJsonObject config = dialog.getConfiguration();
+        qDebug() << "[AdminControlPanel] User:" << config["userName"].toString();
+        qDebug() << "[AdminControlPanel] Phone:" << config["phoneNumber"].toString();
+        qDebug() << "[AdminControlPanel] Profiles:" << config["profileCount"].toInt();
+        qDebug() << "[AdminControlPanel] Duration:" << config["durationDays"].toInt() << "days";
+        
+        // Show confirmation
+        QMessageBox::information(
+            this,
+            "Configuration Saved",
+            QString("Configuration has been saved successfully!\n\n"
+                    "User: %1\n"
+                    "Phone: %2\n"
+                    "Profiles: %3\n"
+                    "Duration: %4 days")
+                .arg(config["userName"].toString())
+                .arg(config["phoneNumber"].toString())
+                .arg(config["profileCount"].toInt())
+                .arg(config["durationDays"].toInt())
+        );
     }
 }
 
