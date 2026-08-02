@@ -387,6 +387,12 @@ void LoginWindow::onSendRequestClicked() {
     int profiles = profilesSpinBox->value();
     int duration = durationCombo->currentData().toInt();
 
+    // Validate Firebase config first
+    if (!VirtualPhonePro::ConfigManager::instance().hasFirebaseConfig()) {
+        showRequestError("⚠️ Firebase কনফিগ সঠিক নয়! অ্যাপ সেটিংসে Firebase credentials যাচাই করুন।");
+        return;
+    }
+
     // Validate name - must not be empty and at least 2 characters
     if (name.isEmpty()) {
         showRequestError("Please enter your full name");
@@ -506,8 +512,15 @@ void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
         
         // Switch to login after 3 seconds
         QTimer::singleShot(3000, this, &LoginWindow::onSwitchToLogin);
+    } else if (obj.contains("error")) {
+        // Firebase returned an error - show the actual error message
+        QJsonObject error = obj["error"].toObject();
+        QString errorMessage = error["message"].toString("Unknown Firebase error");
+        showRequestError("Firebase Error: " + errorMessage);
+        qDebug() << "[AccessRequest] Firebase Error:" << errorMessage;
     } else {
         showRequestError("Failed to submit request. Please try again.");
+        qDebug() << "[AccessRequest] Unknown response:" << QString::fromUtf8(response);
     }
     
     btnSendRequest->setEnabled(true);
