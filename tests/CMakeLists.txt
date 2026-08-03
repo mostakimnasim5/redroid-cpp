@@ -128,21 +128,21 @@ add_executable(Test_UniqueDeviceGenerator
     Test_UniqueDeviceGenerator.cpp
     ${REDROID_TEST_SOURCES}
     # Add all Q_OBJECT headers so AUTOMOC can process them
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/ReDroidController.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/HardwareFingerprintSpoofer.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/ReDroidController.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/HardwareFingerprintSpoofer.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/PlayIntegrityManager.hpp
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/NetworkProfileManager.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/NetworkProfileManager.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/EmulatorDetectionBypass.hpp
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MagiskPatcher.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MagiskPatcher.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SELinuxManager.hpp
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SensorSimulator.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SensorSimulator.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TimingAttackPrevention.hpp
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/WebhookManager.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MultiInstanceManager.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SecurityMitigationManager.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/APIServer.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/AppCloner.h
-    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TestingFramework.h
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/WebhookManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MultiInstanceManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SecurityMitigationManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/APIServer.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/AppCloner.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TestingFramework.hpp
 )
 
 target_link_libraries(Test_UniqueDeviceGenerator PRIVATE
