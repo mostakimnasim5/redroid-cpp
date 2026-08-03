@@ -22,7 +22,7 @@ LoginWindow::LoginWindow(QWidget *parent)
     , networkManager(new QNetworkAccessManager(this))
 {
     setWindowTitle("ReDroidCPP - Login");
-    setFixedSize(500, 650);
+    setFixedSize(520, 750);
     setStyleSheet(R"(
         QMainWindow {
             background-color: #0f172a;
@@ -34,10 +34,11 @@ LoginWindow::LoginWindow(QWidget *parent)
             background-color: #3b82f6;
             color: white;
             border: none;
-            padding: 15px;
+            padding: 12px 20px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
+            min-height: 42px;
         }
         QPushButton:hover {
             background-color: #2563eb;
@@ -53,9 +54,10 @@ LoginWindow::LoginWindow(QWidget *parent)
             background-color: #1e293b;
             color: white;
             border: 1px solid #334155;
-            padding: 15px;
+            padding: 12px 15px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
+            min-height: 38px;
         }
         QLineEdit:focus {
             border-color: #3b82f6;
@@ -64,25 +66,27 @@ LoginWindow::LoginWindow(QWidget *parent)
             background-color: #1e293b;
             color: white;
             border: 1px solid #334155;
-            padding: 15px;
+            padding: 10px 15px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
+            min-height: 38px;
         }
         QSpinBox {
             background-color: #1e293b;
             color: white;
             border: 1px solid #334155;
-            padding: 15px;
+            padding: 10px 15px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
+            min-height: 38px;
         }
         QLabel#titleLabel {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: bold;
             color: #60a5fa;
         }
         QLabel#subtitleLabel {
-            font-size: 16px;
+            font-size: 14px;
             color: #94a3b8;
         }
         QLabel#statusLabel {
@@ -93,15 +97,22 @@ LoginWindow::LoginWindow(QWidget *parent)
             background-color: rgba(220, 38, 38, 0.2);
             color: #fca5a5;
             border: 1px solid rgba(220, 38, 38, 0.3);
+            padding: 12px;
+            border-radius: 8px;
         }
         .success {
             background-color: rgba(22, 163, 74, 0.2);
             color: #86efac;
             border: 1px solid rgba(22, 163, 74, 0.3);
+            padding: 12px;
+            border-radius: 8px;
         }
         QLabel#loadingLabel {
             color: #60a5fa;
             font-size: 12px;
+        }
+        QWidget#requestScrollArea {
+            background-color: transparent;
         }
     )");
 
@@ -169,43 +180,68 @@ void LoginWindow::setupLoginUI() {
 
 void LoginWindow::setupRequestUI() {
     requestPage = new QWidget(this);
+    requestPage->setObjectName("requestScrollArea");
 
     QVBoxLayout *mainLayout = new QVBoxLayout(requestPage);
-    mainLayout->setAlignment(Qt::AlignCenter);
-    mainLayout->setContentsMargins(40, 40, 40, 40);
-    mainLayout->setSpacing(15);
+    mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+    mainLayout->setContentsMargins(40, 30, 40, 30);
+    mainLayout->setSpacing(12);
 
     // Title
-    QLabel *titleLabel = new QLabel("📝 Access Request", loginPage);
+    QLabel *titleLabel = new QLabel("📝 Access Request", requestPage);
     titleLabel->setObjectName("titleLabel");
     titleLabel->setAlignment(Qt::AlignCenter);
 
-    QLabel *subtitleLabel = new QLabel("Request a new account to use ReDroidCPP", loginPage);
+    QLabel *subtitleLabel = new QLabel("Request a new account to use ReDroidCPP", requestPage);
     subtitleLabel->setObjectName("subtitleLabel");
     subtitleLabel->setAlignment(Qt::AlignCenter);
 
-    // Name
-    QLabel *nameLabel = new QLabel("Full Name:", loginPage);
+    // Spacer
+    mainLayout->addSpacing(10);
+
+    // Name Field with Label
+    QLabel *nameLabel = new QLabel("Full Name:", requestPage);
+    nameLabel->setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 500;");
+    mainLayout->addWidget(nameLabel);
+    
     nameInput = new QLineEdit(requestPage);
     nameInput->setPlaceholderText("Full Name লিখুন");
+    nameInput->setMinimumHeight(40);
+    nameInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    mainLayout->addWidget(nameInput);
 
-    // Phone
-    QLabel *phoneLabel = new QLabel("Phone Number:", loginPage);
+    // Phone Field with Label
+    QLabel *phoneLabel = new QLabel("Phone Number:", requestPage);
+    phoneLabel->setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 500;");
+    mainLayout->addWidget(phoneLabel);
+    
     phoneInput = new QLineEdit(requestPage);
     phoneInput->setPlaceholderText("+8801XXXXXXXXX");
+    phoneInput->setMinimumHeight(40);
+    phoneInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    mainLayout->addWidget(phoneInput);
 
-    // Profiles
-    QLabel *profilesLabel = new QLabel("Number of Profiles (1-100)?", loginPage);
+    // Profiles Field with Label
+    QLabel *profilesLabel = new QLabel("Number of Profiles (1-100)?", requestPage);
+    profilesLabel->setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 500;");
+    mainLayout->addWidget(profilesLabel);
+    
     profilesSpinBox = new QSpinBox(requestPage);
     profilesSpinBox->setMinimum(1);
     profilesSpinBox->setMaximum(10);
     profilesSpinBox->setValue(3);
+    profilesSpinBox->setMinimumHeight(40);
+    profilesSpinBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    mainLayout->addWidget(profilesSpinBox);
 
-    // Duration
-    QLabel *durationLabel = new QLabel("Duration?", loginPage);
+    // Duration Field with Label
+    QLabel *durationLabel = new QLabel("Duration?", requestPage);
+    durationLabel->setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 500;");
+    mainLayout->addWidget(durationLabel);
+    
     durationCombo = new QComboBox(requestPage);
     durationCombo->addItem("5 minutes", 5);
-    durationCombo->addItem("১5 minutes", 15);
+    durationCombo->addItem("15 minutes", 15);
     durationCombo->addItem("30 minutes", 30);
     durationCombo->addItem("1 hour", 60);
     durationCombo->addItem("1 day", 1440);
@@ -214,32 +250,72 @@ void LoginWindow::setupRequestUI() {
     durationCombo->addItem("15 days", 21600);
     durationCombo->addItem("30 days (1 month)", 43200);
     durationCombo->addItem("1 year", 525600);
+    durationCombo->setMinimumHeight(40);
+    durationCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    mainLayout->addWidget(durationCombo);
 
-    // Status
+    // Spacer before status and button
+    mainLayout->addSpacing(15);
+
+    // Status Label with proper word wrap
     requestStatusLabel = new QLabel(requestPage);
     requestStatusLabel->setObjectName("statusLabel");
     requestStatusLabel->setAlignment(Qt::AlignCenter);
+    requestStatusLabel->setWordWrap(true);
     requestStatusLabel->setVisible(false);
-
-    // Buttons
-    btnSendRequest = new QPushButton("SUBMIT REQUEST", requestPage);
-    btnSwitchToLogin = new QPushButton("আগে থেকে কোড আছে? LOGIN করুন", requestPage);
-    btnSwitchToLogin->setStyleSheet("background-color: transparent; color: #60a5fa; font-size: 12px;");
-
-    mainLayout->addWidget(titleLabel);
-    mainLayout->addWidget(subtitleLabel);
-    mainLayout->addSpacing(10);
-    mainLayout->addWidget(nameLabel);
-    mainLayout->addWidget(nameInput);
-    mainLayout->addWidget(phoneLabel);
-    mainLayout->addWidget(phoneInput);
-    mainLayout->addWidget(profilesLabel);
-    mainLayout->addWidget(profilesSpinBox);
-    mainLayout->addWidget(durationLabel);
-    mainLayout->addWidget(durationCombo);
+    requestStatusLabel->setMinimumHeight(50);
+    requestStatusLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     mainLayout->addWidget(requestStatusLabel);
+
+    // Submit Button - Fixed height, centered, bold
+    btnSendRequest = new QPushButton("SUBMIT REQUEST", requestPage);
+    btnSendRequest->setMinimumHeight(48);
+    btnSendRequest->setMaximumHeight(48);
+    btnSendRequest->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    btnSendRequest->setStyleSheet(R"(
+        QPushButton {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            min-height: 48px;
+        }
+        QPushButton:hover {
+            background-color: #2563eb;
+        }
+        QPushButton:pressed {
+            background-color: #1d4ed8;
+        }
+        QPushButton:disabled {
+            background-color: #475569;
+            color: #94a3b8;
+        }
+    )");
     mainLayout->addWidget(btnSendRequest);
+
+    // Back to Login button
+    btnSwitchToLogin = new QPushButton("আগে থেকে কোড আছে? LOGIN করুন", requestPage);
+    btnSwitchToLogin->setMinimumHeight(36);
+    btnSwitchToLogin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    btnSwitchToLogin->setStyleSheet(R"(
+        QPushButton {
+            background-color: transparent;
+            color: #60a5fa;
+            border: none;
+            font-size: 12px;
+            min-height: 36px;
+        }
+        QPushButton:hover {
+            color: #93c5fd;
+            text-decoration: underline;
+        }
+    )");
     mainLayout->addWidget(btnSwitchToLogin);
+
+    // Add stretch at the end for extra space
+    mainLayout->addStretch();
 
     connect(btnSendRequest, &QPushButton::clicked, this, &LoginWindow::onSendRequestClicked);
     connect(btnSwitchToLogin, &QPushButton::clicked, this, &LoginWindow::onSwitchToLogin);

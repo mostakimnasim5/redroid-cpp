@@ -95,11 +95,11 @@ bool ConfigManager::saveConfig() {
 }
 
 bool ConfigManager::createDefaultConfig() {
-    // Create default config with placeholder values
+    // Create default config with Firebase project ID
     m_config = QJsonObject{
         {"firebase", QJsonObject{
-            {"projectId", "YOUR_PROJECT_ID"},
-            {"apiKey", "YOUR_API_KEY"}
+            {"projectId", "Redroid-d8110"},
+            {"apiKey", ""}
         }},
         {"api", QJsonObject{
             {"serverPort", 8080},
@@ -133,11 +133,11 @@ bool ConfigManager::hasFirebaseConfig() const {
     QString projectId = getFirebaseProjectId();
     QString apiKey = getFirebaseApiKey();
     
-    // Check if values are still placeholders
-    if (projectId == "YOUR_PROJECT_ID" || 
-        apiKey == "YOUR_API_KEY" ||
-        projectId.isEmpty() || 
-        apiKey.isEmpty()) {
+    // Check if project ID is valid and not empty
+    // API key can be optional for some endpoints
+    if (projectId.isEmpty() || 
+        projectId == "YOUR_PROJECT_ID" ||
+        projectId == "your-firebase-project-id") {
         return false;
     }
     
