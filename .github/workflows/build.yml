@@ -29,7 +29,8 @@ jobs:
             cmake ninja-build g++ \
             libgl-dev libglu1-mesa-dev \
             libxkbcommon-dev libxkbcommon-x11-dev \
-            libssl-dev libdbus-1-dev
+            libssl-dev libdbus-1-dev \
+            libegl-dev
 
       - name: Install Qt ${{ env.QT_VERSION }}
         run: |
