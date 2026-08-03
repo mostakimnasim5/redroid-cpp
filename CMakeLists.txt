@@ -309,7 +309,7 @@ if(BUILD_QT6_GUI)
         src/GUI/PhoneSettingsDialog.cpp
         src/GUI/SettingsDialog.h
         src/GUI/SettingsDialog.cpp
-        include/VirtualPhonePro/FileLogger.h
+        include/VirtualPhonePro/FileLogger.hpp
         include/VirtualPhonePro/ConfigManager.hpp
         src/ReDroidController/FileLogger.cpp
         src/ReDroidController/ConfigManager.cpp
