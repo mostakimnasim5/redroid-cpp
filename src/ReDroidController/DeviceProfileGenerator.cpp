@@ -64,6 +64,13 @@ static const std::pair<std::string, std::vector<std::string>> TAC_DATABASE[] = {
 // SHA256 IMPLEMENTATION
 // ════════════════════════════════════════════════════════════════════════════════
 
+SHA256::SHA256() : pImpl(new SHA256Impl()) {}
+SHA256::~SHA256() { delete pImpl; }
+
+void SHA256::init() { pImpl->init(); }
+void SHA256::update(const uint8_t* data, size_t len) { pImpl->update(data, len); }
+void SHA256::final(uint8_t* digest) { pImpl->final(digest); }
+
 class SHA256::SHA256Impl {
 public:
     void init() {
@@ -191,11 +198,11 @@ private:
 };
 
 std::array<uint8_t, SHA256::DIGEST_SIZE> SHA256::compute(const uint8_t* data, size_t len) {
-    SHA256Impl impl;
-    impl.init();
-    impl.update(data, len);
+    SHA256 sha;
+    sha.init();
+    sha.update(data, len);
     std::array<uint8_t, DIGEST_SIZE> result;
-    impl.final(result.data());
+    sha.final(result.data());
     return result;
 }
 
@@ -235,7 +242,7 @@ std::array<uint8_t, HMAC_SHA256::OUTPUT_SIZE> HMAC_SHA256::compute(
     }
     
     // Inner hash: SHA256(k_ipad || data)
-    SHA256Impl inner;
+    SHA256 inner;
     inner.init();
     inner.update(k_ipad.data(), BLOCK_SIZE);
     inner.update(data, dataLen);
@@ -243,7 +250,7 @@ std::array<uint8_t, HMAC_SHA256::OUTPUT_SIZE> HMAC_SHA256::compute(
     inner.final(inner_hash.data());
     
     // Outer hash: SHA256(k_opad || inner_hash)
-    SHA256Impl outer;
+    SHA256 outer;
     outer.init();
     outer.update(k_opad.data(), BLOCK_SIZE);
     outer.update(inner_hash.data(), 32);

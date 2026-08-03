@@ -64,7 +64,9 @@ QString HardwareFingerprintSpoofer::adbShellOutput(const QString& instanceId, co
     }
     
     ADBManager& adb = ADBManager::getInstance();
-    std::string output = adb.executeShellCommand(serial.toStdString(), cmd.toStdString());
+    std::string output = adb.executeShellCommand(cmd.toStdString());
+    
+    Q_UNUSED(serial);
     
     return QString::fromStdString(output);
 }
@@ -77,7 +79,9 @@ void HardwareFingerprintSpoofer::adbShell(const QString& instanceId, const QStri
     }
     
     ADBManager& adb = ADBManager::getInstance();
-    std::string output = adb.executeShellCommand(serial.toStdString(), command.toStdString());
+    std::string output = adb.executeShellCommand(command.toStdString());
+    
+    Q_UNUSED(serial);
     
     qDebug() << "[HardwareFingerprintSpoofer] ADB exec:" << command 
              << "->" << QString::fromStdString(output).trimmed().left(100);

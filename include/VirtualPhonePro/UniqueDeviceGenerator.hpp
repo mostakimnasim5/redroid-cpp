@@ -181,6 +181,7 @@ private:
 
     // CSPRNG (Cryptographically Secure Random Number Generator)
     bool getSecureRandomBytes(unsigned char* buffer, size_t length) const;
+    bool getSecureRandomBytesFromFile(unsigned char* buffer, size_t length) const;
     quint32 getSecureRandomUInt32(quint32 min, quint32 max) const;
     quint64 getSecureRandomUInt64() const;
     QString getSecureRandomHex(size_t length) const;

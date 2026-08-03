@@ -100,8 +100,18 @@ class SHA256 {
 public:
     static constexpr size_t DIGEST_SIZE = 32;
     
+    SHA256();
+    ~SHA256();
+    
+    void init();
+    void update(const uint8_t* data, size_t len);
+    void final(uint8_t* digest);
     std::array<uint8_t, DIGEST_SIZE> compute(const uint8_t* data, size_t len);
     static std::string computeHex(const std::string& input);
+
+private:
+    class SHA256Impl;
+    SHA256Impl* pImpl;
 };
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -122,7 +132,7 @@ public:
     uint64_t generateUInt64();
     
     // Get raw entropy for master seed
-    std::array<uint8_t, 32> getEntropy();
+    static std::array<uint8_t, 32> getEntropy();
 
 private:
     SecureRandom() = default;

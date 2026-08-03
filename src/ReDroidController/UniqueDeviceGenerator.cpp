@@ -104,9 +104,9 @@ bool UniqueDeviceGenerator::getSecureRandomBytes(unsigned char* buffer, size_t l
     HCRYPTPROV hProv = 0;
     
     // Try to acquire crypto context with multiple attempts
-    if (!CryptAcquireContext(&hProv, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, 0)) {
-        if (!CryptAcquireContext(&hProv, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
-            if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+    if (!CryptAcquireContext(&hProv, nullptr, MS_ENH_RSA_AES_PROV, MS_ENH_RSA_AES_PROV_W, 0)) {
+        if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL_W, CRYPT_VERIFYCONTEXT)) {
+            if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL_W, 0)) {
                 qWarning() << "[SecureRandom] Failed to acquire crypto context";
                 // Fallback to secondary source
                 return getSecureRandomBytesFromFile(buffer, length);
@@ -137,29 +137,31 @@ bool UniqueDeviceGenerator::getSecureRandomBytes(unsigned char* buffer, size_t l
 // Secondary secure entropy source - uses /dev/urandom (cryptographically secure)
 bool UniqueDeviceGenerator::getSecureRandomBytesFromFile(unsigned char* buffer, size_t length) const {
 #ifdef _WIN32
-    // Windows fallback: Use CryptAcquireContext with different providers
+    // Windows fallback: Use CryptAcquireContextA
     HCRYPTPROV hProv = 0;
-    
-    // Try multiple CSP providers
-    const char* providers[] = {
-        PROV_RSA_AES,
-        PROV_RSA_FULL,
-        MS_ENH_RSA_AES_PROV
-    };
-    
-    for (const char* prov : providers) {
-        if (CryptAcquireContext(&hProv, nullptr, prov, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-            if (CryptGenRandom(hProv, static_cast<DWORD>(length), buffer)) {
-                CryptReleaseContext(hProv, 0);
-                qWarning() << "[SecureRandom] Used fallback CSP:" << prov;
-                return true;
-            }
+
+    if (CryptAcquireContextA(&hProv, nullptr, MS_DEF_PROV_A, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+        if (CryptGenRandom(hProv, static_cast<DWORD>(length), buffer)) {
             CryptReleaseContext(hProv, 0);
+            qWarning() << "[SecureRandom] Used fallback CSP: MS_DEF_PROV";
+            return true;
         }
+        CryptReleaseContext(hProv, 0);
     }
-    
+
+    if (CryptAcquireContextA(&hProv, nullptr, nullptr, PROV_RSA_FULL, 0)) {
+        if (CryptGenRandom(hProv, static_cast<DWORD>(length), buffer)) {
+            CryptReleaseContext(hProv, 0);
+            qWarning() << "[SecureRandom] Used fallback CSP: default";
+            return true;
+        }
+        CryptReleaseContext(hProv, 0);
+    }
+
     qCritical() << "[SecureRandom] CRITICAL: All crypto sources failed!";
     return false;
+#else
+    // Unix fallback: Use /dev/urandom (still cryptographically secure)
 #else
     // Unix fallback: Use /dev/urandom (still cryptographically secure)
     QFile urandom("/dev/urandom");
