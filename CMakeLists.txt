@@ -237,7 +237,7 @@ if(BUILD_QT6_GUI)
     # ALL Headers
     # =========================================================================
     set(REDROID_HEADERS
-        include/VirtualPhonePro/ReDroidController.h
+        include/VirtualPhonePro/ReDroidController.hpp
         include/VirtualPhonePro/DeviceProfile.h
         include/VirtualPhonePro/EnhancedDeviceProfile.h
         include/VirtualPhonePro/BankingAppSpoofer.h
@@ -247,10 +247,10 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/AdvancedAntiDetection.hpp
         include/VirtualPhonePro/TLSFingerprint.hpp
         include/VirtualPhonePro/HyperRealisticTouchEmulator.hpp
-        include/VirtualPhonePro/NetworkProfileManager.h
+        include/VirtualPhonePro/NetworkProfileManager.hpp
         include/VirtualPhonePro/RealisticDeviceProfile.hpp
-        include/VirtualPhonePro/MultiInstanceManager.h
-        include/VirtualPhonePro/HardwareFingerprintSpoofer.h
+        include/VirtualPhonePro/MultiInstanceManager.hpp
+        include/VirtualPhonePro/HardwareFingerprintSpoofer.hpp
         include/VirtualPhonePro/SafetyNetSpoofer.h
         include/VirtualPhonePro/SafetyNetAdvancedBypass.hpp
         include/VirtualPhonePro/HypervisorBypass.hpp
@@ -262,36 +262,36 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/ADBManager.hpp
         include/VirtualPhonePro/DeviceIDGenerator.hpp
         include/VirtualPhonePro/IPTimezoneConverter.hpp
-        include/VirtualPhonePro/PlayIntegrityManager.hpp
+        include/VirtualPhonePro/PlayIntegrityManager.hpppp
         include/VirtualPhonePro/EmulatorDetectionBypass.hpp
         include/VirtualPhonePro/AndroidRealismEngine.h
         include/VirtualPhonePro/NetworkStackSpoofer.hpp
-        include/VirtualPhonePro/TimingAttackPrevention.hpp
+        include/VirtualPhonePro/TimingAttackPrevention.hpppp
         include/VirtualPhonePro/CarrierNetworkSimulator.h
         include/VirtualPhonePro/OEMDeepSpoofing.h
-        include/VirtualPhonePro/SensorSimulator.h
+        include/VirtualPhonePro/SensorSimulator.hpp
         include/VirtualPhonePro/BatteryPowerManager.h
         include/VirtualPhonePro/SSLCertificateManager.h
         include/VirtualPhonePro/PersistentIdentityManager.h
         include/VirtualPhonePro/DeviceBehaviorManager.h
-        include/VirtualPhonePro/AppCloner.h
+        include/VirtualPhonePro/AppCloner.hpp
         include/VirtualPhonePro/ScreenMirror.hpp
         include/VirtualPhonePro/ScreenStateManager.h
         include/VirtualPhonePro/FindMyDeviceManager.h
         include/VirtualPhonePro/Logger.hpp
         include/VirtualPhonePro/HttpClient.hpp
-        include/VirtualPhonePro/WebhookManager.h
-        include/VirtualPhonePro/APIServer.h
+        include/VirtualPhonePro/WebhookManager.hpp
+        include/VirtualPhonePro/APIServer.hpp
         include/VirtualPhonePro/DeviceIntegrityManager.h
         include/VirtualPhonePro/HardwareAttestation.h
         include/VirtualPhonePro/HALSimulation.h
-        include/VirtualPhonePro/TestingFramework.h
+        include/VirtualPhonePro/TestingFramework.hpp
         include/VirtualPhonePro/NetworkRealismEnhancer.h
         include/VirtualPhonePro/CryptoUtils.hpp
-        include/VirtualPhonePro/SecurityMitigationManager.h
+        include/VirtualPhonePro/SecurityMitigationManager.hpp
         include/VirtualPhonePro/FridaXposedDetector.h
-        include/VirtualPhonePro/MagiskPatcher.h
-        include/VirtualPhonePro/SELinuxManager.hpp
+        include/VirtualPhonePro/MagiskPatcher.hpp
+        include/VirtualPhonePro/SELinuxManager.hpppp
         include/VirtualPhonePro/AdvancedRealisticSimulation.h
         include/VirtualPhonePro/NetworkConfig.h
         include/Data/TACDatabase.h
@@ -310,7 +310,7 @@ if(BUILD_QT6_GUI)
         src/GUI/SettingsDialog.h
         src/GUI/SettingsDialog.cpp
         include/VirtualPhonePro/FileLogger.h
-        include/VirtualPhonePro/ConfigManager.h
+        include/VirtualPhonePro/ConfigManager.hpp
         src/ReDroidController/FileLogger.cpp
         src/ReDroidController/ConfigManager.cpp
         src/ReDroidController/openssl_stub.h
