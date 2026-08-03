@@ -139,6 +139,7 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/EnhancedDeviceProfile.cpp
         src/ReDroidController/RealisticDeviceProfile.cpp
         src/ReDroidController/RealisticProfileGenerator.cpp
+        src/ReDroidController/DeviceProfileGenerator.cpp
         
         # Anti-Detection Modules
         src/ReDroidController/AdvancedAntiDetection.cpp
