@@ -262,11 +262,11 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/ADBManager.hpp
         include/VirtualPhonePro/DeviceIDGenerator.hpp
         include/VirtualPhonePro/IPTimezoneConverter.hpp
-        include/VirtualPhonePro/PlayIntegrityManager.hpppp
+        include/VirtualPhonePro/PlayIntegrityManager.hpp
         include/VirtualPhonePro/EmulatorDetectionBypass.hpp
         include/VirtualPhonePro/AndroidRealismEngine.h
         include/VirtualPhonePro/NetworkStackSpoofer.hpp
-        include/VirtualPhonePro/TimingAttackPrevention.hpppp
+        include/VirtualPhonePro/TimingAttackPrevention.hpp
         include/VirtualPhonePro/CarrierNetworkSimulator.h
         include/VirtualPhonePro/OEMDeepSpoofing.h
         include/VirtualPhonePro/SensorSimulator.hpp
@@ -291,7 +291,7 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/SecurityMitigationManager.hpp
         include/VirtualPhonePro/FridaXposedDetector.h
         include/VirtualPhonePro/MagiskPatcher.hpp
-        include/VirtualPhonePro/SELinuxManager.hpppp
+        include/VirtualPhonePro/SELinuxManager.hpp
         include/VirtualPhonePro/AdvancedRealisticSimulation.h
         include/VirtualPhonePro/NetworkConfig.h
         include/Data/TACDatabase.h
