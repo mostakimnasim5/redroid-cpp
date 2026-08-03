@@ -3,8 +3,8 @@
  * @brief OEM-Specific Deep Spoofing Implementation
  */
 
-#include "VirtualPhonePro/OEMDeepSpoofing.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/OEMDeepSpoofing.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

@@ -4,7 +4,7 @@
  */
 
 #include "SettingsDialog.h"
-#include "VirtualPhonePro/FileLogger.h"
+#include "VirtualPhonePro/FileLogger.hpp"
 #include <QHostInfo>
 #include <QProcess>
 #include <QDesktopServices>

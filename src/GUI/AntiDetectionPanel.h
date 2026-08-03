@@ -20,7 +20,7 @@
 #include <QTimer>
 #include <QJsonObject>
 
-#include "VirtualPhonePro/DeviceProfile.h"
+#include "VirtualPhonePro/DeviceProfile.hpp"
 
 namespace VirtualPhonePro {
 

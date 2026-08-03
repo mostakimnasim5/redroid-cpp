@@ -6,8 +6,8 @@
  * Handles network isolation and proxy configuration.
  */
 
-#include "VirtualPhonePro/NetworkConfigManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/NetworkConfigManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRegularExpression>

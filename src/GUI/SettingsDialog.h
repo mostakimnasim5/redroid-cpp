@@ -27,7 +27,7 @@
 #include <QStandardPaths>
 #include <QDir>
 
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 namespace VirtualPhonePro {
 

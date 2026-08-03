@@ -1,5 +1,5 @@
-#include "VirtualPhonePro/SafetyNetSpoofer.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/SafetyNetSpoofer.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QCryptographicHash>
 #include <QMessageAuthenticationCode>

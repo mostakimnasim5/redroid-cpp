@@ -3,8 +3,8 @@
  * @brief Network Realism Enhancer Implementation
  */
 
-#include "VirtualPhonePro/NetworkRealismEnhancer.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/NetworkRealismEnhancer.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

@@ -4,8 +4,8 @@
  * @version 2.0.0
  */
 
-#include "VirtualPhonePro/DeepDeviceSpoofer.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/DeepDeviceSpoofer.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QFile>

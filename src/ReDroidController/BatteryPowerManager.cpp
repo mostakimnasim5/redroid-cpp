@@ -4,8 +4,8 @@
  * @brief Realistic Battery & Power Management Implementation
  */
 
-#include "VirtualPhonePro/BatteryPowerManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/BatteryPowerManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

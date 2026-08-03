@@ -6,8 +6,8 @@
  * Provides 100% realistic Android device simulation
  */
 
-#include "VirtualPhonePro/AndroidRealismEngine.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/AndroidRealismEngine.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QFile>

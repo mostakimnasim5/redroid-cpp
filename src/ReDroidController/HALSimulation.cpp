@@ -3,8 +3,8 @@
  * @brief Hardware Abstraction Layer Simulation Implementation
  */
 
-#include "VirtualPhonePro/HALSimulation.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/HALSimulation.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

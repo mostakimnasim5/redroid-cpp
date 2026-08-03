@@ -21,7 +21,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 
-#include "VirtualPhonePro/ConfigManager.h"
+#include "VirtualPhonePro/ConfigManager.hpp"
 
 class LoginWindow : public QMainWindow {
     Q_OBJECT

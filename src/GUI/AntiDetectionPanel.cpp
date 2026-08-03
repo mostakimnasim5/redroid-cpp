@@ -5,16 +5,16 @@
 
 #include "AntiDetectionPanel.h"
 
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/RealPhoneHardening.hpp"
-#include "VirtualPhonePro/HardwareFingerprintSpoofer.h"
-#include "VirtualPhonePro/BankingAppSpoofer.h"
+#include "VirtualPhonePro/HardwareFingerprintSpoofer.hpp"
+#include "VirtualPhonePro/BankingAppSpoofer.hpp"
 #include "VirtualPhonePro/SafetyNetAdvancedBypass.hpp"
 #include "VirtualPhonePro/EmulatorDetectionBypass.hpp"
 #include "VirtualPhonePro/TLSFingerprint.hpp"
 #include "VirtualPhonePro/SELinuxManager.hpp"
 #include "VirtualPhonePro/PlayIntegrityManager.hpp"
-#include "VirtualPhonePro/UniqueDeviceGenerator.h"
+#include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
 
 #include <QHeaderView>
 #include <QCheckBox>

@@ -1,4 +1,4 @@
-#include "VirtualPhonePro/NetworkProfileManager.h"
+#include "VirtualPhonePro/NetworkProfileManager.hpp"
 #include <QRandomGenerator>
 #include <QJsonObject>
 #include <QJsonArray>

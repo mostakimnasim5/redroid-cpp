@@ -22,7 +22,7 @@
 #include <QJsonObject>
 #include <QStandardPaths>
 
-#include "VirtualPhonePro/NetworkConfigManager.h"
+#include "VirtualPhonePro/NetworkConfigManager.hpp"
 #include "SettingsDialog.h"
 
 namespace VirtualPhonePro {

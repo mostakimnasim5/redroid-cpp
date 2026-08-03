@@ -7,8 +7,8 @@
  * Provides automated testing capabilities for banking apps.
  */
 
-#include "VirtualPhonePro/TestingFramework.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/TestingFramework.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QFile>

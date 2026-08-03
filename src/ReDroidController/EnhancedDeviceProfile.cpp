@@ -4,7 +4,7 @@
  * @version 2.0.0
  */
 
-#include "VirtualPhonePro/EnhancedDeviceProfile.h"
+#include "VirtualPhonePro/EnhancedDeviceProfile.hpp"
 #include <QCryptographicHash>
 #include <QRandomGenerator>
 #include <QDateTime>

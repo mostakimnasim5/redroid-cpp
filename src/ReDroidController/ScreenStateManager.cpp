@@ -4,8 +4,8 @@
  * @brief Realistic Screen State & Brightness Implementation
  */
 
-#include "VirtualPhonePro/ScreenStateManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/ScreenStateManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

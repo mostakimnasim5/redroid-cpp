@@ -5,8 +5,8 @@
  */
 
 #include "VirtualPhonePro/AdvancedAntiDetection.hpp"
-#include "VirtualPhonePro/ReDroidController.h"
-#include "VirtualPhonePro/OEMDeepSpoofing.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/OEMDeepSpoofing.hpp"
 
 #include <QDebug>
 #include <QDateTime>

@@ -1,5 +1,5 @@
-#include "VirtualPhonePro/MultiInstanceManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/MultiInstanceManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QThread>
 #include <QRandomGenerator>

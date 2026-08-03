@@ -5,8 +5,8 @@
  * Complete anti-detection for banking and security-sensitive apps.
  */
 
-#include "VirtualPhonePro/BankingAppSpoofer.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/BankingAppSpoofer.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QFile>

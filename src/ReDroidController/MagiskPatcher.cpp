@@ -6,8 +6,8 @@
  * Handles Magisk installation and module management.
  */
 
-#include "VirtualPhonePro/MagiskPatcher.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/MagiskPatcher.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QDir>

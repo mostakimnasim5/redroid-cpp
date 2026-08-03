@@ -3,7 +3,7 @@
  * @brief Configuration Manager Implementation
  */
 
-#include "VirtualPhonePro/ConfigManager.h"
+#include "VirtualPhonePro/ConfigManager.hpp"
 #include <QDebug>
 #include <QCoreApplication>
 

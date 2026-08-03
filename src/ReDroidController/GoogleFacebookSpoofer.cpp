@@ -4,8 +4,8 @@
  * @version 2.0.0
  */
 
-#include "VirtualPhonePro/GoogleFacebookSpoofer.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/GoogleFacebookSpoofer.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QFile>

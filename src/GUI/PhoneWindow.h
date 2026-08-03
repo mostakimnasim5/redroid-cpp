@@ -45,8 +45,8 @@
 #include <QComboBox>
 #include <QTabWidget>
 
-#include "VirtualPhonePro/ReDroidController.h"
-#include "VirtualPhonePro/DeviceProfile.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/DeviceProfile.hpp"
 
 namespace VirtualPhonePro {
 

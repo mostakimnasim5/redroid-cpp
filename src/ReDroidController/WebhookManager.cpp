@@ -6,8 +6,8 @@
  * Handles webhook notifications for system events.
  */
 
-#include "VirtualPhonePro/WebhookManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/WebhookManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QNetworkAccessManager>

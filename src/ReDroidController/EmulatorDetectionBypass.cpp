@@ -5,7 +5,7 @@
 
 #include "VirtualPhonePro/EmulatorDetectionBypass.hpp"
 #include "VirtualPhonePro/PlayIntegrityManager.hpp"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QFile>

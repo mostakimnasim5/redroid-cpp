@@ -23,11 +23,11 @@
 #include <QMenuBar>
 #include <QMenu>
 
-#include "VirtualPhonePro/ReDroidController.h"
-#include "VirtualPhonePro/DeviceProfile.h"
-#include "VirtualPhonePro/MultiInstanceManager.h"
-#include "VirtualPhonePro/BankingAppSpoofer.h"
-#include "VirtualPhonePro/SafetyNetSpoofer.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/DeviceProfile.hpp"
+#include "VirtualPhonePro/MultiInstanceManager.hpp"
+#include "VirtualPhonePro/BankingAppSpoofer.hpp"
+#include "VirtualPhonePro/SafetyNetSpoofer.hpp"
 #include "PhoneWindow.h"
 
 namespace VirtualPhonePro {

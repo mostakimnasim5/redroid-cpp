@@ -6,10 +6,10 @@
  * HTTP REST API for managing ReDroid instances remotely.
  */
 
-#include "VirtualPhonePro/APIServer.h"
-#include "VirtualPhonePro/ReDroidController.h"
-#include "VirtualPhonePro/DeviceProfile.h"
-#include "VirtualPhonePro/MultiInstanceManager.h"
+#include "VirtualPhonePro/APIServer.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/DeviceProfile.hpp"
+#include "VirtualPhonePro/MultiInstanceManager.hpp"
 
 #include <QDebug>
 #include <QJsonDocument>

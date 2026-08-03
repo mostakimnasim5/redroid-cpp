@@ -3,8 +3,8 @@
  * @brief System App & Carrier Bloatware Simulator Implementation
  */
 
-#include "VirtualPhonePro/SystemAppSimulator.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/SystemAppSimulator.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

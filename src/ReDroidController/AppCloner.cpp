@@ -6,8 +6,8 @@
  * Handles app cloning and multi-account functionality.
  */
 
-#include "VirtualPhonePro/AppCloner.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/AppCloner.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QDir>

@@ -3,8 +3,8 @@
  * @brief Preloaded SSL Certificate Manager Implementation
  */
 
-#include "VirtualPhonePro/SSLCertificateManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/SSLCertificateManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

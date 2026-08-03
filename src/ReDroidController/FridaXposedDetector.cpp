@@ -3,8 +3,8 @@
  * @brief Frida & Xposed Detection Bypass Implementation
  */
 
-#include "VirtualPhonePro/FridaXposedDetector.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/FridaXposedDetector.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRegularExpression>

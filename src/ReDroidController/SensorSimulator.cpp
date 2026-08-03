@@ -6,8 +6,8 @@
  * Handles GPS, accelerometer, gyroscope and other sensor simulation.
  */
 
-#include "VirtualPhonePro/SensorSimulator.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/SensorSimulator.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

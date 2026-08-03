@@ -3,8 +3,8 @@
  * @brief Device Behavior Manager Implementation
  */
 
-#include "VirtualPhonePro/DeviceBehaviorManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/DeviceBehaviorManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

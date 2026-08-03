@@ -10,7 +10,7 @@
 #include <QJsonValue>
 #include <QRegularExpression>
 
-#include "VirtualPhonePro/ConfigManager.h"
+#include "VirtualPhonePro/ConfigManager.hpp"
 
 // Firebase Configuration - Loaded from config file for security
 #define getFirebaseProjectId() VirtualPhonePro::ConfigManager::instance().getFirebaseProjectId()

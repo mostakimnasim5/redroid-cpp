@@ -4,8 +4,8 @@
  * @version 4.0.0
  */
 
-#include "VirtualPhonePro/SecurityMitigationManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/SecurityMitigationManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QFile>

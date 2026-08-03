@@ -3,8 +3,8 @@
  * @brief Advanced Realistic Phone Simulator Implementation
  */
 
-#include "VirtualPhonePro/AdvancedRealisticSimulation.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/AdvancedRealisticSimulation.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QJsonDocument>
 #include <QJsonObject>

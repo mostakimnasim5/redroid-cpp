@@ -30,8 +30,8 @@
 #include <QKeyEvent>
 #include <QPoint>
 
-#include "VirtualPhonePro/DeviceProfile.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/DeviceProfile.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
 
 namespace Ui {

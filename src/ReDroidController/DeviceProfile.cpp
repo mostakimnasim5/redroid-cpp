@@ -1,4 +1,4 @@
-#include "VirtualPhonePro/DeviceProfile.h"
+#include "VirtualPhonePro/DeviceProfile.hpp"
 
 #include <QCryptographicHash>
 #include <QDateTime>

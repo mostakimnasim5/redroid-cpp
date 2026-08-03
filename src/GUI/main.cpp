@@ -1,7 +1,7 @@
 #include "MainWindow.h"
 #include "PhoneWindow.h"
 #include "LoginWindow.h"
-#include "VirtualPhonePro/DeviceProfile.h"
+#include "VirtualPhonePro/DeviceProfile.hpp"
 #include <QApplication>
 #include <QCommandLineParser>
 

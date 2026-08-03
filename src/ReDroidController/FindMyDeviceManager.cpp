@@ -3,8 +3,8 @@
  * @brief Find My Device Manager Implementation
  */
 
-#include "VirtualPhonePro/FindMyDeviceManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/FindMyDeviceManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

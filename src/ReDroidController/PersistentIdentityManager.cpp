@@ -3,8 +3,8 @@
  * @brief Persistent Identity Manager Implementation
  */
 
-#include "VirtualPhonePro/PersistentIdentityManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/PersistentIdentityManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

@@ -18,8 +18,8 @@
  */
 
 #include "VirtualPhonePro/PlayIntegrityManager.hpp"
-#include "VirtualPhonePro/ReDroidController.h"
-#include "VirtualPhonePro/UniqueDeviceGenerator.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
 
 #include <QDebug>
 #include <QCryptographicHash>

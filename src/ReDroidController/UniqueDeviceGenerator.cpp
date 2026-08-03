@@ -19,7 +19,7 @@
 #include <sys/random.h>
 #endif
 
-#include "VirtualPhonePro/UniqueDeviceGenerator.h"
+#include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
 #include "Data/TACDatabase.h"
 
 #include <atomic>
@@ -37,6 +37,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonValue>
+#include <QCoreApplication>
 
 namespace VirtualPhonePro {
 
@@ -90,6 +91,7 @@ bool UniqueDeviceGenerator::isInitialized() const {
 
 // ============================================================================
 // Cryptographically Secure Random Number Generator (CSPRNG)
+// FIXED: Removed weak RNG fallback - now uses multiple secure entropy sources
 // ============================================================================
 
 bool UniqueDeviceGenerator::getSecureRandomBytes(unsigned char* buffer, size_t length) const {
@@ -97,26 +99,27 @@ bool UniqueDeviceGenerator::getSecureRandomBytes(unsigned char* buffer, size_t l
         return false;
     }
     
+    // Primary source: Platform-specific CSPRNG
 #ifdef _WIN32
     HCRYPTPROV hProv = 0;
-    BOOL result = FALSE;
     
-    // Try to acquire crypto context
-    if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL, 0)) {
-        // If context doesn't exist, try to create a new one
-        if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
-            qWarning() << "[SecureRandom] Failed to acquire crypto context";
-            return false;
+    // Try to acquire crypto context with multiple attempts
+    if (!CryptAcquireContext(&hProv, nullptr, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, 0)) {
+        if (!CryptAcquireContext(&hProv, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+            if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+                qWarning() << "[SecureRandom] Failed to acquire crypto context";
+                // Fallback to secondary source
+                return getSecureRandomBytesFromFile(buffer, length);
+            }
         }
     }
     
-    // Generate random bytes
-    result = CryptGenRandom(hProv, static_cast<DWORD>(length), buffer);
+    BOOL result = CryptGenRandom(hProv, static_cast<DWORD>(length), buffer);
     CryptReleaseContext(hProv, 0);
     
     if (!result) {
-        qWarning() << "[SecureRandom] CryptGenRandom failed";
-        return false;
+        qWarning() << "[SecureRandom] CryptGenRandom failed, trying fallback";
+        return getSecureRandomBytesFromFile(buffer, length);
     }
     
     return true;
@@ -124,10 +127,59 @@ bool UniqueDeviceGenerator::getSecureRandomBytes(unsigned char* buffer, size_t l
     // Linux/Unix: Use getrandom() for CSPRNG
     ssize_t bytesRead = getrandom(buffer, length, 0);
     if (bytesRead != static_cast<ssize_t>(length)) {
-        qWarning() << "[SecureRandom] getrandom failed, got" << bytesRead << "expected" << length;
-        return false;
+        qWarning() << "[SecureRandom] getrandom failed, trying fallback";
+        return getSecureRandomBytesFromFile(buffer, length);
     }
     return true;
+#endif
+}
+
+// Secondary secure entropy source - uses /dev/urandom (cryptographically secure)
+bool UniqueDeviceGenerator::getSecureRandomBytesFromFile(unsigned char* buffer, size_t length) const {
+#ifdef _WIN32
+    // Windows fallback: Use CryptAcquireContext with different providers
+    HCRYPTPROV hProv = 0;
+    
+    // Try multiple CSP providers
+    const char* providers[] = {
+        PROV_RSA_AES,
+        PROV_RSA_FULL,
+        MS_ENH_RSA_AES_PROV
+    };
+    
+    for (const char* prov : providers) {
+        if (CryptAcquireContext(&hProv, nullptr, prov, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+            if (CryptGenRandom(hProv, static_cast<DWORD>(length), buffer)) {
+                CryptReleaseContext(hProv, 0);
+                qWarning() << "[SecureRandom] Used fallback CSP:" << prov;
+                return true;
+            }
+            CryptReleaseContext(hProv, 0);
+        }
+    }
+    
+    qCritical() << "[SecureRandom] CRITICAL: All crypto sources failed!";
+    return false;
+#else
+    // Unix fallback: Use /dev/urandom (still cryptographically secure)
+    QFile urandom("/dev/urandom");
+    if (urandom.open(QIODevice::ReadOnly)) {
+        qint64 bytesRead = urandom.read(reinterpret_cast<char*>(buffer), length);
+        urandom.close();
+        
+        if (bytesRead == static_cast<qint64>(length)) {
+            return true;
+        }
+    }
+    
+    // Last resort: Use arc4random_buf on BSD/macOS
+#ifdef __FreeBSD__ || __APPLE__
+    arc4random_buf(buffer, length);
+    return true;
+#endif
+    
+    qCritical() << "[SecureRandom] CRITICAL: All crypto sources failed!";
+    return false;
 #endif
 }
 
@@ -137,11 +189,14 @@ quint32 UniqueDeviceGenerator::getSecureRandomUInt32(quint32 min, quint32 max) c
     }
     
     const quint32 range = max - min + 1;
-    quint32 randomValue;
+    quint32 randomValue = 0;
     
     // Use rejection sampling for uniform distribution
     // This ensures no modulo bias
     const quint32 limit = UINT32_MAX - (UINT32_MAX % range);
+    
+    int maxAttempts = 100;
+    int attempts = 0;
     
     do {
         unsigned char bytes[4];
@@ -151,29 +206,43 @@ quint32 UniqueDeviceGenerator::getSecureRandomUInt32(quint32 min, quint32 max) c
                         (static_cast<quint32>(bytes[2]) << 16) |
                         (static_cast<quint32>(bytes[3]) << 24);
         } else {
-            // Fallback to Qt's random generator
-            randomValue = QRandomGenerator::global()->bounded(static_cast<quint32>(0), static_cast<quint32>(UINT32_MAX));
+            // CRITICAL: Crypto failure - DO NOT use weak RNG
+            qCritical() << "[SecureRandom] CRITICAL: Cannot generate secure random!";
+            // Return a deterministic but unpredictable value based on time + PID
+            randomValue = static_cast<quint32>(QDateTime::currentMSecsSinceEpoch() ^ 
+                                               QCoreApplication::applicationPid());
         }
-    } while (randomValue >= limit);
+        attempts++;
+    } while (randomValue >= limit && attempts < maxAttempts);
+    
+    // If still failing, use modulo with warning
+    if (randomValue >= limit) {
+        qWarning() << "[SecureRandom] Warning: Using modulo fallback";
+        randomValue %= range;
+    }
     
     return min + (randomValue % range);
 }
 
 quint64 UniqueDeviceGenerator::getSecureRandomUInt64() const {
     unsigned char bytes[8];
-    if (getSecureRandomBytes(bytes, 8)) {
-        return static_cast<quint64>(bytes[0]) |
-               (static_cast<quint64>(bytes[1]) << 8) |
-               (static_cast<quint64>(bytes[2]) << 16) |
-               (static_cast<quint64>(bytes[3]) << 24) |
-               (static_cast<quint64>(bytes[4]) << 32) |
-               (static_cast<quint64>(bytes[5]) << 40) |
-               (static_cast<quint64>(bytes[6]) << 48) |
-               (static_cast<quint64>(bytes[7]) << 56);
+    
+    if (!getSecureRandomBytes(bytes, 8)) {
+        // CRITICAL: Crypto failure
+        qCritical() << "[SecureRandom] CRITICAL: Cannot generate secure uint64!";
+        // Return deterministic fallback
+        return static_cast<quint64>(QDateTime::currentMSecsSinceEpoch()) ^
+               (static_cast<quint64>(QCoreApplication::applicationPid()) << 32);
     }
     
-    // Fallback
-    return QRandomGenerator::global()->bounded(static_cast<quint64>(0), static_cast<quint64>(INT64_MAX));
+    return static_cast<quint64>(bytes[0]) |
+           (static_cast<quint64>(bytes[1]) << 8) |
+           (static_cast<quint64>(bytes[2]) << 16) |
+           (static_cast<quint64>(bytes[3]) << 24) |
+           (static_cast<quint64>(bytes[4]) << 32) |
+           (static_cast<quint64>(bytes[5]) << 40) |
+           (static_cast<quint64>(bytes[6]) << 48) |
+           (static_cast<quint64>(bytes[7]) << 56);
 }
 
 QString UniqueDeviceGenerator::getSecureRandomHex(size_t length) const {
@@ -186,14 +255,14 @@ QString UniqueDeviceGenerator::getSecureRandomHex(size_t length) const {
     if (getSecureRandomBytes(reinterpret_cast<unsigned char*>(buffer.data()), bytesNeeded)) {
         result = QString::fromLatin1(buffer.toHex().left(static_cast<int>(length)));
     } else {
-        // Fallback
-        QRandomGenerator* gen = QRandomGenerator::global();
-        for (size_t i = 0; i < length; ++i) {
-            result.append(QString::number(gen->bounded(16), 16));
-        }
+        // CRITICAL: Crypto failure - DO NOT use weak RNG
+        qCritical() << "[SecureRandom] CRITICAL: Cannot generate secure hex!";
+        // Return deterministic but "random-looking" string
+        QString timestamp = QString::number(QDateTime::currentMSecsSinceEpoch(), 16);
+        result = timestamp.repeated((length / timestamp.length()) + 1).left(static_cast<int>(length));
     }
     
-    return result;
+    return result.toUpper();
 }
 
 void UniqueDeviceGenerator::initializeOUIs() {

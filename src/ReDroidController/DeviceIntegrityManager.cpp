@@ -3,8 +3,8 @@
  * @brief Device Integrity Manager Implementation
  */
 
-#include "VirtualPhonePro/DeviceIntegrityManager.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/DeviceIntegrityManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

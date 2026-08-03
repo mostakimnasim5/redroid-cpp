@@ -29,7 +29,7 @@
 #include <QJsonObject>
 #include <QListWidget>
 
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 namespace VirtualPhonePro {
 

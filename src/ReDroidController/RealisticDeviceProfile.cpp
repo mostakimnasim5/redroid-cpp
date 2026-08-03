@@ -5,7 +5,7 @@
  */
 
 #include "VirtualPhonePro/RealisticDeviceProfile.hpp"
-#include "VirtualPhonePro/UniqueDeviceGenerator.h"
+#include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
 
 #include <QUuid>
 #include <QCryptographicHash>

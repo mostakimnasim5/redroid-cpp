@@ -3,8 +3,8 @@
  * @brief Hardware Attestation & Keystore Implementation
  */
 
-#include "VirtualPhonePro/HardwareAttestation.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/HardwareAttestation.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

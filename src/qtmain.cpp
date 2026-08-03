@@ -21,9 +21,9 @@
 
 #include "GUI/DashboardWindow.h"
 #include "GUI/LoginWindow.h"
-#include "VirtualPhonePro/ReDroidController.h"
-#include "VirtualPhonePro/MultiInstanceManager.h"
-#include "VirtualPhonePro/FileLogger.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/MultiInstanceManager.hpp"
+#include "VirtualPhonePro/FileLogger.hpp"
 
 #include <csignal>
 

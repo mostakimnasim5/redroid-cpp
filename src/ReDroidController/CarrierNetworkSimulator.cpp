@@ -3,8 +3,8 @@
  * @brief Realistic Carrier & Network Simulation Implementation
  */
 
-#include "VirtualPhonePro/CarrierNetworkSimulator.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/CarrierNetworkSimulator.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QThread>

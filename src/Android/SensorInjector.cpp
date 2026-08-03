@@ -4,7 +4,7 @@
  */
 
 #include "Android/SensorInjector.h"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QRandomGenerator>

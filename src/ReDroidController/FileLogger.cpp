@@ -4,7 +4,7 @@
  * @version 2.0.0
  */
 
-#include "VirtualPhonePro/FileLogger.h"
+#include "VirtualPhonePro/FileLogger.hpp"
 #include <QDebug>
 #include <QFileInfo>
 #include <QThread>

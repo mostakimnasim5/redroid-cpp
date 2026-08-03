@@ -10,7 +10,7 @@
  */
 
 #include "VirtualPhonePro/TLSFingerprint.hpp"
-#include "VirtualPhonePro/ReDroidController.h"
+#include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QCryptographicHash>
