@@ -103,10 +103,10 @@ bool UniqueDeviceGenerator::getSecureRandomBytes(unsigned char* buffer, size_t l
 #ifdef _WIN32
     HCRYPTPROV hProv = 0;
     
-    // Try to acquire crypto context with multiple attempts
-    if (!CryptAcquireContext(&hProv, nullptr, MS_ENH_RSA_AES_PROV, MS_ENH_RSA_AES_PROV_W, 0)) {
-        if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL_W, CRYPT_VERIFYCONTEXT)) {
-            if (!CryptAcquireContext(&hProv, nullptr, nullptr, PROV_RSA_FULL_W, 0)) {
+    // Try to acquire crypto context with multiple attempts (using ANSI version)
+    if (!CryptAcquireContextA(&hProv, nullptr, MS_ENH_RSA_AES_PROV_A, PROV_RSA_AES, 0)) {
+        if (!CryptAcquireContextA(&hProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+            if (!CryptAcquireContextA(&hProv, nullptr, nullptr, PROV_RSA_FULL, 0)) {
                 qWarning() << "[SecureRandom] Failed to acquire crypto context";
                 // Fallback to secondary source
                 return getSecureRandomBytesFromFile(buffer, length);
