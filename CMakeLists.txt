@@ -117,6 +117,11 @@ if(BUILD_QT6_GUI)
     
     # Find Qt6 - works on both Linux and Windows CI (install-qt-action sets CMAKE_PREFIX_PATH)
     find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED)
+
+    # Linux requires OpenGL/EGL for Qt6Gui
+    if(LINUX)
+        find_package(OpenGL REQUIRED)
+    endif()
     
     # Get Qt6 include directories
     get_target_property(QT6_CORE_INCLUDE_DIRS Qt6::Core INTERFACE_INCLUDE_DIRECTORIES)
@@ -356,6 +361,13 @@ if(BUILD_QT6_GUI)
         Threads::Threads
     )
     
+    # Linux-specific libraries
+    if(LINUX)
+        target_link_libraries(ReDroidCPP PRIVATE
+            OpenGL::GL
+        )
+    endif()
+
     # Windows-specific libraries
     if(WIN32)
         target_link_libraries(ReDroidCPP PRIVATE
