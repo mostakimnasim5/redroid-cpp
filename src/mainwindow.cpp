@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-#include "gui/admin_control_panel.h"
+#include "GUI/AdminDashboardWindow.hpp"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -579,36 +579,13 @@ void MainWindow::onScreenProcessFinished(int exitCode, QProcess::ExitStatus exit
 }
 
 void MainWindow::on_adminControlPanel_triggered() {
-    qDebug() << "[MainWindow] Opening Admin Control Panel";
+    qDebug() << "[MainWindow] Opening Firebase Admin Dashboard";
     
-    AdminControlPanel dialog(this);
-    connect(&dialog, &AdminControlPanel::configurationSubmitted, 
-            this, [](const QJsonObject& config) {
-                qDebug() << "[AdminControlPanel] Configuration submitted:" << config;
-            });
+    // Open the new Firebase-based Admin Dashboard
+    AdminDashboardWindow* adminDashboard = new AdminDashboardWindow(this);
+    adminDashboard->show();
     
-    if (dialog.exec() == QDialog::Accepted) {
-        QJsonObject config = dialog.getConfiguration();
-        qDebug() << "[AdminControlPanel] User:" << config["userName"].toString();
-        qDebug() << "[AdminControlPanel] Phone:" << config["phoneNumber"].toString();
-        qDebug() << "[AdminControlPanel] Profiles:" << config["profileCount"].toInt();
-        qDebug() << "[AdminControlPanel] Duration:" << config["durationDays"].toInt() << "days";
-        
-        // Show confirmation
-        QMessageBox::information(
-            this,
-            "Configuration Saved",
-            QString("Configuration has been saved successfully!\n\n"
-                    "User: %1\n"
-                    "Phone: %2\n"
-                    "Profiles: %3\n"
-                    "Duration: %4 days")
-                .arg(config["userName"].toString())
-                .arg(config["phoneNumber"].toString())
-                .arg(config["profileCount"].toInt())
-                .arg(config["durationDays"].toInt())
-        );
-    }
+    qDebug() << "[MainWindow] Admin Dashboard opened";
 }
 
 // ==============================================================================

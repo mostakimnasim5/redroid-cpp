@@ -116,12 +116,31 @@ set(APP_SOURCES
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# GUI Module Sources (Admin Panel)
+# ═══════════════════════════════════════════════════════════════════════════════
+set(GUI_SOURCES
+    ${PROJECT_SOURCE_DIR}/GUI/LoginWindow.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/FirebaseHelper.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/AdminLoginWindow.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/AdminDashboardWindow.cpp
+)
+
+set(GUI_HEADERS
+    ${PROJECT_SOURCE_DIR}/GUI/LoginWindow.h
+    ${PROJECT_SOURCE_DIR}/GUI/FirebaseHelper.hpp
+    ${PROJECT_SOURCE_DIR}/GUI/AdminLoginWindow.hpp
+    ${PROJECT_SOURCE_DIR}/GUI/AdminDashboardWindow.hpp
+)
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Build Executable
 # ═══════════════════════════════════════════════════════════════════════════════
 add_executable(${PROJECT_NAME}
     WIN32
     ${APP_SOURCES}
     ${APP_HEADERS}
+    ${GUI_SOURCES}
+    ${GUI_HEADERS}
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
