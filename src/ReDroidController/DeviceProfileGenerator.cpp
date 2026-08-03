@@ -64,13 +64,7 @@ static const std::pair<std::string, std::vector<std::string>> TAC_DATABASE[] = {
 // SHA256 IMPLEMENTATION
 // ════════════════════════════════════════════════════════════════════════════════
 
-SHA256::SHA256() : pImpl(new SHA256Impl()) {}
-SHA256::~SHA256() { delete pImpl; }
-
-void SHA256::init() { pImpl->init(); }
-void SHA256::update(const uint8_t* data, size_t len) { pImpl->update(data, len); }
-void SHA256::final(uint8_t* digest) { pImpl->final(digest); }
-
+// SHA256Impl must be defined before it's used
 class SHA256::SHA256Impl {
 public:
     void init() {
@@ -196,6 +190,14 @@ private:
     uint64_t m_count;
     uint8_t m_buffer[64];
 };
+
+// SHA256 public methods
+SHA256::SHA256() : pImpl(new SHA256Impl()) {}
+SHA256::~SHA256() { delete pImpl; }
+
+void SHA256::init() { pImpl->init(); }
+void SHA256::update(const uint8_t* data, size_t len) { pImpl->update(data, len); }
+void SHA256::final(uint8_t* digest) { pImpl->final(digest); }
 
 std::array<uint8_t, SHA256::DIGEST_SIZE> SHA256::compute(const uint8_t* data, size_t len) {
     SHA256 sha;
@@ -337,7 +339,7 @@ uint64_t SecureRandom::generateUInt64() {
 
 std::array<uint8_t, 32> SecureRandom::getEntropy() {
     std::array<uint8_t, 32> entropy;
-    generateBytes(entropy.data(), 32);
+    instance().generateBytes(entropy.data(), 32);
     return entropy;
 }
 

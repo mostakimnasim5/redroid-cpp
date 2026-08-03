@@ -162,8 +162,6 @@ bool UniqueDeviceGenerator::getSecureRandomBytesFromFile(unsigned char* buffer, 
     return false;
 #else
     // Unix fallback: Use /dev/urandom (still cryptographically secure)
-#else
-    // Unix fallback: Use /dev/urandom (still cryptographically secure)
     QFile urandom("/dev/urandom");
     if (urandom.open(QIODevice::ReadOnly)) {
         qint64 bytesRead = urandom.read(reinterpret_cast<char*>(buffer), length);

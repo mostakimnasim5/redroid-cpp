@@ -87,7 +87,7 @@ public:
     static constexpr size_t BLOCK_SIZE = 64;
     static constexpr size_t OUTPUT_SIZE = 32;
     
-    std::array<uint8_t, OUTPUT_SIZE> compute(
+    static std::array<uint8_t, OUTPUT_SIZE> compute(
         const uint8_t* key, size_t keyLen,
         const uint8_t* data, size_t dataLen
     );
@@ -106,7 +106,7 @@ public:
     void init();
     void update(const uint8_t* data, size_t len);
     void final(uint8_t* digest);
-    std::array<uint8_t, DIGEST_SIZE> compute(const uint8_t* data, size_t len);
+    static std::array<uint8_t, DIGEST_SIZE> compute(const uint8_t* data, size_t len);
     static std::string computeHex(const std::string& input);
 
 private:
