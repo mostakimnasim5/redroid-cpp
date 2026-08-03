@@ -184,59 +184,69 @@ void LoginWindow::setupRequestUI() {
 
     QVBoxLayout *mainLayout = new QVBoxLayout(requestPage);
     mainLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    mainLayout->setContentsMargins(40, 30, 40, 30);
-    mainLayout->setSpacing(12);
+    mainLayout->setContentsMargins(40, 25, 40, 25);
+    mainLayout->setSpacing(8);
 
     // Title
     QLabel *titleLabel = new QLabel("📝 Access Request", requestPage);
     titleLabel->setObjectName("titleLabel");
     titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setContentsMargins(0, 5, 0, 5);
 
     QLabel *subtitleLabel = new QLabel("Request a new account to use ReDroidCPP", requestPage);
     subtitleLabel->setObjectName("subtitleLabel");
     subtitleLabel->setAlignment(Qt::AlignCenter);
 
     // Spacer
-    mainLayout->addSpacing(10);
+    mainLayout->addSpacing(5);
 
     // Name Field with Label
     QLabel *nameLabel = new QLabel("Full Name:", requestPage);
-    nameLabel->setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 500;");
+    nameLabel->setStyleSheet("color: #cbd5e1; font-size: 14px; font-weight: 500; padding-bottom: 4px;");
     mainLayout->addWidget(nameLabel);
     
     nameInput = new QLineEdit(requestPage);
     nameInput->setPlaceholderText("Full Name লিখুন");
-    nameInput->setMinimumHeight(40);
+    nameInput->setMinimumHeight(42);
     nameInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     mainLayout->addWidget(nameInput);
 
+    // Add spacing between fields
+    mainLayout->addSpacing(10);
+
     // Phone Field with Label
     QLabel *phoneLabel = new QLabel("Phone Number:", requestPage);
-    phoneLabel->setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 500;");
+    phoneLabel->setStyleSheet("color: #cbd5e1; font-size: 14px; font-weight: 500; padding-bottom: 4px;");
     mainLayout->addWidget(phoneLabel);
     
     phoneInput = new QLineEdit(requestPage);
     phoneInput->setPlaceholderText("+8801XXXXXXXXX");
-    phoneInput->setMinimumHeight(40);
+    phoneInput->setMinimumHeight(42);
     phoneInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     mainLayout->addWidget(phoneInput);
 
+    // Add spacing between fields
+    mainLayout->addSpacing(10);
+
     // Profiles Field with Label
     QLabel *profilesLabel = new QLabel("Number of Profiles (1-100)?", requestPage);
-    profilesLabel->setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 500;");
+    profilesLabel->setStyleSheet("color: #cbd5e1; font-size: 14px; font-weight: 500; padding-bottom: 4px;");
     mainLayout->addWidget(profilesLabel);
     
     profilesSpinBox = new QSpinBox(requestPage);
     profilesSpinBox->setMinimum(1);
     profilesSpinBox->setMaximum(10);
     profilesSpinBox->setValue(3);
-    profilesSpinBox->setMinimumHeight(40);
+    profilesSpinBox->setMinimumHeight(42);
     profilesSpinBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     mainLayout->addWidget(profilesSpinBox);
 
+    // Add spacing between fields
+    mainLayout->addSpacing(10);
+
     // Duration Field with Label
     QLabel *durationLabel = new QLabel("Duration?", requestPage);
-    durationLabel->setStyleSheet("color: #cbd5e1; font-size: 13px; font-weight: 500;");
+    durationLabel->setStyleSheet("color: #cbd5e1; font-size: 14px; font-weight: 500; padding-bottom: 4px;");
     mainLayout->addWidget(durationLabel);
     
     durationCombo = new QComboBox(requestPage);
@@ -250,12 +260,12 @@ void LoginWindow::setupRequestUI() {
     durationCombo->addItem("15 days", 21600);
     durationCombo->addItem("30 days (1 month)", 43200);
     durationCombo->addItem("1 year", 525600);
-    durationCombo->setMinimumHeight(40);
+    durationCombo->setMinimumHeight(42);
     durationCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     mainLayout->addWidget(durationCombo);
 
     // Spacer before status and button
-    mainLayout->addSpacing(15);
+    mainLayout->addSpacing(20);
 
     // Status Label with proper word wrap
     requestStatusLabel = new QLabel(requestPage);
@@ -264,8 +274,12 @@ void LoginWindow::setupRequestUI() {
     requestStatusLabel->setWordWrap(true);
     requestStatusLabel->setVisible(false);
     requestStatusLabel->setMinimumHeight(50);
+    requestStatusLabel->setContentsMargins(10, 0, 10, 0);
     requestStatusLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     mainLayout->addWidget(requestStatusLabel);
+
+    // Add small spacing before button
+    mainLayout->addSpacing(10);
 
     // Submit Button - Fixed height, centered, bold
     btnSendRequest = new QPushButton("SUBMIT REQUEST", requestPage);
@@ -278,9 +292,10 @@ void LoginWindow::setupRequestUI() {
             color: white;
             border: none;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             min-height: 48px;
+            padding: 0 20px;
         }
         QPushButton:hover {
             background-color: #2563eb;
@@ -295,6 +310,9 @@ void LoginWindow::setupRequestUI() {
     )");
     mainLayout->addWidget(btnSendRequest);
 
+    // Add spacing between buttons
+    mainLayout->addSpacing(8);
+
     // Back to Login button
     btnSwitchToLogin = new QPushButton("আগে থেকে কোড আছে? LOGIN করুন", requestPage);
     btnSwitchToLogin->setMinimumHeight(36);
@@ -304,7 +322,7 @@ void LoginWindow::setupRequestUI() {
             background-color: transparent;
             color: #60a5fa;
             border: none;
-            font-size: 12px;
+            font-size: 13px;
             min-height: 36px;
         }
         QPushButton:hover {
@@ -315,7 +333,7 @@ void LoginWindow::setupRequestUI() {
     mainLayout->addWidget(btnSwitchToLogin);
 
     // Add stretch at the end for extra space
-    mainLayout->addStretch();
+    mainLayout->addStretch(1);
 
     connect(btnSendRequest, &QPushButton::clicked, this, &LoginWindow::onSendRequestClicked);
     connect(btnSwitchToLogin, &QPushButton::clicked, this, &LoginWindow::onSwitchToLogin);
@@ -400,7 +418,26 @@ void LoginWindow::verifyCode(const QString &code) {
 
 void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     if (reply->error() != QNetworkReply::NoError) {
-        showError("Network error: " + reply->errorString());
+        // User-friendly error messages - no raw HTTP URLs
+        QString errorMsg;
+        switch (reply->error()) {
+            case QNetworkReply::ConnectionRefusedError:
+                errorMsg = "Connection refused. Please check your internet connection.";
+                break;
+            case QNetworkReply::TimeoutError:
+                errorMsg = "Request timed out. Please try again.";
+                break;
+            case QNetworkReply::HostNotFoundError:
+                errorMsg = "Server not found. Please try again later.";
+                break;
+            case QNetworkReply::NetworkSessionFailedError:
+                errorMsg = "Network error occurred. Please check your connection.";
+                break;
+            default:
+                errorMsg = "Login failed. Please try again.";
+                break;
+        }
+        showError(errorMsg);
         btnLogin->setEnabled(true);
         btnLogin->setText("LOGIN");
         reply->deleteLater();
@@ -412,7 +449,13 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     
     // Parse runQuery response - it returns an array of document results
     if (!doc.isArray()) {
-        showError("সার্ভার সমস্যা");
+        // Check if it's an error response
+        QJsonObject obj = doc.object();
+        if (obj.contains("error")) {
+            showError("Service temporarily unavailable. Please try again later.");
+        } else {
+            showError("Server error. Please try again later.");
+        }
         btnLogin->setEnabled(true);
         btnLogin->setText("LOGIN");
         reply->deleteLater();
@@ -423,7 +466,7 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     
     // Check if we got a valid document
     if (results.isEmpty() || !results[0].toObject().contains("document")) {
-        showError("Invalid access code. Please check and try again.");
+        showError("Invalid Access Code. Please check and try again.");
         btnLogin->setEnabled(true);
         btnLogin->setText("LOGIN");
         reply->deleteLater();
@@ -565,7 +608,29 @@ void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, i
 
 void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
     if (reply->error() != QNetworkReply::NoError) {
-        showRequestError("Network error: " + reply->errorString());
+        // User-friendly error messages - no raw HTTP URLs
+        QString errorMsg;
+        switch (reply->error()) {
+            case QNetworkReply::ConnectionRefusedError:
+                errorMsg = "Connection refused. Please check your internet connection.";
+                break;
+            case QNetworkReply::TimeoutError:
+                errorMsg = "Request timed out. Please try again.";
+                break;
+            case QNetworkReply::HostNotFoundError:
+                errorMsg = "Server not found. Please try again later.";
+                break;
+            case QNetworkReply::NetworkSessionFailedError:
+                errorMsg = "Network error occurred. Please check your connection.";
+                break;
+            case QNetworkReply::ContentNotFoundError:
+                errorMsg = "Service temporarily unavailable. Please try again.";
+                break;
+            default:
+                errorMsg = "Submission failed. Please try again.";
+                break;
+        }
+        showRequestError(errorMsg);
         btnSendRequest->setEnabled(true);
         btnSendRequest->setText("SUBMIT REQUEST");
         reply->deleteLater();
@@ -589,11 +654,27 @@ void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
         // Switch to login after 3 seconds
         QTimer::singleShot(3000, this, &LoginWindow::onSwitchToLogin);
     } else if (obj.contains("error")) {
-        // Firebase returned an error - show the actual error message
+        // Firebase returned an error - show user-friendly message
         QJsonObject error = obj["error"].toObject();
-        QString errorMessage = error["message"].toString("Unknown Firebase error");
-        showRequestError("Firebase Error: " + errorMessage);
-        qDebug() << "[AccessRequest] Firebase Error:" << errorMessage;
+        QString errorCode = error["code"].toString();
+        QString errorMessage = error["message"].toString();
+        
+        // Map Firebase error codes to user-friendly messages
+        QString userMsg;
+        if (errorCode == "RESOURCE_EXHAUSTED") {
+            userMsg = "Service is busy. Please try again in a few moments.";
+        } else if (errorCode == "UNAUTHENTICATED") {
+            userMsg = "Authentication required. Please try again.";
+        } else if (errorCode == "PERMISSION_DENIED") {
+            userMsg = "Permission denied. Please contact support.";
+        } else if (errorMessage.contains("QUOTA_EXCEEDED", Qt::CaseInsensitive)) {
+            userMsg = "Daily limit exceeded. Please try again tomorrow.";
+        } else {
+            userMsg = "Submission failed. Please try again.";
+        }
+        
+        showRequestError(userMsg);
+        qDebug() << "[AccessRequest] Firebase Error:" << errorCode << "-" << errorMessage;
     } else {
         showRequestError("Failed to submit request. Please try again.");
         qDebug() << "[AccessRequest] Unknown response:" << QString::fromUtf8(response);
@@ -606,7 +687,26 @@ void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
 
 void LoginWindow::onNetworkReply(QNetworkReply *reply) {
     if (reply->error() != QNetworkReply::NoError) {
-        showError("Network error: " + reply->errorString());
+        // User-friendly error messages - no raw HTTP URLs
+        QString errorMsg;
+        switch (reply->error()) {
+            case QNetworkReply::ConnectionRefusedError:
+                errorMsg = "Connection refused. Please check your internet connection.";
+                break;
+            case QNetworkReply::TimeoutError:
+                errorMsg = "Request timed out. Please try again.";
+                break;
+            case QNetworkReply::HostNotFoundError:
+                errorMsg = "Server not found. Please try again later.";
+                break;
+            case QNetworkReply::NetworkSessionFailedError:
+                errorMsg = "Network error occurred. Please check your connection.";
+                break;
+            default:
+                errorMsg = "Login failed. Please try again.";
+                break;
+        }
+        showError(errorMsg);
         btnLogin->setEnabled(true);
         btnLogin->setText("LOGIN");
         return;
