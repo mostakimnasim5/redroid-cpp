@@ -13,6 +13,16 @@ if(WIN32)
     set(CMAKE_CXX_STANDARD 20)
 endif()
 
+# ==============================================================================
+# MSVC Static Runtime Library Configuration
+# Fix for missing MSVCP140_1.dll and VCRUNTIME140_1.dll errors
+# Using /MT for Release and /MTd for Debug (fully standalone executable)
+# ==============================================================================
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    message(STATUS "MSVC Runtime Library: ${CMAKE_MSVC_RUNTIME_LIBRARY}")
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ==============================================================================
