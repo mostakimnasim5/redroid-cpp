@@ -97,14 +97,33 @@ jobs:
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
           cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
+      - name: Deploy Qt6 Runtime
+        shell: pwsh
+        run: |
+          $deployDir = "release\deploy"
+          if (Test-Path $deployDir) { Remove-Item -Recurse -Force $deployDir }
+          New-Item -ItemType Directory -Path $deployDir | Out-Null
+          
+          $exePath = "build\bin\Release\ReDroidCPP.exe"
+          if (-not (Test-Path $exePath)) {
+              $exePath = (Get-ChildItem -Path "build" -Filter "*.exe" -Recurse | Select-Object -First 1).FullName
+          }
+          Copy-Item $exePath -Destination $deployDir
+          
+          $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR\plugins"
+          & "$env:QT_ROOT_DIR\bin\windeployqt.exe" `
+            --dir $deployDir `
+            --no-translations `
+            --no-system-d3d-compiler `
+            --no-compiler-runtime `
+            --no-opengl-sw `
+            "$exePath"
+
       - name: Package
         shell: pwsh
         run: |
-          cmake --install build `
-            --config ${{ env.BUILD_TYPE }} `
-            --prefix release/install
           Compress-Archive `
-            -Path release/install `
+            -Path "release/deploy/*" `
             -DestinationPath "release/ReDroidCPP-Windows-x64-${{ inputs.version }}.zip" `
             -Force
 
