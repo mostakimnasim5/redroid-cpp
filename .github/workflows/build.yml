@@ -131,6 +131,7 @@ jobs:
           $vcDlls = @(
             "msvcp140.dll",
             "msvcp140_1.dll",
+            "msvcp140_2.dll",
             "vcruntime140.dll",
             "vcruntime140_1.dll",
             "concrt140.dll"
