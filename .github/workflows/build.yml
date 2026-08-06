@@ -112,7 +112,48 @@ jobs:
             --no-opengl-sw `
             "build\bin\Release\ReDroidCPP.exe"
           
+          # CRITICAL FIX: Bundle MSVC Runtime DLLs for Qt6 DLLs
+          # Qt6 DLLs require MSVC runtime even when --no-compiler-runtime is used
+          Write-Host "Bundling MSVC Runtime DLLs for Qt6 compatibility..."
+          
+          # Copy MSVC Runtime DLLs from Windows System32
+          $msvcDlls = @(
+              "VCRUNTIME140.dll",
+              "VCRUNTIME140_1.dll",
+              "MSVCP140.dll",
+              "MSVCP140_1.dll",
+              "MSVCP140_2.dll",
+              "VCRUNTIME140_1.dll"
+          )
+          
+          foreach ($dll in $msvcDlls) {
+              $src = "C:\Windows\System32\$dll"
+              if (Test-Path $src) {
+                  Copy-Item $src -Destination $deployDir -ErrorAction SilentlyContinue
+                  Write-Host "  [OK] $dll"
+              }
+          }
+          
+          # Also check for VS2022 redistributables in alternate locations
+          $vsDllPaths = @(
+              "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT\VCRUNTIME140.dll",
+              "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT\VCRUNTIME140.dll",
+              "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT\VCRUNTIME140.dll"
+          )
+          
+          foreach ($pattern in $vsDllPaths) {
+              $files = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue
+              if ($files) {
+                  Copy-Item $files[0].FullName -Destination $deployDir -ErrorAction SilentlyContinue
+                  Copy-Item $files[0].FullName.Replace("VCRUNTIME140.dll","MSVCP140.dll") -Destination $deployDir -ErrorAction SilentlyContinue
+                  Copy-Item $files[0].FullName.Replace("VCRUNTIME140.dll","MSVCP140_1.dll") -Destination $deployDir -ErrorAction SilentlyContinue
+                  Copy-Item $files[0].FullName.Replace("VCRUNTIME140.dll","VCRUNTIME140_1.dll") -Destination $deployDir -ErrorAction SilentlyContinue
+                  break
+              }
+          }
+          
           # Verify deployment
+          Write-Host ""
           Write-Host "Deployed files:"
           Get-ChildItem -Recurse $deployDir | Select-Object FullName, Length
 
