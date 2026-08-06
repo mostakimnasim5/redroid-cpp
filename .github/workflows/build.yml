@@ -109,10 +109,45 @@ jobs:
             --no-system-d3d-compiler `
             --no-opengl-sw `
             "build\bin\Release\ReDroidCPP.exe"
+
+          # ---------------------------------------------------------------
+          # Explicitly copy VC++ 2022 runtime DLLs from MSVC redist folder
+          # windeployqt does NOT reliably copy these on CI environments
+          # ---------------------------------------------------------------
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath  = & $vswhere -latest -products * -requires Microsoft.VisualCpp.Redist.14.Latest -property installationPath
+          if (-not $vsPath) {
+            $vsPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
+          }
+          $crtDir = Get-ChildItem "$vsPath\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT" `
+                      -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $crtDir) {
+            # Fallback: search all VS editions
+            $crtDir = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT" `
+                        -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          }
+          Write-Host "VC++ CRT directory: $crtDir"
+
+          $vcDlls = @(
+            "msvcp140.dll",
+            "msvcp140_1.dll",
+            "vcruntime140.dll",
+            "vcruntime140_1.dll",
+            "concrt140.dll"
+          )
+          foreach ($dll in $vcDlls) {
+            $src = Join-Path $crtDir $dll
+            if (Test-Path $src) {
+              Copy-Item $src $deployDir
+              Write-Host "Copied runtime DLL: $dll"
+            } else {
+              Write-Warning "NOT FOUND: $dll at $src"
+            }
+          }
           
           # Verify deployment
-          Write-Host "Deployed files:"
-          Get-ChildItem -Recurse $deployDir | Select-Object FullName, Length
+          Write-Host "\nFinal deployed files:"
+          Get-ChildItem -Recurse $deployDir | Select-Object Name, Length
 
       - name: Test
         shell: pwsh
@@ -157,3 +192,4 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y trivy
           trivy fs . --severity HIGH,CRITICAL --exit-code 0 \
             --no-progress --timeout 5m || true
+
