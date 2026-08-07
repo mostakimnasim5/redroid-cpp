@@ -451,7 +451,9 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
                 errorMsg = "Network error occurred. Please check your connection.";
                 break;
             default:
-                errorMsg = "Login failed. Please try again.";
+                // Show actual error code to help diagnose
+                errorMsg = QString("Login error (%1). Check Firestore rules allow unauthenticated reads.")
+                    .arg((int)reply->error());
                 break;
         }
         showError(errorMsg);
@@ -722,7 +724,9 @@ void LoginWindow::onNetworkReply(QNetworkReply *reply) {
                 errorMsg = "Network error occurred. Please check your connection.";
                 break;
             default:
-                errorMsg = "Login failed. Please try again.";
+                // Show actual error code to help diagnose
+                errorMsg = QString("Login error (%1). Check Firestore rules allow unauthenticated reads.")
+                    .arg((int)reply->error());
                 break;
         }
         showError(errorMsg);
