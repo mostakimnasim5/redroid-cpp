@@ -98,7 +98,7 @@ bool ConfigManager::createDefaultConfig() {
     // Create default config with Firebase project ID
     m_config = QJsonObject{
         {"firebase", QJsonObject{
-            {"projectId", "Redroid-d8110"},
+            {"projectId", "redroid-d8110"},
             {"apiKey", "AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA"}
         }},
         {"api", QJsonObject{
