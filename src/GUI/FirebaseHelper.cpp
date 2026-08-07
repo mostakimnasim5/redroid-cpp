@@ -122,56 +122,57 @@ void FirestoreClient::onReplyFinished() {
     if (m_pendingRequestType == "fetch_requests") {
         QList<AccessRequest> requests;
         
-        if (doc.isArray()) {
-            QJsonArray docs = doc.array();
+        // Firestore documents.list returns {"documents":[...]} NOT an array
+        QJsonObject rootObj = doc.object();
+        if (rootObj.contains("documents")) {
+            QJsonArray docs = rootObj["documents"].toArray();
             for (const QJsonValue& val : docs) {
-                QJsonObject docObj = val.toObject();
-                if (docObj.contains("document")) {
-                    QJsonObject document = docObj["document"].toObject();
-                    QJsonObject fields = document["fields"].toObject();
-                    
-                    AccessRequest req;
-                    req.documentName = document["name"].toString();
-                    req.id = document["name"].toString().split("/").last();
-                    req.userName = fields["userName"].toObject()["stringValue"].toString();
-                    req.contactNumber = fields["contactNumber"].toObject()["stringValue"].toString();
-                    req.profileCount = fields["profileCount"].toObject()["integerValue"].toInt();
-                    req.durationMinutes = fields["durationMinutes"].toObject()["integerValue"].toInt();
-                    req.status = fields["status"].toObject()["stringValue"].toString();
-                    req.requestedAt = fields["requestedAt"].toObject()["timestampValue"].toString();
-                    
-                    requests.append(req);
-                }
+                QJsonObject document = val.toObject();
+                QJsonObject fields = document["fields"].toObject();
+                
+                AccessRequest req;
+                req.documentName = document["name"].toString();
+                req.id = document["name"].toString().split("/").last();
+                req.userName = fields["userName"].toObject()["stringValue"].toString();
+                req.contactNumber = fields["contactNumber"].toObject()["stringValue"].toString();
+                // integerValue comes as string from Firestore REST API
+                req.profileCount = fields["profileCount"].toObject()["integerValue"].toString().toInt();
+                req.durationMinutes = fields["durationMinutes"].toObject()["integerValue"].toString().toInt();
+                req.status = fields["status"].toObject()["stringValue"].toString();
+                req.requestedAt = fields["requestedAt"].toObject()["timestampValue"].toString();
+                
+                requests.append(req);
             }
         }
+        // Empty collection returns {} with no "documents" key - that's fine
         
         emit accessRequestsFetched(requests);
         
     } else if (m_pendingRequestType == "fetch_users") {
         QList<ActiveUser> users;
         
-        if (doc.isArray()) {
-            QJsonArray docs = doc.array();
+        // Firestore documents.list returns {"documents":[...]} NOT an array
+        QJsonObject rootUsersObj = doc.object();
+        if (rootUsersObj.contains("documents")) {
+            QJsonArray docs = rootUsersObj["documents"].toArray();
             for (const QJsonValue& val : docs) {
-                QJsonObject docObj = val.toObject();
-                if (docObj.contains("document")) {
-                    QJsonObject document = docObj["document"].toObject();
-                    QJsonObject fields = document["fields"].toObject();
-                    
-                    ActiveUser user;
-                    user.documentName = document["name"].toString();
-                    user.id = document["name"].toString().split("/").last();
-                    user.uniqueKey = fields["uniqueKey"].toObject()["stringValue"].toString();
-                    user.userName = fields["userName"].toObject()["stringValue"].toString();
-                    user.phoneNumber = fields["phoneNumber"].toObject()["stringValue"].toString();
-                    user.totalProfiles = fields["totalProfiles"].toObject()["integerValue"].toInt();
-                    user.remainingProfiles = fields["remainingProfiles"].toObject()["integerValue"].toInt();
-                    user.isBlocked = fields["isBlocked"].toObject()["booleanValue"].toBool();
-                    user.createdAt = fields["createdAt"].toObject()["timestampValue"].toString();
-                    user.expiresAt = fields["expiresAt"].toObject()["timestampValue"].toString();
-                    
-                    users.append(user);
-                }
+                QJsonObject document = val.toObject();
+                QJsonObject fields = document["fields"].toObject();
+                
+                ActiveUser user;
+                user.documentName = document["name"].toString();
+                user.id = document["name"].toString().split("/").last();
+                user.uniqueKey = fields["uniqueKey"].toObject()["stringValue"].toString();
+                user.userName = fields["userName"].toObject()["stringValue"].toString();
+                user.phoneNumber = fields["phoneNumber"].toObject()["stringValue"].toString();
+                // integerValue comes as string from Firestore REST API
+                user.totalProfiles = fields["totalProfiles"].toObject()["integerValue"].toString().toInt();
+                user.remainingProfiles = fields["remainingProfiles"].toObject()["integerValue"].toString().toInt();
+                user.isBlocked = fields["isBlocked"].toObject()["booleanValue"].toBool();
+                user.createdAt = fields["createdAt"].toObject()["timestampValue"].toString();
+                user.expiresAt = fields["expiresAt"].toObject()["timestampValue"].toString();
+                
+                users.append(user);
             }
         }
         
@@ -215,10 +216,23 @@ void FirestoreClient::fetchAccessRequests() {
 void FirestoreClient::approveAccessRequest(const QString& documentId, const QString& adminNotes) {
     Q_UNUSED(adminNotes);
     
-    // First, get the request details
-    m_pendingRequestType = "get_request";
+    m_pendingRequestType = "approve_request";
     m_pendingDocumentId = documentId;
-    makeRequest(QString("/accessRequests/%1").arg(documentId), "GET");
+    m_pendingAccessCode = generateAccessCode();
+    
+    // Update accessRequests document status to "approved"
+    QJsonObject fields;
+    fields["status"] = QJsonObject{{"stringValue", "approved"}};
+    fields["processedAt"] = QJsonObject{{"timestampValue", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};
+    
+    QJsonObject data;
+    data["fields"] = fields;
+    
+    makeRequest(
+        QString("/accessRequests/%1?updateMask.fieldPaths=status&updateMask.fieldPaths=processedAt")
+            .arg(documentId),
+        "PATCH", data
+    );
 }
 
 void FirestoreClient::rejectAccessRequest(const QString& documentId, const QString& reason) {
