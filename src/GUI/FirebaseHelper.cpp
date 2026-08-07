@@ -164,7 +164,7 @@ void FirestoreClient::onReplyFinished() {
                 user.id = document["name"].toString().split("/").last();
                 user.uniqueKey = fields["uniqueKey"].toObject()["stringValue"].toString();
                 user.userName = fields["userName"].toObject()["stringValue"].toString();
-                user.phoneNumber = fields["phoneNumber"].toObject()["stringValue"].toString();
+                user.phoneNumber = fields["contactNumber"].toObject()["stringValue"].toString();
                 // integerValue comes as string from Firestore REST API
                 user.totalProfiles = fields["totalProfiles"].toObject()["integerValue"].toString().toInt();
                 user.remainingProfiles = fields["remainingProfiles"].toObject()["integerValue"].toString().toInt();
