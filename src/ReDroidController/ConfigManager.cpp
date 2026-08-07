@@ -141,6 +141,12 @@ bool ConfigManager::hasFirebaseConfig() const {
         return false;
     }
     
+    if (apiKey.isEmpty() ||
+        apiKey == "your-firebase-api-key" ||
+        apiKey == "YOUR_API_KEY") {
+        return false;
+    }
+    
     return true;
 }
 
