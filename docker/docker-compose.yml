@@ -1,6 +1,7 @@
 # ==============================================================================
 # ReDroidCPP - ReDroid Docker Compose
 # Uses lightweight ReDroid (Real Docker Android) container
+# Windows-optimized: KVM disabled, swiftshader GPU
 # ==============================================================================
 
 services:
@@ -15,19 +16,20 @@ services:
     # Privileged mode is REQUIRED for ReDroid - do not remove
     privileged: true
     
-    # KVM access for hardware acceleration (REQUIRED for production)
-    # On Linux with KVM: uncomment the devices section
+    # KVM: Linux-only hardware acceleration — disabled for Windows
+    # To enable on Linux: uncomment the devices section below
     # devices:
     #   - /dev/kvm:/dev/kvm
     #   - /dev/fuse:/dev/fuse
 
     environment:
-      # GPU Mode: swiftshader (no GPU), host (hardware GPU), auto
+      # GPU Mode: swiftshader = software rendering (Windows compatible)
+      # Change to 'host' only on Linux with GPU passthrough
       - REDROID_GPU_MODE=swiftshader
-      # Memory: 512M minimum, 1G recommended
-      - REDROID_MEM_SIZE=512M
-      # KVM: set to 0 to disable if KVM not available
-      - REDROID_VGPU=KVM
+      # Memory: 512M minimum, 2G recommended for smooth performance
+      - REDROID_MEM_SIZE=2G
+      # KVM disabled — not available on Windows
+      # REDROID_VGPU=KVM  ← removed: causes boot failure on Windows
 
     ports:
       - "5555:5555"  # ADB
@@ -39,8 +41,6 @@ services:
       retries: 15
       start_period: 60s
 
-    # Remove restart policy if KVM is not available
-    # In production with KVM, use: restart: unless-stopped
     restart: "no"
 
 volumes:
