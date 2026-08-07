@@ -27,7 +27,7 @@ services:
       # Change to 'host' only on Linux with GPU passthrough
       - REDROID_GPU_MODE=swiftshader
       # Memory: 512M minimum, 2G recommended for smooth performance
-      - REDROID_MEM_SIZE=2G
+      - REDROID_MEM_SIZE=512M
       # KVM disabled — not available on Windows
       # REDROID_VGPU=KVM  ← removed: causes boot failure on Windows
 
