@@ -270,7 +270,7 @@ void FirestoreClient::createActiveUser(const QString& userName, const QString& p
     QJsonObject fields;
     fields["uniqueKey"] = QJsonObject{{"stringValue", m_pendingAccessCode}};
     fields["userName"] = QJsonObject{{"stringValue", userName}};
-    fields["phoneNumber"] = QJsonObject{{"stringValue", phoneNumber}};
+    fields["contactNumber"] = QJsonObject{{"stringValue", phoneNumber}};
     fields["totalProfiles"] = QJsonObject{{"integerValue", QString::number(totalProfiles)}};
     fields["remainingProfiles"] = QJsonObject{{"integerValue", QString::number(totalProfiles)}};
     fields["isBlocked"] = QJsonObject{{"booleanValue", false}};
