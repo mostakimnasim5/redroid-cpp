@@ -100,14 +100,16 @@ void AdminLoginWindow::setupUI() {
     mainLayout->setContentsMargins(40, 40, 40, 40);
     mainLayout->setSpacing(15);
 
-    // Title
+    // Title - must be added to layout
     m_titleLabel = new QLabel("🔐 Admin Portal", loginPage);
     m_titleLabel->setObjectName("titleLabel");
     m_titleLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(m_titleLabel);
 
     QLabel* subtitleLabel = new QLabel("ReDroidCPP Administration", loginPage);
     subtitleLabel->setObjectName("subtitleLabel");
     subtitleLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(subtitleLabel);
 
     // Spacer
     mainLayout->addSpacing(20);
@@ -230,12 +232,9 @@ void AdminLoginWindow::onLoginReply(QNetworkReply* reply) {
     reply->deleteLater();
 
     if (reply->error() != QNetworkReply::NoError) {
-        // For demo purposes, if Firebase is not configured, allow any login
-        // In production, remove this bypass
-        showSuccess("Demo Mode: Opening Admin Dashboard");
-        AdminDashboardWindow* dashboard = new AdminDashboardWindow(this);
-        dashboard->show();
-        hide();
+        // Network or Firebase error - do NOT grant access
+        int httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        showError(QString("Connection failed (code %1). Check internet and try again.").arg(httpCode));
         return;
     }
 
@@ -243,11 +242,7 @@ void AdminLoginWindow::onLoginReply(QNetworkReply* reply) {
     QJsonDocument doc = QJsonDocument::fromJson(response);
 
     if (!doc.isArray()) {
-        // No admin found or error - allow demo access
-        showSuccess("Demo Mode: Opening Admin Dashboard");
-        AdminDashboardWindow* dashboard = new AdminDashboardWindow(this);
-        dashboard->show();
-        hide();
+        showError("Authentication error. Please try again.");
         return;
     }
 
