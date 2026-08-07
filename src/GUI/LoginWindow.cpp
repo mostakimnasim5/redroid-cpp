@@ -145,6 +145,14 @@ void LoginWindow::setupLoginUI() {
     subtitleLabel->setObjectName("subtitleLabel");
     subtitleLabel->setAlignment(Qt::AlignCenter);
 
+    // Phone Input
+    QLabel *phoneLoginLabel = new QLabel("Phone Number:", loginPage);
+    phoneLoginLabel->setStyleSheet("color: #94a3b8; font-size: 13px;");
+    phoneLoginInput = new QLineEdit(loginPage);
+    phoneLoginInput->setPlaceholderText("01XXXXXXXXX");
+    phoneLoginInput->setAlignment(Qt::AlignCenter);
+    phoneLoginInput->setFont(QFont("Segoe UI", 14));
+
     // Code Input
     QLabel *codeLabel = new QLabel("Enter your 8-digit access code:", loginPage);
     codeInput = new QLineEdit(loginPage);
@@ -167,6 +175,9 @@ void LoginWindow::setupLoginUI() {
     mainLayout->addWidget(titleLabel);
     mainLayout->addWidget(subtitleLabel);
     mainLayout->addSpacing(30);
+    mainLayout->addWidget(phoneLoginLabel);
+    mainLayout->addWidget(phoneLoginInput);
+    mainLayout->addSpacing(10);
     mainLayout->addWidget(codeLabel);
     mainLayout->addWidget(codeInput);
     mainLayout->addWidget(statusLabel);
@@ -176,6 +187,7 @@ void LoginWindow::setupLoginUI() {
     connect(btnLogin, &QPushButton::clicked, this, &LoginWindow::onLoginClicked);
     connect(btnSwitchToRequest, &QPushButton::clicked, this, &LoginWindow::onSwitchToRequest);
     connect(codeInput, &QLineEdit::returnPressed, this, &LoginWindow::onLoginClicked);
+    connect(phoneLoginInput, &QLineEdit::returnPressed, this, &LoginWindow::onLoginClicked);
 }
 
 void LoginWindow::setupRequestUI() {
@@ -340,77 +352,82 @@ void LoginWindow::setupRequestUI() {
 }
 
 void LoginWindow::onLoginClicked() {
-    QString code = codeInput->text().trimmed();
+    QString phone = phoneLoginInput->text().trimmed();
+    QString code = codeInput->text().trimmed().toUpper();
+
+    if (phone.isEmpty()) {
+        showError("Phone Number দিন");
+        phoneLoginInput->setFocus();
+        return;
+    }
+
+    // Phone minimum 11 digits
+    QString digitsOnly = phone;
+    digitsOnly.replace(QRegularExpression("[^0-9]"), "");
+    if (digitsOnly.length() < 11) {
+        showError("Phone Number কমপক্ষে ১১ সংখ্যার হতে হবে");
+        phoneLoginInput->setFocus();
+        return;
+    }
 
     if (code.isEmpty()) {
-        showError("Please enter your access code");
+        showError("Access Code দিন");
+        codeInput->setFocus();
         return;
     }
 
     if (code.length() != 8) {
         showError("কোড ৮ সংখ্যার হতে হবে");
+        codeInput->setFocus();
         return;
     }
 
     btnLogin->setEnabled(false);
     btnLogin->setText("যাচাই হচ্ছে...");
-    verifyCode(code);
+    verifyCode(code, phone);
 }
 
-void LoginWindow::verifyCode(const QString &code) {
-    // Firebase Firestore REST API - Query by uniqueKey using simple document fetch
-    // For simplicity, we'll fetch all activeUsers and filter client-side
-    // In production, use a proper query index
-    
+void LoginWindow::verifyCode(const QString &code, const QString &phone) {
+    // Firebase Firestore runQuery: match uniqueKey AND contactNumber (phone)
     QString queryUrl = getFirebaseBaseUrl() + QStringLiteral(":runQuery?key=") + getFirebaseApiKey();
-    
+
     QUrl url(queryUrl);
     QNetworkRequest queryRequest;
     queryRequest.setUrl(url);
     queryRequest.setHeader(QNetworkRequest::KnownHeaders::ContentTypeHeader, "application/json");
-    
-    // Build simple query to get all activeUsers
-    QJsonObject structuredQuery;
-    
-    QJsonObject fromObj;
-    fromObj["collectionId"] = QStringLiteral("activeUsers");
-    QJsonArray fromArray;
-    fromArray.append(fromObj);
-    structuredQuery["from"] = fromArray;
-    
-    // Where clause: uniqueKey == code
-    QJsonObject whereClause;
-    QJsonObject fieldFilter;
-    QJsonObject field;
-    field["fieldPath"] = QStringLiteral("uniqueKey");
-    fieldFilter["field"] = field;
-    fieldFilter["op"] = QStringLiteral("EQUAL");
-    
-    QJsonObject value;
-    value["stringValue"] = code;
-    fieldFilter["value"] = value;
-    
+
+    // Filter 1: uniqueKey == code
+    QJsonObject keyFilter;
+    keyFilter["fieldFilter"] = QJsonObject{
+        {"field", QJsonObject{{"fieldPath", "uniqueKey"}}},
+        {"op", "EQUAL"},
+        {"value", QJsonObject{{"stringValue", code}}}
+    };
+
+    // Filter 2: contactNumber == phone (matches what admin panel stores)
+    QJsonObject phoneFilter;
+    phoneFilter["fieldFilter"] = QJsonObject{
+        {"field", QJsonObject{{"fieldPath", "contactNumber"}}},
+        {"op", "EQUAL"},
+        {"value", QJsonObject{{"stringValue", phone}}}
+    };
+
+    // Composite AND filter
     QJsonObject compositeFilter;
     compositeFilter["op"] = QStringLiteral("AND");
-    
-    QJsonArray filtersArray;
-    QJsonObject filterWrapper;
-    filterWrapper["fieldFilter"] = fieldFilter;
-    filtersArray.append(filterWrapper);
-    compositeFilter["filters"] = filtersArray;
-    
-    whereClause["compositeFilter"] = compositeFilter;
-    structuredQuery["where"] = whereClause;
-    
+    compositeFilter["filters"] = QJsonArray{keyFilter, phoneFilter};
+
+    QJsonObject structuredQuery;
+    structuredQuery["from"] = QJsonArray{QJsonObject{{"collectionId", "activeUsers"}}};
+    structuredQuery["where"] = QJsonObject{{"compositeFilter", compositeFilter}};
+    structuredQuery["limit"] = 1;
+
     QJsonObject queryObj;
     queryObj["structuredQuery"] = structuredQuery;
-    
-    QJsonDocument doc(queryObj);
-    QByteArray data = doc.toJson();
-    
-    QNetworkReply *reply = networkManager->post(queryRequest, data);
+
+    QNetworkReply *reply = networkManager->post(queryRequest, QJsonDocument(queryObj).toJson());
     pendingRequestId = code;
-    
+
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         this->handleLoginResponse(reply);
     });
@@ -488,9 +505,10 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     // Get user data
     QString userId = document["name"].toString().split("/").last();
     QString uniqueKey = fields.contains("uniqueKey") ? fields["uniqueKey"].toObject()["stringValue"].toString() : "";
-    int remainingProfiles = fields.contains("remainingProfiles") ? fields["remainingProfiles"].toObject()["integerValue"].toInt() : 0;
-    int totalProfiles = fields.contains("totalProfiles") ? fields["totalProfiles"].toObject()["integerValue"].toInt() : 0;
-    
+    // Firestore REST returns integerValue as STRING - must use toString().toInt()
+    int remainingProfiles = fields.contains("remainingProfiles") ? fields["remainingProfiles"].toObject()["integerValue"].toString().toInt() : 0;
+    int totalProfiles = fields.contains("totalProfiles") ? fields["totalProfiles"].toObject()["integerValue"].toString().toInt() : 0;
+
     // Success! Hide window and emit login success
     hide();
     emit loginSuccess(userId, uniqueKey, remainingProfiles, totalProfiles);
