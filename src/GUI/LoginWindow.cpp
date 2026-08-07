@@ -754,7 +754,7 @@ void LoginWindow::onNetworkReply(QNetworkReply *reply) {
             } else {
                 QString userId = userDoc["name"].toString().split("/").last();
                 QString uniqueKey = fields.contains("uniqueKey") ? fields["uniqueKey"].toObject()["stringValue"].toString() : "";
-                int remaining = fields.contains("remainingProfiles") ? fields["remainingProfiles"].toObject()["integerValue"].toInt() : 0;
+                int remaining = fields.contains("remainingProfiles") ? fields["remainingProfiles"].toObject()["integerValue"].toString().toInt() : 0;
                 int total = fields.contains("totalProfiles") ? fields["totalProfiles"].toObject()["integerValue"].toInt() : 0;
 
                 hide();
