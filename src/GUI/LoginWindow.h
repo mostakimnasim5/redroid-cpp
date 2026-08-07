@@ -44,7 +44,7 @@ private slots:
 private:
     void setupLoginUI();
     void setupRequestUI();
-    void verifyCode(const QString &code);
+    void verifyCode(const QString &code, const QString &phone);
     void handleLoginResponse(QNetworkReply *reply);
     void sendAccessRequest(const QString &name, const QString &phone, int profiles, int durationMinutes);
     void handleRequestResponse(QNetworkReply *reply);
@@ -59,6 +59,7 @@ private:
     QWidget *requestPage;
 
     // Login Page
+    QLineEdit *phoneLoginInput;   // phone number for login verification
     QLineEdit *codeInput;
     QPushButton *btnLogin;
     QPushButton *btnSwitchToRequest;
