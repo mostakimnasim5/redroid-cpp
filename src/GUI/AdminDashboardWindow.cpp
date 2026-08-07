@@ -488,27 +488,21 @@ void AdminDashboardWindow::populateAccessRequestsTable(const QList<FirebaseHelpe
 void AdminDashboardWindow::onApproveRequest(int row) {
     QString docId = m_requestsTable->item(row, 0)->text();
     QString userName = m_requestsTable->item(row, 1)->text();
-    
-    // Get details from stored data
     QString phone = m_requestsTable->item(row, 2)->text();
     int profiles = m_requestsTable->item(row, 3)->text().toInt();
     int days = m_requestsTable->item(row, 4)->text().replace(" days", "").toInt();
     if (days == 0) days = 1;
 
-    // Generate access code
-    QString accessCode = FirebaseHelper::FirestoreClient::generateAccessCode();
+    // Step 1: Mark request as approved in Firestore
+    // approveAccessRequest generates and stores the access code internally
+    m_firebaseClient->approveAccessRequest(docId, QString());
 
-    // Create active user
+    // Step 2: Create active user with same code
+    // The code will be shown via onUserCreated signal after createActiveUser succeeds
     m_firebaseClient->createActiveUser(userName, phone, profiles, days);
 
-    // Show info with access code
-    QMessageBox::information(this, "Request Approved", 
-        QString("<h3>✅ User Approved!</h3>"
-                "<p><b>User:</b> %1</p>"
-                "<p><b>Access Code:</b> <span style='color: #22c55e; font-size: 20px; font-weight: bold;'>%2</span></p>"
-                "<p><b>Share this code securely with the user!</b></p>").arg(userName, accessCode));
-
-    onRefreshRequests();
+    m_requestsStatusLabel->setText(QString("Approving %1...").arg(userName));
+    m_requestsStatusLabel->setStyleSheet("color: #60a5fa;");
 }
 
 void AdminDashboardWindow::onRejectRequest(int row) {
