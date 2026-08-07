@@ -627,7 +627,7 @@ void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
                 errorMsg = "Service temporarily unavailable. Please try again.";
                 break;
             default:
-                errorMsg = "Submission failed. Please try again.";
+                errorMsg = QString("Network error (%1). Please try again.").arg((int)reply->error());
                 break;
         }
         showRequestError(errorMsg);
@@ -670,7 +670,8 @@ void LoginWindow::handleRequestResponse(QNetworkReply *reply) {
         } else if (errorMessage.contains("QUOTA_EXCEEDED", Qt::CaseInsensitive)) {
             userMsg = "Daily limit exceeded. Please try again tomorrow.";
         } else {
-            userMsg = "Submission failed. Please try again.";
+            // Show actual Firebase error for debugging
+            userMsg = QString("Error: %1 - %2").arg(errorCode).arg(errorMessage);
         }
         
         showRequestError(userMsg);
