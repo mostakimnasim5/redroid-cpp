@@ -41,7 +41,6 @@ ENV ADB_PORT=5555
 # ==============================================================================
 # Install Runtime Dependencies
 # ==============================================================================
-USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
@@ -51,7 +50,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create Config Directory for Device Spoofing
 # ==============================================================================
 RUN mkdir -p /opt/redroid/configs && \
-    chown -R root:root /opt/redroid && \
     chmod -R 755 /opt/redroid
 
 # ==============================================================================
