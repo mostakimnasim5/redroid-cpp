@@ -213,30 +213,12 @@ jobs:
           }
 
           # ---------------------------------------------------------------
-          # STEP 3b: Create qt.conf - tells Qt where to find plugins
-          # This is the MOST RELIABLE way to fix platform plugin errors
+          # STEP 3b: Create qt.conf (plugin path config)
+          # Note: main.cpp also calls addLibraryPath() as primary fix
           # ---------------------------------------------------------------
-          $qtConf = @"
-[Paths]
-Prefix = .
-Plugins = .
-Libraries = .
-"@
-          $qtConf | Out-File -FilePath "$deployDir\qt.conf" -Encoding ASCII
+          $qtConfContent = "[Paths]`nPrefix = .`nPlugins = .`nLibraries = ."
+          $qtConfContent | Out-File -FilePath "$deployDir\qt.conf" -Encoding ASCII
           Write-Host "  [OK] qt.conf created"
-
-          # ---------------------------------------------------------------
-          # STEP 3c: Create Start.bat launcher (guaranteed plugin path)
-          # ---------------------------------------------------------------
-          $startBat = @"
-@echo off
-cd /d "%~dp0"
-set QT_QPA_PLATFORM_PLUGIN_PATH=%~dp0platforms
-set QT_PLUGIN_PATH=%~dp0
-start "" "%~dp0ReDroidCPP.exe"
-"@
-          $startBat | Out-File -FilePath "$deployDir\Start.bat" -Encoding ASCII
-          Write-Host "  [OK] Start.bat launcher created"
 
           # ---------------------------------------------------------------
           # STEP 4: MSVC Runtime DLLs
@@ -272,8 +254,7 @@ start "" "%~dp0ReDroidCPP.exe"
             "Qt6Network.dll",
             "Qt6OpenGL.dll",
             "platforms\qwindows.dll",
-            "qt.conf",
-            "Start.bat"
+            "qt.conf"
           )
           $failed = $false
           foreach ($item in $required) {
