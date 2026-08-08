@@ -49,7 +49,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=sha-
 
-      - name: Check Dockerfile exists
+      - name: Verify Dockerfile exists
         run: |
           ls -la docker/
           test -f docker/Dockerfile.custom || (echo "❌ Dockerfile.custom missing!" && exit 1)

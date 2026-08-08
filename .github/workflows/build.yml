@@ -20,7 +20,8 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install build tools
         run: |
@@ -40,19 +41,20 @@ jobs:
           echo "$HOME/Qt/${{ env.QT_VERSION }}/gcc_64/bin" >> $GITHUB_PATH
           echo "CMAKE_PREFIX_PATH=$HOME/Qt/${{ env.QT_VERSION }}/gcc_64" >> $GITHUB_ENV
 
-      - name: Configure
+      - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DBUILD_QT6_GUI=ON
 
-      - name: Build
+      - name: Build project
         run: cmake --build build --parallel $(nproc)
 
-      - name: Test
+      - name: Run tests
         run: cd build && ctest --output-on-failure || true
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
         if: success()
         with:
           name: linux-build
@@ -66,7 +68,8 @@ jobs:
     runs-on: windows-2022
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Qt 6.8.2
         uses: jurplel/install-qt-action@v4
@@ -78,7 +81,7 @@ jobs:
           cache: true
           cache-key-prefix: qt-win-6.8.2
 
-      - name: Configure
+      - name: Configure CMake
         shell: pwsh
         run: |
           cmake -B build `
@@ -87,7 +90,7 @@ jobs:
             -DBUILD_QT6_GUI=ON `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 
-      - name: Build
+      - name: Build project
         shell: pwsh
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
@@ -193,11 +196,12 @@ jobs:
           Write-Host "Deployed files:"
           Get-ChildItem -Recurse $deployDir | Select-Object FullName, Length
 
-      - name: Test
+      - name: Run tests
         shell: pwsh
         run: cd build; ctest -C ${{ env.BUILD_TYPE }} --output-on-failure; exit 0
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
         if: success()
         with:
           name: windows-exe
@@ -210,8 +214,10 @@ jobs:
     name: Code Quality
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-      - run: |
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run C++ static analysis
+        run: |
           sudo apt-get install -y -qq cppcheck
           cppcheck --std=c++17 --suppress=missingInclude \
             --error-exitcode=0 src/ include/ 2>&1 | tail -10 || true
@@ -224,8 +230,9 @@ jobs:
     runs-on: ubuntu-22.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - name: Install and run Trivy
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install and run Trivy security scanner
         run: |
           sudo apt-get install -y -qq wget gnupg
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \

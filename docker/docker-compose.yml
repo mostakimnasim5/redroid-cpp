@@ -7,6 +7,10 @@
 # - Fast boot (<3 seconds target)
 # - Low RAM usage (~1GB-1.5GB)
 #
+# Security:
+# - ADB port bound to 127.0.0.1 only (localhost-only access)
+# - No external network exposure for ADB
+#
 # Usage:
 #   docker compose up -d
 #
@@ -26,6 +30,8 @@ services:
     hostname: redroid-emulator
     
     # Privileged mode REQUIRED for ReDroid
+    # WARNING: Running containers in privileged mode grants full host access.
+    # Only use in trusted environments or behind firewall.
     privileged: true
     
     # KVM access for hardware acceleration (Linux only)
@@ -54,8 +60,10 @@ services:
       # ===== ADB =====
       - ADB_PORT=5555
 
+    # SECURITY: Bind ADB to localhost only - prevents external access
+    # Only accessible from the host machine, not from external networks
     ports:
-      - "5555:5555"  # ADB
+      - "127.0.0.1:5555:5555"  # ADB (localhost only)
 
     volumes:
       # Mount configs for device spoofing
