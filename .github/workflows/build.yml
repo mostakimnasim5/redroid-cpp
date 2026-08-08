@@ -97,6 +97,14 @@ jobs:
       - name: Deploy Qt6 Runtime with windeployqt
         shell: pwsh
         run: |
+          # ========================================================================
+          # Qt6 Deployment Step - Bundle all required DLLs and plugins
+          # ========================================================================
+          
+          Write-Host "=== Starting Qt6 Deployment ==="
+          Write-Host "Qt Root: $env:QT_ROOT_DIR"
+          Write-Host "Qt Version: $env:QT_VERSION"
+          
           # Create deployment directory
           $deployDir = "build\bin\deploy"
           if (Test-Path $deployDir) { Remove-Item -Recurse -Force $deployDir }
@@ -104,97 +112,120 @@ jobs:
           
           # Copy the main executable
           Copy-Item "build\bin\Release\ReDroidCPP.exe" -Destination $deployDir
+          Write-Host "[1/4] Copied ReDroidCPP.exe"
           
-          # Run windeployqt to bundle all Qt6 DLLs and plugins
+          # ========================================================================
+          # Run windeployqt with CORRECT flags
+          # ========================================================================
+          # IMPORTANT: Do NOT use --no-compiler-runtime - Qt6 needs MSVC runtime!
+          # IMPORTANT: Remove --no-opengl-sw - we need software OpenGL fallback
+          
           $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR\plugins"
+          $env:PATH = "$env:QT_ROOT_DIR\bin;$env:PATH"
+          
+          Write-Host "[2/4] Running windeployqt.exe..."
           & "$env:QT_ROOT_DIR\bin\windeployqt.exe" `
             --dir $deployDir `
             --no-translations `
-            --no-system-d3d-compiler `
-            --no-compiler-runtime `
-            --no-opengl-sw `
+            --force `
+            --verbose 2 `
             "build\bin\Release\ReDroidCPP.exe"
-
-          # ---------------------------------------------------------------
-          # Explicitly copy VC++ 2022 runtime DLLs from MSVC redist folder
-          # windeployqt does NOT reliably copy these on CI environments
-          # ---------------------------------------------------------------
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "windeployqt exited with code $LASTEXITCODE, trying fallback..."
+          }
+          
+          # ========================================================================
+          # Copy MSVC Runtime DLLs (CRITICAL - Qt6 requires these)
+          # ========================================================================
+          Write-Host "[3/4] Bundling MSVC Runtime DLLs..."
+          
+          # Find VS installation
           $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vsPath  = & $vswhere -latest -products * -requires Microsoft.VisualCpp.Redist.14.Latest -property installationPath
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualCpp.Redist.14.Latest -property installationPath
           if (-not $vsPath) {
-            $vsPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
-          }
-          $crtDir = Get-ChildItem "$vsPath\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT" `
-                      -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $crtDir) {
-            # Fallback: search all VS editions
-            $crtDir = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT" `
-                        -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-          }
-          Write-Host "VC++ CRT directory: $crtDir"
-
-          $vcDlls = @(
-            "msvcp140.dll",
-            "msvcp140_1.dll",
-            "msvcp140_2.dll",
-            "vcruntime140.dll",
-            "vcruntime140_1.dll",
-            "concrt140.dll"
-          )
-          foreach ($dll in $vcDlls) {
-            $src = Join-Path $crtDir $dll
-            if (Test-Path $src) {
-              Copy-Item $src $deployDir
-              Write-Host "Copied runtime DLL: $dll"
-            } else {
-              Write-Warning "NOT FOUND: $dll at $src"
-            }
+              $vsPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
           }
           
-          # CRITICAL FIX: Bundle MSVC Runtime DLLs for Qt6 DLLs
-          # Qt6 DLLs require MSVC runtime even when --no-compiler-runtime is used
-          Write-Host "Bundling MSVC Runtime DLLs for Qt6 compatibility..."
-          
-          # Copy MSVC Runtime DLLs from Windows System32
-          $msvcDlls = @(
-              "VCRUNTIME140.dll",
-              "VCRUNTIME140_1.dll",
-              "MSVCP140.dll",
-              "MSVCP140_1.dll",
-              "MSVCP140_2.dll",
-              "VCRUNTIME140_1.dll"
+          # Find VC++ Redistributables
+          $crtPaths = @(
+              "$vsPath\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
+              "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT",
+              "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT"
           )
           
-          foreach ($dll in $msvcDlls) {
-              $src = "C:\Windows\System32\$dll"
-              if (Test-Path $src) {
-                  Copy-Item $src -Destination $deployDir -ErrorAction SilentlyContinue
-                  Write-Host "  [OK] $dll"
-              }
-          }
-          
-          # Also check for VS2022 redistributables in alternate locations
-          $vsDllPaths = @(
-              "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT\VCRUNTIME140.dll",
-              "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT\VCRUNTIME140.dll",
-              "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT\VCRUNTIME140.dll"
-          )
-          
-          foreach ($pattern in $vsDllPaths) {
-              $files = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue
-              if ($files) {
-                  Copy-Item $files[0].FullName -Destination $deployDir -ErrorAction SilentlyContinue
-                  Copy-Item $files[0].FullName.Replace("VCRUNTIME140.dll","MSVCP140.dll") -Destination $deployDir -ErrorAction SilentlyContinue
-                  Copy-Item $files[0].FullName.Replace("VCRUNTIME140.dll","MSVCP140_1.dll") -Destination $deployDir -ErrorAction SilentlyContinue
-                  Copy-Item $files[0].FullName.Replace("VCRUNTIME140.dll","VCRUNTIME140_1.dll") -Destination $deployDir -ErrorAction SilentlyContinue
+          $crtDir = $null
+          foreach ($path in $crtPaths) {
+              $found = Get-ChildItem $path -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($found) {
+                  $crtDir = $found.FullName
                   break
               }
           }
           
+          Write-Host "VC++ CRT directory: $crtDir"
+          
+          # Copy ALL MSVC 2022 runtime DLLs
+          $msvcDlls = @(
+              "msvcp140.dll",
+              "msvcp140_1.dll",
+              "msvcp140_2.dll",
+              "vcruntime140.dll",
+              "vcruntime140_1.dll",
+              "concrt140.dll",
+              "vccorlib140.dll"
+          )
+          
+          foreach ($dll in $msvcDlls) {
+              $src = Join-Path $crtDir $dll
+              if (Test-Path $src) {
+                  Copy-Item $src -Destination $deployDir
+                  Write-Host "  [OK] $dll"
+              } else {
+                  # Try System32 as fallback
+                  $sys32src = "C:\Windows\System32\$dll"
+                  if (Test-Path $sys32src) {
+                      Copy-Item $sys32src -Destination $deployDir
+                      Write-Host "  [OK] $dll (from System32)"
+                  } else {
+                      Write-Warning "  [MISSING] $dll"
+                  }
+              }
+          }
+          
+          # ========================================================================
           # Verify deployment
+          # ========================================================================
+          Write-Host "[4/4] Verifying deployment..."
           Write-Host ""
-          Write-Host "Deployed files:"
-          Get-ChildItem -Recurse $deployDir | Select-Object FullName, Length
+          Write-Host "=== Deployed Files ==="
+          
+          $dlls = Get-ChildItem -Path $deployDir -Filter "*.dll" | Select-Object Name
+          $qtDlls = $dlls | Where-Object { $_.Name -like "Qt6*" }
+          $msvcDlls = $dlls | Where-Object { $_.Name -like "MSVC*" -or $_.Name -like "vcruntime*" -or $_.Name -like "msvcp*" }
+          
+          Write-Host ""
+          Write-Host "Qt6 DLLs deployed: $($qtDlls.Count)"
+          $qtDlls | ForEach-Object { Write-Host "  - $($_.Name)" }
+          
+          Write-Host ""
+          Write-Host "MSVC Runtime DLLs deployed: $($msvcDlls.Count)"
+          $msvcDlls | ForEach-Object { Write-Host "  - $($_.Name)" }
+          
+          Write-Host ""
+          Write-Host "Total files deployed:"
+          (Get-ChildItem -Recurse $deployDir).Count
+          
+          # Check for required Qt6 DLLs
+          $requiredQt6 = @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6Network.dll")
+          foreach ($dll in $requiredQt6) {
+              if (-not (Test-Path "$deployDir\$dll")) {
+                  Write-Error "CRITICAL: Missing $dll"
+              }
+          }
+          
+          Write-Host ""
+          Write-Host "=== Deployment Complete ==="
 
       - name: Run tests
         shell: pwsh
