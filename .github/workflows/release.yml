@@ -93,17 +93,54 @@ jobs:
           cmake -B build `
             -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
-            -DENABLE_LOGGING=OFF
+            -DENABLE_LOGGING=OFF `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
           cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Deploy Qt6 Runtime
+        shell: pwsh
+        run: |
+          $deployDir = "release\deploy"
+          if (Test-Path $deployDir) { Remove-Item -Recurse -Force $deployDir }
+          New-Item -ItemType Directory -Path $deployDir | Out-Null
+          
+          $exePath = "build\bin\Release\ReDroidCPP.exe"
+          if (-not (Test-Path $exePath)) {
+              $exePath = (Get-ChildItem -Path "build" -Filter "*.exe" -Recurse | Select-Object -First 1).FullName
+          }
+          Copy-Item $exePath -Destination $deployDir
+          
+          $env:QT_PLUGIN_PATH = "$env:QT_ROOT_DIR\plugins"
+          & "$env:QT_ROOT_DIR\bin\windeployqt.exe" `
+            --dir $deployDir `
+            --no-translations `
+            --no-system-d3d-compiler `
+            --no-compiler-runtime `
+            --no-opengl-sw `
+            "$exePath"
+          
+          # Bundle MSVC Runtime DLLs for Qt6 compatibility
+          Write-Host "Bundling MSVC Runtime DLLs..."
+          $msvcDlls = @("VCRUNTIME140.dll","VCRUNTIME140_1.dll","MSVCP140.dll","MSVCP140_1.dll")
+          foreach ($dll in $msvcDlls) {
+              $src = "C:\Windows\System32\$dll"
+              if (Test-Path $src) { Copy-Item $src -Destination $deployDir -ErrorAction SilentlyContinue }
+          }
+          $vsPath = "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT\VCRUNTIME140.dll"
+          $vsFiles = Get-ChildItem -Path $vsPath -ErrorAction SilentlyContinue
+          if ($vsFiles) {
+              $vsDir = Split-Path $vsFiles[0].DirectoryName
+              Copy-Item "$vsDir\VCRUNTIME140.dll" -Destination $deployDir -ErrorAction SilentlyContinue
+              Copy-Item "$vsDir\MSVCP140.dll" -Destination $deployDir -ErrorAction SilentlyContinue
+              Copy-Item "$vsDir\MSVCP140_1.dll" -Destination $deployDir -ErrorAction SilentlyContinue
+              Copy-Item "$vsDir\VCRUNTIME140_1.dll" -Destination $deployDir -ErrorAction SilentlyContinue
+          }
 
       - name: Package
         shell: pwsh
         run: |
-          cmake --install build `
-            --config ${{ env.BUILD_TYPE }} `
-            --prefix release/install
           Compress-Archive `
-            -Path release/install `
+            -Path "release/deploy/*" `
             -DestinationPath "release/ReDroidCPP-Windows-x64-${{ inputs.version }}.zip" `
             -Force
 

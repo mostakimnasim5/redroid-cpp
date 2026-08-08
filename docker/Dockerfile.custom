@@ -1,74 +1,87 @@
 # ==============================================================================
-# VirtualPhonePro - ReDroid Docker Image
+# ReDroidCPP - Pure ReDroid Container Image
 # 
-# IMPORTANT: This is a thin wrapper around the official ReDroid image.
-# Device spoofing and anti-detection is handled by the C++ application
-# via ADB commands after the container starts.
+# Pure ReDroid container - NO QEMU/AVD dependencies!
+# 
+# Architecture:
+# - Base: redroid/redroid (Android in Docker)
+# - Size: ~500MB (vs ~8GB with QEMU/AVD)
+# - Boot time: <3 seconds
+# - RAM: ~1GB-1.5GB per instance
 #
-# REQUIREMENTS:
-# - KVM (Kernel-based Virtual Machine) MUST be available
-# - /dev/kvm must be accessible
-# - Container must run in privileged mode
-#
-# Base: redroid/redroid (Remote Android - GPU accelerated Android in Docker)
+# Requirements:
+# - KVM enabled host
+# - /dev/kvm accessible
+# - Privileged container mode
 # ==============================================================================
 
-FROM redroid/redroid:latest
+FROM redroid/redroid:11.0.0-latest
 
 # Metadata
-LABEL maintainer="VirtualPhonePro"
-LABEL version="1.0.0"
-LABEL description="VirtualPhonePro - ReDroid with Device Spoofing Support"
+LABEL maintainer="ReDroidCPP"
+LABEL version="3.0.0"
+LABEL description="ReDroidCPP - Pure ReDroid with Anti-Detection Modules"
+LABEL architecture="pure-redroid"
+LABEL no-qemu="true"
 
 # ==============================================================================
-# Default Device Configuration
-# These can be overridden at runtime via docker-compose environment or
-# by the C++ application via ADB commands
+# Build Arguments (can be overridden)
 # ==============================================================================
+ARG BUILD_DATE
+ARG VERSION=3.0.0
 
-# GPU Mode: swiftshader (software), host (hardware GPU), auto (auto-detect)
+# Default configurations (override via docker-compose)
 ENV REDROID_GPU_MODE=swiftshader
+ENV REDROID_MEM_SIZE=1536M
+ENV REDROID_RAM_SIZE=1536
+ENV REDROID_VGPU=auto
+ENV REDROID_NET_HOSTNAME=redroid-emulator
+ENV ADB_PORT=5555
 
-# Memory Configuration: 512M minimum, 1G recommended
-ENV REDROID_MEM_SIZE=512M
+# ==============================================================================
+# Install Runtime Dependencies
+# ==============================================================================
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# KVM Virtual GPU: KVM (hardware), empty (software only)
-# KVM is REQUIRED for ReDroid to run
-ENV REDROID_VGPU=KVM
+# ==============================================================================
+# Create Config Directory for Device Spoofing
+# ==============================================================================
+RUN mkdir -p /opt/redroid/configs && \
+    chown -R root:root /opt/redroid && \
+    chmod -R 755 /opt/redroid
 
-# Network hostname
-ENV REDROID_NET_HOSTNAME=android-emulator
+# ==============================================================================
+# Copy Entrypoint Script
+# ==============================================================================
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Expose ADB port
 EXPOSE 5555
 
-# Health Check - wait for Android boot completion
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=15 \
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=20 \
     CMD getprop sys.boot_completed 2>/dev/null | grep -q "1" || exit 1
 
+# Entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+
 # ==============================================================================
-# USAGE INSTRUCTIONS
+# USAGE
 # ==============================================================================
 #
-# 1. PREREQUISITES:
-#    - Linux host with KVM enabled
-#    - Docker with /dev/kvm access
-#    - Kernel modules: ashmen, binder, userfaultfd, vhost-vsock
+# Quick Start:
+#   docker compose up -d
+#   adb connect localhost:5555
 #
-# 2. RUN WITH DOCKER COMPOSE:
-#    cd docker
-#    docker compose up -d
+# Custom Memory:
+#   REDROID_MEM_SIZE=2048M docker compose up -d
 #
-# 3. VERIFY CONTAINER IS RUNNING:
-#    docker ps
-#    docker logs android-emulator
-#
-# 4. CONNECT VIA ADB:
-#    adb connect localhost:5555
-#    adb devices
-#
-# 5. DEVICE SPOOFING (handled by C++ application):
-#    The ReDroidController::applyCompleteRealism() method will apply
-#    all device spoofing via ADB commands automatically.
+# Hardware GPU:
+#   REDROID_GPU_MODE=host docker compose up -d
 #
 # ==============================================================================

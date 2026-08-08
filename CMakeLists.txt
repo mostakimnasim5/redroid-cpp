@@ -1,3 +1,16 @@
+# ==============================================================================
+# CRITICAL: MSVC Static Runtime Library - MUST BE BEFORE project()
+# This eliminates dependency on MSVCP140.dll, MSVCP140_1.dll, 
+# VCRUNTIME140.dll, VCRUNTIME140_1.dll
+# ==============================================================================
+if(MSVC)
+    # MultiThreaded = /MT (static runtime, no DLL dependency)
+    # MultiThreadedDebug = /MTd (static debug runtime)
+    # This MUST be set before project() for proper propagation
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "MSVC Runtime Library")
+    message(STATUS "MSVC Runtime Library: ${CMAKE_MSVC_RUNTIME_LIBRARY}")
+endif()
+
 cmake_minimum_required(VERSION 3.20)
 project(RedroidCPP VERSION 3.0.0 LANGUAGES CXX)
 

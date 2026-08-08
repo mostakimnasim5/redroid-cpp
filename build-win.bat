@@ -61,7 +61,8 @@ cmake .. ^
     -A x64 ^
     -DCMAKE_BUILD_TYPE=%CONFIG% ^
     -DCMAKE_CXX_STANDARD=17 ^
-    -DBUILD_SHARED_LIBS=OFF
+    -DBUILD_SHARED_LIBS=OFF ^
+    -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] CMake configuration failed!

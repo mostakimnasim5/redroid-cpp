@@ -144,6 +144,7 @@ cmake -S . -B "%BUILD_DIR%" ^
     -DCMAKE_PREFIX_PATH="%QT_DIR%" ^
     -DCMAKE_INSTALL_PREFIX="%RELEASE_DIR%" ^
     -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="%BUILD_DIR%\bin" ^
+    -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
     -Werror=dev ^
     -Wno-dev
 
