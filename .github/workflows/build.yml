@@ -165,17 +165,78 @@ jobs:
           }
 
           # ---------------------------------------------------------------
-          # STEP 3: Qt plugins (critical for GUI to start)
+          # STEP 3: Qt plugins (CRITICAL - app won't start without these)
+          # qwindows.dll must be at <exe_dir>/platforms/qwindows.dll
           # ---------------------------------------------------------------
           $pluginsDir = "$env:QT_ROOT_DIR\plugins"
-          $pluginsToCopy = @("platforms", "styles", "imageformats", "tls", "networkinformation")
+          Write-Host "Qt plugins dir: $pluginsDir"
+
+          # Copy ALL essential plugins
+          $pluginsToCopy = @(
+            "platforms",       # qwindows.dll - REQUIRED, app won't start without it
+            "styles",          # Windows style
+            "imageformats",    # PNG, JPG support
+            "tls",             # SSL/TLS for network
+            "networkinformation",
+            "iconengines",
+            "generic"
+          )
           foreach ($plugin in $pluginsToCopy) {
             $src = "$pluginsDir\$plugin"
             if (Test-Path $src) {
-              Copy-Item $src -Destination "$deployDir\$plugin" -Recurse -Force
-              Write-Host "  [OK] plugin: $plugin"
+              New-Item -ItemType Directory -Path "$deployDir\$plugin" -Force | Out-Null
+              Copy-Item "$src\*" -Destination "$deployDir\$plugin" -Recurse -Force
+              $count = (Get-ChildItem "$deployDir\$plugin").Count
+              Write-Host "  [OK] $plugin ($count files)"
+            } else {
+              Write-Warning "  [MISSING] plugin dir: $src"
             }
           }
+
+          # Verify qwindows.dll specifically
+          $qwindows = "$deployDir\platforms\qwindows.dll"
+          if (Test-Path $qwindows) {
+            $size = [math]::Round((Get-Item $qwindows).Length / 1KB)
+            Write-Host "  [VERIFIED] qwindows.dll ($size KB)"
+          } else {
+            Write-Error "CRITICAL: qwindows.dll not found at $qwindows"
+
+            # Emergency: search entire Qt installation
+            Write-Host "Searching Qt installation for qwindows.dll..."
+            $found = Get-ChildItem "$env:QT_ROOT_DIR" -Filter "qwindows.dll" -Recurse `
+                       -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              New-Item -ItemType Directory -Path "$deployDir\platforms" -Force | Out-Null
+              Copy-Item $found.FullName -Destination "$deployDir\platforms\" -Force
+              Write-Host "  [RESCUED] qwindows.dll from $($found.FullName)"
+            }
+          }
+
+          # ---------------------------------------------------------------
+          # STEP 3b: Create qt.conf - tells Qt where to find plugins
+          # This is the MOST RELIABLE way to fix platform plugin errors
+          # ---------------------------------------------------------------
+          $qtConf = @"
+[Paths]
+Prefix = .
+Plugins = .
+Libraries = .
+"@
+          $qtConf | Out-File -FilePath "$deployDir\qt.conf" -Encoding ASCII
+          Write-Host "  [OK] qt.conf created"
+
+          # ---------------------------------------------------------------
+          # STEP 3c: Create Start.bat launcher (guaranteed plugin path)
+          # ---------------------------------------------------------------
+          $startBat = @"
+@echo off
+cd /d "%~dp0"
+set QT_QPA_PLATFORM_PLUGIN_PATH=%~dp0platforms
+set QT_PLUGIN_PATH=%~dp0
+start "" "%~dp0ReDroidCPP.exe"
+"@
+          $startBat | Out-File -FilePath "$deployDir\Start.bat" -Encoding ASCII
+          Write-Host "  [OK] Start.bat launcher created"
 
           # ---------------------------------------------------------------
           # STEP 4: MSVC Runtime DLLs
@@ -200,11 +261,20 @@ jobs:
           }
 
           # ---------------------------------------------------------------
-          # STEP 5: Final verification - FAIL build if Qt DLLs missing
+          # STEP 5: Final verification - FAIL build if anything missing
           # ---------------------------------------------------------------
           Write-Host ""
-          Write-Host "=== Verification ==="
-          $required = @("Qt6Core.dll","Qt6Gui.dll","Qt6Widgets.dll","Qt6Network.dll","platforms")
+          Write-Host "=== Final Verification ==="
+          $required = @(
+            "Qt6Core.dll",
+            "Qt6Gui.dll",
+            "Qt6Widgets.dll",
+            "Qt6Network.dll",
+            "Qt6OpenGL.dll",
+            "platforms\qwindows.dll",
+            "qt.conf",
+            "Start.bat"
+          )
           $failed = $false
           foreach ($item in $required) {
             $exists = Test-Path "$deployDir\$item"
