@@ -86,13 +86,13 @@ jobs:
         run: |
           cmake -B build `
             -G "Visual Studio 17 2022" -A x64 `
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
+            -DCMAKE_BUILD_TYPE=Release `
             -DBUILD_QT6_GUI=ON `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 
       - name: Build project
         shell: pwsh
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+        run: cmake --build build --config Release --parallel
 
       - name: Deploy Qt6 Runtime with windeployqt
         shell: pwsh
@@ -104,13 +104,14 @@ jobs:
           Write-Host "=== Starting Qt6 Deployment ==="
           Write-Host "Qt Root: $env:QT_ROOT_DIR"
           Write-Host "Qt Version: $env:QT_VERSION"
+          Write-Host "Build Configuration: Release"
           
           # Create deployment directory
           $deployDir = "build\bin\deploy"
           if (Test-Path $deployDir) { Remove-Item -Recurse -Force $deployDir }
           New-Item -ItemType Directory -Path $deployDir | Out-Null
           
-          # Copy the main executable
+          # Copy the main executable (Release build)
           Copy-Item "build\bin\Release\ReDroidCPP.exe" -Destination $deployDir
           Write-Host "[1/4] Copied ReDroidCPP.exe"
           
@@ -214,14 +215,46 @@ jobs:
           
           Write-Host ""
           Write-Host "Total files deployed:"
-          (Get-ChildItem -Recurse $deployDir).Count
+          $totalFiles = (Get-ChildItem -Recurse $deployDir).Count
+          Write-Host $totalFiles
           
-          # Check for required Qt6 DLLs
-          $requiredQt6 = @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6Network.dll")
-          foreach ($dll in $requiredQt6) {
-              if (-not (Test-Path "$deployDir\$dll")) {
-                  Write-Error "CRITICAL: Missing $dll"
+          # Check for required Qt6 DLLs (handle both Release and Debug suffixes)
+          $requiredQt6 = @(
+              @{Release="Qt6Core.dll"; Debug="Qt6Cored.dll"},
+              @{Release="Qt6Gui.dll"; Debug="Qt6Guid.dll"},
+              @{Release="Qt6Widgets.dll"; Debug="Qt6Widgetsd.dll"},
+              @{Release="Qt6Network.dll"; Debug="Qt6Networkd.dll"}
+          )
+          
+          $allFound = $true
+          foreach ($dllCheck in $requiredQt6) {
+              $found = (Test-Path "$deployDir\$($dllCheck.Release)") -or (Test-Path "$deployDir\$($dllCheck.Debug)")
+              if ($found) {
+                  $name = if (Test-Path "$deployDir\$($dllCheck.Release)") { $dllCheck.Release } else { $dllCheck.Debug }
+                  Write-Host "  [OK] $name"
+              } else {
+                  Write-Error "CRITICAL: Missing $($dllCheck.Release) or $($dllCheck.Debug)"
+                  $allFound = $false
               }
+          }
+          
+          # Check for platforms directory (required for Qt GUI on Windows)
+          if (-not (Test-Path "$deployDir\platforms")) {
+              Write-Error "CRITICAL: Missing platforms directory"
+              $allFound = $false
+          } else {
+              Write-Host "  [OK] platforms/ directory exists"
+          }
+          
+          # Check for MSVC runtime
+          if ($msvcDlls.Count -eq 0) {
+              Write-Error "CRITICAL: No MSVC runtime DLLs found"
+              $allFound = $false
+          }
+          
+          if (-not $allFound) {
+              Write-Error "Deployment verification failed!"
+              exit 1
           }
           
           Write-Host ""
