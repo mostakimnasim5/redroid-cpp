@@ -2,6 +2,7 @@
 # ReDroidCPP - Pure ReDroid Container Image
 # 
 # Pure ReDroid container - NO QEMU/AVD dependencies!
+# This is a thin wrapper around the official ReDroid image.
 # 
 # Architecture:
 # - Base: redroid/redroid (Android in Docker)
@@ -24,13 +25,7 @@ LABEL description="ReDroidCPP - Pure ReDroid with Anti-Detection Modules"
 LABEL architecture="pure-redroid"
 LABEL no-qemu="true"
 
-# ==============================================================================
-# Build Arguments (can be overridden)
-# ==============================================================================
-ARG BUILD_DATE
-ARG VERSION=3.0.0
-
-# Default configurations (override via docker-compose)
+# Default configurations (override via docker-compose or environment)
 ENV REDROID_GPU_MODE=swiftshader
 ENV REDROID_MEM_SIZE=1536M
 ENV REDROID_RAM_SIZE=1536
@@ -38,35 +33,15 @@ ENV REDROID_VGPU=auto
 ENV REDROID_NET_HOSTNAME=redroid-emulator
 ENV ADB_PORT=5555
 
-# ==============================================================================
-# Install Runtime Dependencies
-# ==============================================================================
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# ==============================================================================
-# Create Config Directory for Device Spoofing
-# ==============================================================================
-RUN mkdir -p /opt/redroid/configs && \
-    chmod -R 755 /opt/redroid
-
-# ==============================================================================
-# Copy Entrypoint Script
-# ==============================================================================
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 # Expose ADB port
 EXPOSE 5555
 
-# Health check
+# Health check - wait for Android boot completion
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=20 \
     CMD getprop sys.boot_completed 2>/dev/null | grep -q "1" || exit 1
 
-# Entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
+# Entrypoint - ReDroid handles its own startup, this just keeps container alive
+ENTRYPOINT ["tail", "-f", "/dev/null"]
 
 # ==============================================================================
 # USAGE
@@ -81,5 +56,8 @@ ENTRYPOINT ["/entrypoint.sh"]
 #
 # Hardware GPU:
 #   REDROID_GPU_MODE=host docker compose up -d
+#
+# Device Spoofing: The C++ application applies all spoofing via ADB commands.
+# No additional configuration needed in the container.
 #
 # ==============================================================================
