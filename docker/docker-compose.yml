@@ -1,6 +1,19 @@
 # ==============================================================================
-# ReDroidCPP - ReDroid Docker Compose
-# Uses lightweight ReDroid (Real Docker Android) container
+# ReDroidCPP - Pure ReDroid Docker Compose
+# 
+# Features:
+# - Pure ReDroid container (NO QEMU/AVD)
+# - Dynamic memory configuration (1GB, 1.5GB, 2GB)
+# - Fast boot (<3 seconds target)
+# - Low RAM usage (~1GB-1.5GB)
+#
+# Usage:
+#   docker compose up -d
+#
+# Environment Variables:
+#   REDROID_MEM_SIZE - Container memory (default: 1536M)
+#   REDROID_GPU_MODE - swiftshader (default), host, auto
+#   REDROID_RAM_SIZE  - Internal RAM size (default: 1536)
 # ==============================================================================
 
 services:
@@ -8,40 +21,62 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.custom
-    container_name: android-emulator
-    image: redroid-cpp/android-emulator:latest
-    hostname: android-emulator
+    container_name: redroid-emulator
+    image: redroid-cpp/redroid:latest
+    hostname: redroid-emulator
     
-    # Privileged mode is REQUIRED for ReDroid - do not remove
+    # Privileged mode REQUIRED for ReDroid
     privileged: true
     
-    # KVM access for hardware acceleration (REQUIRED for production)
-    # On Linux with KVM: uncomment the devices section
-    # devices:
-    #   - /dev/kvm:/dev/kvm
-    #   - /dev/fuse:/dev/fuse
+    # KVM access for hardware acceleration
+    devices:
+      - /dev/kvm:/dev/kvm
+      - /dev/binderfs/binder:/dev/binder
+      - /dev/binder:/dev/binder
+      - /dev/vndbinder:/dev/vndbinder
+      - /dev/hwbinder:/dev/hwbinder
 
     environment:
-      # GPU Mode: swiftshader (no GPU), host (hardware GPU), auto
-      - REDROID_GPU_MODE=swiftshader
-      # Memory: 512M minimum, 1G recommended
-      - REDROID_MEM_SIZE=512M
-      # KVM: set to 0 to disable if KVM not available
-      - REDROID_VGPU=KVM
+      # ===== MEMORY CONFIGURATION (Dynamic) =====
+      # User can override: 1024M, 1536M, 2048M, 3072M
+      - REDROID_MEM_SIZE=${REDROID_MEM_SIZE:-1536M}
+      # Internal RAM size for Android
+      - REDROID_RAM_SIZE=${REDROID_RAM_SIZE:-1536}
+      
+      # ===== GPU CONFIGURATION =====
+      # Options: swiftshader (default, no GPU), host (hardware GPU), auto
+      - REDROID_GPU_MODE=${REDROID_GPU_MODE:-swiftshader}
+      
+      # ===== NETWORK =====
+      - REDROID_NET_HOSTNAME=redroid-emulator
+      
+      # ===== ADB =====
+      - ADB_PORT=5555
 
     ports:
       - "5555:5555"  # ADB
 
+    volumes:
+      # Mount configs for device spoofing
+      - ./configs:/opt/redroid/configs:ro
+      
     healthcheck:
       test: ["CMD", "getprop", "sys.boot_completed"]
-      interval: 30s
-      timeout: 10s
-      retries: 15
-      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
-    # Remove restart policy if KVM is not available
-    # In production with KVM, use: restart: unless-stopped
-    restart: "no"
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: ${REDROID_MEM_SIZE:-1536M}
+        reservations:
+          memory: 512M
+
+    # Auto-restart on crash (optional)
+    restart: unless-stopped
 
 volumes:
-  device_data:
+  redroid-data:
