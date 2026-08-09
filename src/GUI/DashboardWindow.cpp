@@ -870,13 +870,11 @@ void DashboardWindow::createPhoneCard(const QString& instanceId) {
     connect(card, &PhoneCard::stopRequested, this, &DashboardWindow::onPhoneCardStop);
     connect(card, &PhoneCard::deleteRequested, this, &DashboardWindow::onPhoneCardDelete);
     
-    // Add to grid
-    int row = m_cardGrid->rowCount();
-    int col = m_cardGrid->columnCount();
-    if (col >= 4) {
-        col = 0;
-        row++;
-    }
+    // Add to grid - calculate correct row/col from current card count
+    // rowCount()/columnCount() returns TOTAL spans, not next position
+    int count = m_phoneCards.size(); // count before this card is added
+    int col = count % 4;
+    int row = count / 4;
     m_cardGrid->addWidget(card, row, col);
     
     m_phoneCards[instanceId] = card;
