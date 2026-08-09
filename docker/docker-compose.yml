@@ -1,26 +1,25 @@
 # ==============================================================================
-# ReDroidCPP - ReDroid Docker Compose
+# ReDroidCPP - Docker Compose (Reference / Manual Testing)
+#
+# NOTE: The ReDroidCPP GUI uses "docker run" directly to create instances.
+# This file is for manual testing only, not used by the software itself.
+#
+# Manual usage:
+#   CONTAINER_NAME=test-1 ADB_PORT=5555 docker compose up -d
 #
 # Requirements:
 # - WSL2 with custom kernel (binder module)
 # - Docker Desktop with WSL2 backend
-#
-# Setup: Run installer first to configure WSL2 kernel
 # ==============================================================================
 
 services:
   android-emulator:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.custom
-    container_name: ${CONTAINER_NAME:-redroid-instance-1}
-    image: redroid-cpp/redroid:latest
-    hostname: ${CONTAINER_NAME:-redroid-instance-1}
-
-    # REQUIRED for ReDroid
+    image: redroid/redroid:12.0.0-latest
+    container_name: ${CONTAINER_NAME:-redroid-test}
+    hostname: ${CONTAINER_NAME:-redroid-test}
     privileged: true
 
-    # Binder devices - available after WSL2 custom kernel install
+    # Binder devices (WSL2 custom kernel required)
     devices:
       - /dev/binder:/dev/binder
       - /dev/vndbinder:/dev/vndbinder
@@ -30,15 +29,9 @@ services:
       - REDROID_MEM_SIZE=${REDROID_MEM_SIZE:-1536M}
       - REDROID_RAM_SIZE=${REDROID_RAM_SIZE:-1536}
       - REDROID_GPU_MODE=${REDROID_GPU_MODE:-swiftshader}
-      - REDROID_NET_HOSTNAME=${CONTAINER_NAME:-redroid-instance-1}
-      - ADB_PORT=5555
 
-    # ADB port - dynamic per instance
     ports:
       - "127.0.0.1:${ADB_PORT:-5555}:5555"
-
-    volumes:
-      - ${CONTAINER_NAME:-redroid-instance-1}-data:/data
 
     healthcheck:
       test: ["CMD", "getprop", "sys.boot_completed"]
@@ -55,6 +48,3 @@ services:
           memory: 512M
 
     restart: unless-stopped
-
-volumes:
-  redroid-instance-1-data:
