@@ -66,7 +66,7 @@ ReDroidController& ReDroidController::instance() {
 DockerConfig::DockerConfig()
     : dockerPath("docker")
     , adbPath("")
-    , imageName("redroid-cpp/redroid:latest")
+    , imageName("redroid/redroid:12.0.0-latest")
     , networkDriver("bridge")
     , baseAdbPort(5555)
     , baseVncPort(5900)
