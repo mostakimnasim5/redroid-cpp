@@ -21,7 +21,7 @@ MultiInstanceManager& MultiInstanceManager::instance() {
 MultiInstanceManager::MultiInstanceManager(QObject* parent)
     : QObject(parent)
     , m_maxConcurrentInstances(10)
-    , m_maxMemoryPerInstance(768)
+    , m_maxMemoryPerInstance(1536)  // Synced with ReDroidController default
     , m_nextAvailablePort(5555)
 {
     m_threadPool.setMaxThreadCount(m_maxConcurrentInstances);
