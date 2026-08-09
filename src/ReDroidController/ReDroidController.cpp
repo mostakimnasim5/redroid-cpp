@@ -66,11 +66,11 @@ ReDroidController& ReDroidController::instance() {
 DockerConfig::DockerConfig()
     : dockerPath("docker")
     , adbPath("")
-    , imageName("redroid-cpp/emulator:3.0.0")
+    , imageName("redroid-cpp/redroid:latest")
     , networkDriver("bridge")
     , baseAdbPort(5555)
     , baseVncPort(5900)
-    , memoryLimit("512m")
+    , memoryLimit("1536m")
     , cpuQuota(200000)
     , shmSize(256)
     , useWSL2(false)
@@ -292,7 +292,21 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     
     // Privileged mode (required for Android)
     args << "--privileged";
-    
+
+    // Binder devices - required for ReDroid to boot Android
+    // Available after WSL2 custom kernel installation
+    auto addDeviceIfExists = [&](const QString& hostPath, const QString& containerPath) {
+        QFileInfo fi(hostPath);
+        if (fi.exists() || fi.isSymLink()) {
+            args << "--device" << QString("%1:%2").arg(hostPath).arg(containerPath);
+        }
+    };
+    addDeviceIfExists("/dev/binder",    "/dev/binder");
+    addDeviceIfExists("/dev/vndbinder", "/dev/vndbinder");
+    addDeviceIfExists("/dev/hwbinder",  "/dev/hwbinder");
+    // binderfs alternative path
+    addDeviceIfExists("/dev/binderfs/binder", "/dev/binder");
+
     // Memory limit
     args << "-m" << m_config.memoryLimit;
     
