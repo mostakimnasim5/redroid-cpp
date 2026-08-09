@@ -10,7 +10,7 @@
 # - Privileged container mode
 # ==============================================================================
 
-FROM redroid/redroid:12.0.0
+FROM redroid/redroid:12.0.0-latest
 
 LABEL maintainer="ReDroidCPP"
 LABEL version="3.0.0"
