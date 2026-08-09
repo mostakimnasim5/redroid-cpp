@@ -1,23 +1,11 @@
 # ==============================================================================
-# ReDroidCPP - Pure ReDroid Docker Compose
-# 
-# Features:
-# - Pure ReDroid container (NO QEMU/AVD)
-# - Dynamic memory configuration (1GB, 1.5GB, 2GB)
-# - Fast boot (<3 seconds target)
-# - Low RAM usage (~1GB-1.5GB)
+# ReDroidCPP - ReDroid Docker Compose
 #
-# Security:
-# - ADB port bound to 127.0.0.1 only (localhost-only access)
-# - No external network exposure for ADB
+# Requirements:
+# - WSL2 with custom kernel (binder module)
+# - Docker Desktop with WSL2 backend
 #
-# Usage:
-#   docker compose up -d
-#
-# Environment Variables:
-#   REDROID_MEM_SIZE - Container memory (default: 1536M)
-#   REDROID_GPU_MODE - swiftshader (default), host, auto
-#   REDROID_RAM_SIZE  - Internal RAM size (default: 1536)
+# Setup: Run installer first to configure WSL2 kernel
 # ==============================================================================
 
 services:
@@ -25,58 +13,40 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.custom
-    container_name: redroid-emulator
+    container_name: ${CONTAINER_NAME:-redroid-instance-1}
     image: redroid-cpp/redroid:latest
-    hostname: redroid-emulator
-    
-    # Privileged mode REQUIRED for ReDroid
-    # WARNING: Running containers in privileged mode grants full host access.
-    # Only use in trusted environments or behind firewall.
+    hostname: ${CONTAINER_NAME:-redroid-instance-1}
+
+    # REQUIRED for ReDroid
     privileged: true
-    
-    # KVM access for hardware acceleration (Linux only)
-    # On Windows/others: these will be skipped if not available
+
+    # Binder devices - available after WSL2 custom kernel install
     devices:
-      - /dev/kvm:/dev/kvm
-      - /dev/binderfs/binder:/dev/binder
       - /dev/binder:/dev/binder
       - /dev/vndbinder:/dev/vndbinder
       - /dev/hwbinder:/dev/hwbinder
 
     environment:
-      # ===== MEMORY CONFIGURATION (Dynamic) =====
-      # User can override: 1024M, 1536M, 2048M, 3072M
       - REDROID_MEM_SIZE=${REDROID_MEM_SIZE:-1536M}
-      # Internal RAM size for Android
       - REDROID_RAM_SIZE=${REDROID_RAM_SIZE:-1536}
-      
-      # ===== GPU CONFIGURATION =====
-      # Options: swiftshader (default, no GPU), host (hardware GPU), auto
       - REDROID_GPU_MODE=${REDROID_GPU_MODE:-swiftshader}
-      
-      # ===== NETWORK =====
-      - REDROID_NET_HOSTNAME=redroid-emulator
-      
-      # ===== ADB =====
+      - REDROID_NET_HOSTNAME=${CONTAINER_NAME:-redroid-instance-1}
       - ADB_PORT=5555
 
-    # SECURITY: Bind ADB to localhost only - prevents external access
-    # Only accessible from the host machine, not from external networks
+    # ADB port - dynamic per instance
     ports:
-      - "127.0.0.1:5555:5555"  # ADB (localhost only)
+      - "127.0.0.1:${ADB_PORT:-5555}:5555"
 
     volumes:
-      # Mount configs for device spoofing
-      - ./configs:/opt/redroid/configs:ro
-      
+      - ${CONTAINER_NAME:-redroid-instance-1}-data:/data
+
     healthcheck:
       test: ["CMD", "getprop", "sys.boot_completed"]
       interval: 10s
       timeout: 5s
-      retries: 20
-      start_period: 30s
+      retries: 30
+      start_period: 60s
 
-    # Resource limits
     deploy:
       resources:
         limits:
@@ -84,8 +54,7 @@ services:
         reservations:
           memory: 512M
 
-    # Auto-restart on crash (optional)
     restart: unless-stopped
 
 volumes:
-  redroid-data:
+  redroid-instance-1-data:
