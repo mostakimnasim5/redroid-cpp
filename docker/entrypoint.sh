@@ -232,17 +232,10 @@ main() {
     log "Container running. Press Ctrl+C to stop."
     echo ""
     
-    # Keep container alive - ReDroid handles its own process
-    # Use exec to replace shell with the main container process
-    if command -v toybox &>/dev/null; then
-        exec toybox cat /dev/null 2>/dev/null || true
-    fi
-    
-    # Alternative: wait on init
-    while true; do
-        sleep 60 & 
-        wait $!
-    done
+    # Hand off to ReDroid's own init process
+    # This MUST be exec /init - anything else prevents Android from booting
+    log "Handing off to ReDroid init..."
+    exec /init
 }
 
 main "$@"
