@@ -30,6 +30,8 @@ EXPOSE 5555
 HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=30 \
     CMD getprop sys.boot_completed 2>/dev/null | grep -q "1" || exit 1
 
-# DO NOT override ENTRYPOINT
-# redroid/redroid base image has its own /init that boots Android
-# Overriding it (e.g. with tail -f /dev/null) prevents Android from starting
+# Copy and use entrypoint script
+# It runs prereq checks, spoofing, then exec /init to boot Android
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
