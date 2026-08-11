@@ -13,15 +13,12 @@
  * - Dark theme UI
  */
 
-#ifdef Q_OS_WIN32
-// Windows headers MUST come first to avoid conflicts with Qt macros
+// Windows headers MUST be the very first include to prevent Qt macro conflicts
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#endif
 
-#include "PhoneWindow.h"
-#include "PhoneSettingsDialog.h"
+// Now include Qt headers (safe because WIN32_LEAN_AND_MEAN prevents conflicts)
 #include <QApplication>
 #include <QScreen>
 #include <QMessageBox>
@@ -37,6 +34,9 @@
 #include <QDir>
 #include <QFile>
 #include <QProcess>
+
+#include "PhoneWindow.h"
+#include "PhoneSettingsDialog.h"
 
 namespace VirtualPhonePro {
 
