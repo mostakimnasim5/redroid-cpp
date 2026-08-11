@@ -32,6 +32,6 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=30 \
 
 # Copy and use entrypoint script
 # It runs prereq checks, spoofing, then exec /init to boot Android
-COPY docker/entrypoint.sh /entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
