@@ -1,7 +1,23 @@
 // Windows headers MUST be the very first include to prevent Qt macro conflicts
 #define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+// Undef Windows macros that conflict with our variable names
+#ifdef HOME
+#undef HOME
+#endif
+#ifdef BACK
+#undef BACK
+#endif
+#ifdef DELETE
+#undef DELETE
+#endif
+#ifdef ENTER
+#undef ENTER
+#endif
+#ifdef SPACE
+#undef SPACE
+#endif
 
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/ReDroidController.hpp"
