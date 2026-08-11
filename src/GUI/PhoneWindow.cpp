@@ -13,7 +13,11 @@
  * - Dark theme UI
  */
 
-// Qt headers first
+// Qt headers first - must include Qt's Windows integration
+#define NOMINMAX
+#include <QtGui/qt_windows.h>
+
+// Now include regular Qt headers
 #include <QApplication>
 #include <QScreen>
 #include <QMessageBox>
@@ -30,18 +34,11 @@
 #include <QFile>
 #include <QProcess>
 
-// Windows headers after Qt
-// NOMINMAX prevents min/max macros from Windows headers
-#define NOMINMAX
-#include <windows.h>
+// Include Windows headers through Qt's integration
+// This ensures proper ordering and compatibility
 
-// Include specific Windows headers that define our needed functions
-// These must come AFTER windows.h
-#include <winuser.h>
-#include <wingdi.h>
-
-// Undef Windows macros that conflict with our variable names AFTER including headers
-// These are defined by windows.h but we undef them to use our own names
+// Undef Windows macros that conflict with our variable names
+// These are defined by Windows headers but we undef them to use our own names
 #ifdef HOME
 #undef HOME
 #endif
