@@ -1,3 +1,10 @@
+#ifdef Q_OS_WIN32
+// Windows headers MUST come first to avoid conflicts with Qt macros
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/ReDroidController.hpp"
 
@@ -6,10 +13,6 @@
 #include <QMutexLocker>
 #include <QtConcurrent>
 #include <QCoreApplication>
-
-#ifdef Q_OS_WIN32
-#include <windows.h>
-#endif
 
 namespace VirtualPhonePro {
 
