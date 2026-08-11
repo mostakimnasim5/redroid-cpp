@@ -22,6 +22,11 @@
 #endif
 
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
+
+// Windows API for RAM detection
+#ifdef Q_OS_WIN32
+#include <windows.h>
+#endif
 #include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QThread>
