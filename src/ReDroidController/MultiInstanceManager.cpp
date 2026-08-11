@@ -362,11 +362,22 @@ int MultiInstanceManager::getRecommendedMaxInstances() const {
     int cpuCores = QThread::idealThreadCount();
     if (cpuCores <= 0) cpuCores = 4;
     
-    // Assume 2 cores per instance, 1GB RAM per instance
-    quint64 totalRAM = 4096; // Default 4GB assumption (cross-platform)
-    
+    // Each instance uses 1536MB RAM
+    // Try to detect actual system RAM on Windows
+    quint64 totalRAM = 4096; // Default fallback (MB)
+#ifdef Q_OS_WIN32
+    MEMORYSTATUSEX memStatus;
+    memStatus.dwLength = sizeof(memStatus);
+    if (GlobalMemoryStatusEx(&memStatus)) {
+        totalRAM = memStatus.ullTotalPhys / (1024 * 1024); // bytes → MB
+    }
+#endif
+
+    // Reserve 3GB for Windows + Docker + GUI overhead
+    quint64 availableRAM = (totalRAM > 3072) ? (totalRAM - 3072) : 0;
+
     int maxByCPU = cpuCores / 2;
-    int maxByRAM = totalRAM / 1024;
+    int maxByRAM = static_cast<int>(availableRAM / 1536); // 1536MB per instance
     
     return qMin(maxByCPU, maxByRAM);
 }
