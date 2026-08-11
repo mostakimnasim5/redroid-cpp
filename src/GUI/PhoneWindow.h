@@ -265,7 +265,11 @@ private:
     QTimer* m_screenTimer;
     QTimer* m_fpsTimer;
     QLabel* m_screenLabel;
-    QProcess* m_adbScreenProcess;
+    QProcess* m_adbScreenProcess = nullptr;
+    QProcess* m_scrcpyProcess = nullptr;
+    bool m_scrcpyEmbedded = false;
+    QString m_scrcpyWindowTitle;
+    qintptr m_scrcpyHwnd = 0;
     QByteArray m_screenBuffer;
     bool m_screenMirrorActive;
     int m_currentFPS;
