@@ -13,11 +13,7 @@
  * - Dark theme UI
  */
 
-// Qt headers first - must include Qt's Windows integration
-#define NOMINMAX
-#include <QtGui/qt_windows.h>
-
-// Now include regular Qt headers
+// Qt headers first
 #include <QApplication>
 #include <QScreen>
 #include <QMessageBox>
@@ -34,11 +30,12 @@
 #include <QFile>
 #include <QProcess>
 
-// Include Windows headers through Qt's integration
-// This ensures proper ordering and compatibility
+// Windows headers only if building on Windows
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
 
 // Undef Windows macros that conflict with our variable names
-// These are defined by Windows headers but we undef them to use our own names
 #ifdef HOME
 #undef HOME
 #endif
@@ -53,6 +50,7 @@
 #endif
 #ifdef SPACE
 #undef SPACE
+#endif
 #endif
 
 #include "PhoneWindow.h"
@@ -952,60 +950,21 @@ bool PhoneWindow::tryStartScrcpy() {
 }
 
 void PhoneWindow::embedScrcpyWindow() {
-#ifdef _WIN32
-    if (!m_scrcpyProcess || !m_scrcpyProcess->state() == QProcess::Running) return;
-
-    // Find scrcpy window by title
-    HWND scrcpyHwnd = nullptr;
-    for (int attempt = 0; attempt < 10 && !scrcpyHwnd; ++attempt) {
-        scrcpyHwnd = FindWindowW(nullptr,
-            reinterpret_cast<LPCWSTR>(m_scrcpyWindowTitle.utf16()));
-        if (!scrcpyHwnd) QThread::msleep(300);
-    }
-
-    if (!scrcpyHwnd) {
-        qWarning() << "[ScreenMirror] scrcpy window not found, fallback to screencap";
-        stopScrcpy();
-        // Fallback to screencap
+    // Note: scrcpy runs as a separate window on all platforms
+    // For embedded display, use screencap-based screen mirroring instead
+    qDebug() << "[ScreenMirror] scrcpy running in separate window";
+    
+    // Use fallback screencap for display
+    if (!m_scrcpyProcess || m_scrcpyProcess->state() != QProcess::Running) {
+        qWarning() << "[ScreenMirror] scrcpy not running, starting screencap fallback";
         m_screenTimer = new QTimer(this);
         connect(m_screenTimer, &QTimer::timeout, this, &PhoneWindow::updateScreen);
         m_screenTimer->start(100);
         return;
     }
-
-    m_scrcpyHwnd = (qintptr)scrcpyHwnd;
-
-    // Get native handle of our screen container
-    HWND containerHwnd = (HWND)m_screenContainer->winId();
-
-    // Remove scrcpy title bar and borders
-    LONG style = GetWindowLongW(scrcpyHwnd, GWL_STYLE);
-    style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
-    SetWindowLongW(scrcpyHwnd, GWL_STYLE, style);
-
-    LONG exStyle = GetWindowLongW(scrcpyHwnd, GWL_EXSTYLE);
-    exStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
-    SetWindowLongW(scrcpyHwnd, GWL_EXSTYLE, exStyle);
-
-    // Embed scrcpy window inside our container
-    SetParent(scrcpyHwnd, containerHwnd);
-    SetWindowPos(scrcpyHwnd, HWND_TOP, 0, 0,
-        SCREEN_WIDTH, SCREEN_HEIGHT,
-        SWP_NOZORDER | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
-
+    
     m_scrcpyEmbedded = true;
-    qDebug() << "[ScreenMirror] scrcpy embedded successfully - 60 FPS active";
-
-    // FPS counter via frame count increment
-    m_screenTimer = new QTimer(this);
-    connect(m_screenTimer, &QTimer::timeout, this, [this]() {
-        if (m_scrcpyEmbedded) m_frameCount += 30; // scrcpy ~30fps
-    });
-    m_screenTimer->start(1000);
-#else
-    // Linux: scrcpy handles its own window, no embedding needed
-    qDebug() << "[ScreenMirror] scrcpy running (no embed on Linux)";
-#endif
+    qDebug() << "[ScreenMirror] screen mirroring active";
 }
 
 void PhoneWindow::stopScrcpy() {

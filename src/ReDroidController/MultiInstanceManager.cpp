@@ -1,4 +1,5 @@
 // Windows headers MUST be the very first include to prevent Qt macro conflicts
+#ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
 
@@ -17,6 +18,7 @@
 #endif
 #ifdef SPACE
 #undef SPACE
+#endif
 #endif
 
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
@@ -386,7 +388,7 @@ int MultiInstanceManager::getRecommendedMaxInstances() const {
     // Each instance uses 1536MB RAM
     // Try to detect actual system RAM on Windows
     quint64 totalRAM = 4096; // Default fallback (MB)
-#ifdef Q_OS_WIN32
+#ifdef _WIN32
     MEMORYSTATUSEX memStatus;
     memStatus.dwLength = sizeof(memStatus);
     if (GlobalMemoryStatusEx(&memStatus)) {
