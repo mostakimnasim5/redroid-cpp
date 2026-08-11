@@ -246,6 +246,12 @@ QJsonObject ReDroidController::loadProfile(const QString& profileName) {
 bool ReDroidController::startInstance(const QString& instanceId, const DeviceProfile& profile) {
     qDebug() << "Starting instance:" << instanceId;
     
+    // Allocate ports BEFORE taking the mutex
+    // allocateAdbPort/allocateVncPort also lock m_instancesMutex
+    // Calling them inside the lock below would cause a deadlock (non-recursive mutex)
+    int adbPort = allocateAdbPort();
+    int vncPort = allocateVncPort();
+    
     QMutexLocker locker(&m_instancesMutex);
     
     // Check if already running
@@ -256,10 +262,6 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
             return true;
         }
     }
-    
-    // Allocate ports
-    int adbPort = allocateAdbPort();
-    int vncPort = allocateVncPort();
     
     // Create instance info
     InstanceInfo info;
