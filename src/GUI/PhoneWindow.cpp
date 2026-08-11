@@ -13,28 +13,7 @@
  * - Dark theme UI
  */
 
-// Windows headers MUST be the very first include to prevent Qt macro conflicts
-#define NOMINMAX
-#include <windows.h>
-
-// Undef Windows macros that conflict with our variable names
-#ifdef HOME
-#undef HOME
-#endif
-#ifdef BACK
-#undef BACK
-#endif
-#ifdef DELETE
-#undef DELETE
-#endif
-#ifdef ENTER
-#undef ENTER
-#endif
-#ifdef SPACE
-#undef SPACE
-#endif
-
-// Now include Qt headers
+// Qt headers first
 #include <QApplication>
 #include <QScreen>
 #include <QMessageBox>
@@ -50,6 +29,34 @@
 #include <QDir>
 #include <QFile>
 #include <QProcess>
+
+// Windows headers after Qt
+// NOMINMAX prevents min/max macros from Windows headers
+#define NOMINMAX
+#include <windows.h>
+
+// Include specific Windows headers that define our needed functions
+// These must come AFTER windows.h
+#include <winuser.h>
+#include <wingdi.h>
+
+// Undef Windows macros that conflict with our variable names AFTER including headers
+// These are defined by windows.h but we undef them to use our own names
+#ifdef HOME
+#undef HOME
+#endif
+#ifdef BACK
+#undef BACK
+#endif
+#ifdef DELETE
+#undef DELETE
+#endif
+#ifdef ENTER
+#undef ENTER
+#endif
+#ifdef SPACE
+#undef SPACE
+#endif
 
 #include "PhoneWindow.h"
 #include "PhoneSettingsDialog.h"
