@@ -38,8 +38,6 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS
     Widgets
     Gui 
     Network 
-    ProcessManagement
-    SerialPort
     REQUIRED
 )
 
@@ -110,9 +108,7 @@ set(APP_HEADERS
 )
 
 set(APP_SOURCES
-    ${PROJECT_SOURCE_DIR}/main.cpp
     ${PROJECT_SOURCE_DIR}/mainwindow.cpp
-    ${PROJECT_SOURCE_DIR}/qtmain.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -123,6 +119,20 @@ set(GUI_SOURCES
     ${PROJECT_SOURCE_DIR}/GUI/FirebaseHelper.cpp
     ${PROJECT_SOURCE_DIR}/GUI/AdminLoginWindow.cpp
     ${PROJECT_SOURCE_DIR}/GUI/AdminDashboardWindow.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/DashboardWindow.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/PhoneWindow.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/AntiDetectionPanel.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/PhoneSettingsDialog.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/SettingsDialog.cpp
+    ${PROJECT_SOURCE_DIR}/GUI/main.cpp
+)
+
+set(GUI_HEADERS
+    ${PROJECT_SOURCE_DIR}/GUI/DashboardWindow.h
+    ${PROJECT_SOURCE_DIR}/GUI/PhoneWindow.h
+    ${PROJECT_SOURCE_DIR}/GUI/AntiDetectionPanel.h
+    ${PROJECT_SOURCE_DIR}/GUI/PhoneSettingsDialog.h
+    ${PROJECT_SOURCE_DIR}/GUI/SettingsDialog.h
 )
 
 set(GUI_HEADERS
@@ -259,13 +269,8 @@ message(STATUS "")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Target: Copy ADB tools
-add_custom_target(copy-adb
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:Qt${QT_VERSION_MAJOR}::adb>
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>/adb.exe
-    COMMENT "Copying ADB tools to output directory"
-    DEPENDS ${PROJECT_NAME}
-)
+# Note: adb is not a Qt target - bundled separately via build.yml
+# add_custom_target(copy-adb) removed (Qt6::adb does not exist)
 
 # Target: Validate Docker
 add_custom_target(validate-docker
