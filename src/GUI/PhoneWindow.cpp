@@ -29,6 +29,7 @@
 #include <QDir>
 #include <QFile>
 #include <QProcess>
+#include <QThread>
 
 // Windows headers only if building on Windows
 #ifdef _WIN32
