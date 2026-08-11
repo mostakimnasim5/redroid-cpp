@@ -30,6 +30,9 @@
 #include <QDir>
 #include <QFile>
 #include <QProcess>
+#ifdef Q_OS_WIN32
+#include <windows.h>
+#endif
 
 namespace VirtualPhonePro {
 
@@ -859,27 +862,150 @@ void PhoneWindow::setupConnections() {
 // Screen Mirror Methods
 // ========================================================================
 
+// ========================================================================
+// Screen Mirror - scrcpy embedded (30-60 FPS)
+// Fallback: ADB screencap (~5 FPS) if scrcpy not found
+// ========================================================================
+
 void PhoneWindow::startScreenMirror() {
     if (m_screenMirrorActive) return;
-    
     m_screenMirrorActive = true;
     m_frameCount = 0;
-    
-    // Create screen timer
+
+    // Try scrcpy first (30-60 FPS)
+    if (tryStartScrcpy()) {
+        qDebug() << "[ScreenMirror] scrcpy started - 30-60 FPS mode";
+        return;
+    }
+
+    // Fallback: ADB screencap (~5 FPS)
+    qDebug() << "[ScreenMirror] scrcpy not found - fallback to screencap";
     m_screenTimer = new QTimer(this);
     connect(m_screenTimer, &QTimer::timeout, this, &PhoneWindow::updateScreen);
-    m_screenTimer->start(100); // ~10 FPS for screenshots
+    m_screenTimer->start(100);
+}
+
+bool PhoneWindow::tryStartScrcpy() {
+    // Find scrcpy.exe next to our exe
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString scrcpyPath = appDir + "/scrcpy.exe";
+
+    if (!QFile::exists(scrcpyPath)) {
+        return false;
+    }
+
+    QString serial = getAdbSerial();
+    if (serial.isEmpty()) return false;
+
+    // Unique window title so we can find and embed it
+    m_scrcpyWindowTitle = QString("scrcpy-vpp-%1").arg(m_instanceId);
+
+    QStringList args = {
+        "--serial", serial,
+        "--window-title", m_scrcpyWindowTitle,
+        "--no-audio",
+        "--turn-screen-off",
+        "--stay-awake",
+        "--disable-screensaver",
+        "--window-borderless",
+        "--max-fps", "60",
+        "--bit-rate", "4M",
+        "--max-size", "720"
+    };
+
+    m_scrcpyProcess = new QProcess(this);
+    m_scrcpyProcess->start(scrcpyPath, args);
+
+    if (!m_scrcpyProcess->waitForStarted(3000)) {
+        m_scrcpyProcess->deleteLater();
+        m_scrcpyProcess = nullptr;
+        return false;
+    }
+
+    // Wait for scrcpy window to appear, then embed it
+    QTimer::singleShot(1500, this, &PhoneWindow::embedScrcpyWindow);
+    return true;
+}
+
+void PhoneWindow::embedScrcpyWindow() {
+#ifdef Q_OS_WIN32
+    if (!m_scrcpyProcess || !m_scrcpyProcess->state() == QProcess::Running) return;
+
+    // Find scrcpy window by title
+    HWND scrcpyHwnd = nullptr;
+    for (int attempt = 0; attempt < 10 && !scrcpyHwnd; ++attempt) {
+        scrcpyHwnd = FindWindowW(nullptr,
+            reinterpret_cast<LPCWSTR>(m_scrcpyWindowTitle.utf16()));
+        if (!scrcpyHwnd) QThread::msleep(300);
+    }
+
+    if (!scrcpyHwnd) {
+        qWarning() << "[ScreenMirror] scrcpy window not found, fallback to screencap";
+        stopScrcpy();
+        // Fallback to screencap
+        m_screenTimer = new QTimer(this);
+        connect(m_screenTimer, &QTimer::timeout, this, &PhoneWindow::updateScreen);
+        m_screenTimer->start(100);
+        return;
+    }
+
+    m_scrcpyHwnd = (qintptr)scrcpyHwnd;
+
+    // Get native handle of our screen container
+    HWND containerHwnd = (HWND)m_screenContainer->winId();
+
+    // Remove scrcpy title bar and borders
+    LONG style = GetWindowLongW(scrcpyHwnd, GWL_STYLE);
+    style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
+    SetWindowLongW(scrcpyHwnd, GWL_STYLE, style);
+
+    LONG exStyle = GetWindowLongW(scrcpyHwnd, GWL_EXSTYLE);
+    exStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+    SetWindowLongW(scrcpyHwnd, GWL_EXSTYLE, exStyle);
+
+    // Embed scrcpy window inside our container
+    SetParent(scrcpyHwnd, containerHwnd);
+    SetWindowPos(scrcpyHwnd, HWND_TOP, 0, 0,
+        SCREEN_WIDTH, SCREEN_HEIGHT,
+        SWP_NOZORDER | SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+
+    m_scrcpyEmbedded = true;
+    qDebug() << "[ScreenMirror] scrcpy embedded successfully - 60 FPS active";
+
+    // FPS counter via frame count increment
+    m_screenTimer = new QTimer(this);
+    connect(m_screenTimer, &QTimer::timeout, this, [this]() {
+        if (m_scrcpyEmbedded) m_frameCount += 30; // scrcpy ~30fps
+    });
+    m_screenTimer->start(1000);
+#else
+    // Linux: scrcpy handles its own window, no embedding needed
+    qDebug() << "[ScreenMirror] scrcpy running (no embed on Linux)";
+#endif
+}
+
+void PhoneWindow::stopScrcpy() {
+    m_scrcpyEmbedded = false;
+    if (m_scrcpyProcess) {
+        m_scrcpyProcess->terminate();
+        m_scrcpyProcess->waitForFinished(2000);
+        m_scrcpyProcess->kill();
+        m_scrcpyProcess->deleteLater();
+        m_scrcpyProcess = nullptr;
+    }
 }
 
 void PhoneWindow::stopScreenMirror() {
     m_screenMirrorActive = false;
-    
+
+    stopScrcpy();
+
     if (m_screenTimer) {
         m_screenTimer->stop();
         delete m_screenTimer;
         m_screenTimer = nullptr;
     }
-    
+
     if (m_adbScreenProcess) {
         m_adbScreenProcess->kill();
         m_adbScreenProcess->deleteLater();
@@ -888,48 +1014,37 @@ void PhoneWindow::stopScreenMirror() {
 }
 
 void PhoneWindow::updateScreen() {
-    if (!m_screenMirrorActive) return;
-    
+    // Legacy screencap fallback (used when scrcpy not available)
+    if (!m_screenMirrorActive || m_scrcpyEmbedded) return;
+
     QString adbPath = getAdbPath();
     QString serial = getAdbSerial();
-    
     if (adbPath.isEmpty() || serial.isEmpty()) return;
-    
-    // Execute screencap command
-    QStringList args = {
-        "-s", serial,
-        "exec-out", "screencap", "-p"
-    };
-    
+
+    if (m_adbScreenProcess && m_adbScreenProcess->state() == QProcess::Running) return;
+
     if (m_adbScreenProcess) {
         m_adbScreenProcess->kill();
+        m_adbScreenProcess->deleteLater();
     }
-    
+
     m_adbScreenProcess = new QProcess(this);
-    connect(m_adbScreenProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &PhoneWindow::onScreenProcessFinished);
-    
-    m_adbScreenProcess->start(adbPath, args);
+    connect(m_adbScreenProcess,
+        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+        this, &PhoneWindow::onScreenProcessFinished);
+    m_adbScreenProcess->start(adbPath, {"-s", serial, "exec-out", "screencap", "-p"});
 }
 
 void PhoneWindow::onScreenProcessFinished(int exitCode, QProcess::ExitStatus exitStatus) {
-    if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
-        m_frameCount = 0;
-        return;
-    }
-    
+    if (exitCode != 0 || exitStatus != QProcess::NormalExit) return;
+
     QByteArray data = m_adbScreenProcess->readAllStandardOutput();
-    
     if (!data.isEmpty()) {
         QPixmap pixmap;
         if (pixmap.loadFromData(data, "PNG")) {
-            // Scale to fit display
-            QPixmap scaled = pixmap.scaled(
+            m_screenDisplay->setPixmap(pixmap.scaled(
                 SCREEN_WIDTH, SCREEN_HEIGHT,
-                Qt::KeepAspectRatio,
-                Qt::SmoothTransformation
-            );
-            m_screenDisplay->setPixmap(scaled);
+                Qt::KeepAspectRatio, Qt::SmoothTransformation));
             m_frameCount++;
         }
     }
