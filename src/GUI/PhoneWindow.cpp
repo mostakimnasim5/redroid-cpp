@@ -948,7 +948,7 @@ bool PhoneWindow::tryStartScrcpy() {
 }
 
 void PhoneWindow::embedScrcpyWindow() {
-#ifdef Q_OS_WIN32
+#ifdef _WIN32
     if (!m_scrcpyProcess || !m_scrcpyProcess->state() == QProcess::Running) return;
 
     // Find scrcpy window by title
