@@ -243,6 +243,35 @@ jobs:
           }
 
           # ---------------------------------------------------------------
+          # STEP 4b: Download and bundle scrcpy (30-60 FPS screen mirror)
+          # ---------------------------------------------------------------
+          Write-Host "Downloading scrcpy..."
+          $scrcpyVersion = "v3.1"
+          $scrcpyUrl = "https://github.com/Genymobile/scrcpy/releases/download/$scrcpyVersion/scrcpy-win64-$scrcpyVersion.zip"
+          $scrcpyZip = "$env:TEMP\scrcpy.zip"
+          $scrcpyDir = "$env:TEMP\scrcpy"
+
+          try {
+            Invoke-WebRequest -Uri $scrcpyUrl -OutFile $scrcpyZip -TimeoutSec 60
+            Expand-Archive -Path $scrcpyZip -DestinationPath $scrcpyDir -Force
+
+            $scrcpyExe = Get-ChildItem -Path $scrcpyDir -Filter "scrcpy.exe" -Recurse | Select-Object -First 1
+            $scrcpyServer = Get-ChildItem -Path $scrcpyDir -Filter "scrcpy-server" -Recurse | Select-Object -First 1
+
+            if ($scrcpyExe) {
+              Copy-Item $scrcpyExe.FullName "$deployDir\scrcpy.exe" -Force
+              Write-Host "  [OK] scrcpy.exe bundled"
+            }
+            if ($scrcpyServer) {
+              Copy-Item $scrcpyServer.FullName "$deployDir\scrcpy-server" -Force
+              Write-Host "  [OK] scrcpy-server bundled"
+            }
+          } catch {
+            Write-Warning "  [SKIP] scrcpy download failed: $_"
+            Write-Warning "  Screen mirror will use screencap fallback (5 FPS)"
+          }
+
+          # ---------------------------------------------------------------
           # STEP 5: Final verification - FAIL build if anything missing
           # ---------------------------------------------------------------
           Write-Host ""
