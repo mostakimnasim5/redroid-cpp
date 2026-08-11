@@ -7,6 +7,10 @@
 #include <QtConcurrent>
 #include <QCoreApplication>
 
+#ifdef Q_OS_WIN32
+#include <windows.h>
+#endif
+
 namespace VirtualPhonePro {
 
 MultiInstanceManager* MultiInstanceManager::s_instance = nullptr;
