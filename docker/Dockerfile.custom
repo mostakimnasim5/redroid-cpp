@@ -30,8 +30,9 @@ EXPOSE 5555
 HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=30 \
     CMD getprop sys.boot_completed 2>/dev/null | grep -q "1" || exit 1
 
-# Copy and use entrypoint script
-# It runs prereq checks, spoofing, then exec /init to boot Android
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy and set executable permission using file tool
+# Note: redroid image doesn't have shell, so we use --chmod with COPY
+COPY --chmod=755 entrypoint.sh /entrypoint.sh
+
+# Execute entrypoint directly (uses exec /init at end to boot Android)
 ENTRYPOINT ["/entrypoint.sh"]
