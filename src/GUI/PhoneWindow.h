@@ -25,6 +25,7 @@
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QProcess>
+#include <QThread>
 #include <QFrame>
 #include <QSlider>
 #include <QGroupBox>
@@ -278,7 +279,7 @@ private:
     QString m_scrcpyWindowTitle;
     qintptr m_scrcpyHwnd = 0;
     QByteArray m_screenBuffer;
-    bool m_screenMirrorActive;
+    bool m_screenMirrorActive = false;
     int m_currentFPS;
     int m_frameCount;
     
