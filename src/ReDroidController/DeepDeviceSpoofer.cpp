@@ -448,7 +448,8 @@ bool DeepDeviceSpoofer::spoofBuildProperties(const QString& instanceId, const QJ
         "setprop ro.build.tags release-keys",
         "setprop ro.build.version.release 14",
         "setprop ro.build.version.sdk 34",
-        "setprop ro.build.version.security_patch " + profile["securityPatch"].toString("2024-01-01"),
+        "setprop ro.build.version.security_patch " + profile["securityPatch"].toString(
+            QDate::currentDate().addMonths(-1).toString("yyyy-MM-01")),
         
         // Hide emulator indicators
         "setprop ro.kernel.qemu 0",
@@ -532,19 +533,19 @@ ro.setupwizard.enable_by_default=true
 
 bool DeepDeviceSpoofer::removeEmulatorProperties(const QString& instanceId) {
     QStringList commands = {
-        // Remove QEMU properties
-        "setprop ro.kernel.qemu",
-        "setprop ro.boot.qemu",
-        "setprop ro.hardware",
-        "setprop dalvik.vm.isa.x86",
-        "setprop dalvik.vm.isa.x86_64",
-        
-        // Remove generic properties
-        "setprop ro.arch",
-        "setprop ro.product.cpu.abi",
-        "setprop xposed.hide",
-        "setprop magisk.hide",
-        
+        // Clear QEMU indicator properties (empty string = cleared)
+        "setprop ro.kernel.qemu \"\"",
+        "setprop ro.boot.qemu \"\"",
+        "setprop ro.hardware \"\"",
+        "setprop dalvik.vm.isa.x86 \"\"",
+        "setprop dalvik.vm.isa.x86_64 \"\"",
+
+        // Clear generic emulator properties
+        "setprop ro.arch \"\"",
+        "setprop ro.product.cpu.abi \"\"",
+        "setprop xposed.hide \"\"",
+        "setprop magisk.hide \"\"",
+
         // Ensure proper values
         "setprop ro.product.first_api_level 29",
         "setprop ro.board.platform qcom"

@@ -1,15 +1,37 @@
 #include "VirtualPhonePro/HypervisorBypass.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
 #include "VirtualPhonePro/Logger.hpp"
+#include <QMutexLocker>
 #include <random>
 #include <fstream>
 #include <sstream>
 
 namespace VirtualPhonePro {
 
+// ---------------------------------------------------------------------------
+// Per-instance registry
+// ---------------------------------------------------------------------------
+static QMutex s_registryMutex;
+static QHash<QString, HypervisorBypass*> s_registry;
+
 HypervisorBypass& HypervisorBypass::getInstance() {
     static HypervisorBypass instance;
     return instance;
+}
+
+HypervisorBypass& HypervisorBypass::getInstanceFor(const QString& instanceId) {
+    QMutexLocker lock(&s_registryMutex);
+    if (!s_registry.contains(instanceId)) {
+        s_registry[instanceId] = new HypervisorBypass();
+    }
+    return *s_registry[instanceId];
+}
+
+void HypervisorBypass::removeInstance(const QString& instanceId) {
+    QMutexLocker lock(&s_registryMutex);
+    if (s_registry.contains(instanceId)) {
+        delete s_registry.take(instanceId);
+    }
 }
 
 HypervisorBypass::HypervisorBypass()

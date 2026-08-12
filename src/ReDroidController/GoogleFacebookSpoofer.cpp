@@ -366,10 +366,10 @@ bool GoogleFacebookSpoofer::bypassFacebookFingerprinting(const QString& instance
         
         // OpenGL
         "setprop ro.opengles.version 196610",
-        
-        // Remove emulator indicators
-        "setprop ro.kernel.qemu",
-        "setprop ro.secure_hardware",
+
+        // Clear emulator indicator properties
+        "setprop ro.kernel.qemu \"\"",
+        "setprop ro.secure_hardware \"\"",
         "setprop ro.hardware radio.default"
     };
     

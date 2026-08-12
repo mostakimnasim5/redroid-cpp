@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QRandomGenerator>
 #include <QJsonObject>
+#include <QDate>
 
 namespace VirtualPhonePro {
 
@@ -160,7 +161,7 @@ bool DeviceIntegrityManager::applyToInstance(const QString& instanceId) {
         "setprop ro.build.type user",
         "setprop ro.build.version.release 14",
         "setprop ro.build.version.sdk 34",
-        "setprop ro.build.version.security_patch 2024-01-01",
+        "setprop ro.build.version.security_patch " + QDate::currentDate().addMonths(-1).toString("yyyy-MM-01"),
     };
     
     // Emulator/Root Detection
@@ -374,7 +375,7 @@ QString DeviceIntegrityManager::getSecurityPatchLevel(const QString& instanceId)
     if (m_states.contains(instanceId)) {
         return m_states[instanceId].securityPatchLevel;
     }
-    return "2024-01-01";
+    return QDate::currentDate().addMonths(-1).toString("yyyy-MM-01");
 }
 
 bool DeviceIntegrityManager::isSecurityPatchCurrent(const QString& instanceId) {

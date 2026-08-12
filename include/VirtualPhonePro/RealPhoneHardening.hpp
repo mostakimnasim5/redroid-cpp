@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <QString>
+#include <QHash>
+#include <QMutex>
 
 namespace VirtualPhonePro {
 
@@ -83,6 +86,8 @@ struct AudioSpoof {
 class RealPhoneHardening {
 public:
     static RealPhoneHardening& getInstance();
+    static RealPhoneHardening& getInstanceFor(const QString& instanceId);
+    static void removeInstance(const QString& instanceId);
     
     bool initialize();
     bool shutdown();

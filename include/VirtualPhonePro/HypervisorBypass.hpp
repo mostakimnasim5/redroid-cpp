@@ -6,6 +6,9 @@
 #include <memory>
 #include <chrono>
 #include <functional>
+#include <QString>
+#include <QHash>
+#include <QMutex>
 
 namespace VirtualPhonePro {
 
@@ -39,8 +42,16 @@ struct HypervisorResult {
 
 class HypervisorBypass {
 public:
+    // Global singleton — retained for legacy call sites that have no instanceId.
     static HypervisorBypass& getInstance();
-    
+
+    // Per-instance accessor: each instanceId gets its own isolated object.
+    // This is the correct entry point for multi-instance use.
+    static HypervisorBypass& getInstanceFor(const QString& instanceId);
+
+    // Remove a per-instance object when a container is stopped.
+    static void removeInstance(const QString& instanceId);
+
     HypervisorBypass();
     ~HypervisorBypass();
     

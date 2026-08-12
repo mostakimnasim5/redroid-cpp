@@ -14,31 +14,32 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QDateTime>
+#include <QMutexLocker>
 
 namespace VirtualPhonePro {
 
-// Security patch dates follow Google's "Android Security Bulletin" calendar
-// (first Monday of each month). We synthesize a current patch date from the
-// host clock so it never ages past the build, which otherwise lets Play
-// Integrity / banking apps flag an "outdated patch" device. The result is
-// pinned to the 01st of the current month to match the real property format
-// ("YYYY-MM-DD") while staying within the supported patch window.
-static std::string currentSecurityPatchDate() {
-    QDate today = QDateTime::currentDateTimeUtc().date();
-    // Clamp to a stable, realistic patch day (security bulletins ship on the
-    // first Monday, but the ro.build.version.security_patch property is
-    // conventionally recorded as "-01").
-    QDate patchDate(today.year(), today.month(), 1);
-    // Never emit a future patch relative to today.
-    if (patchDate > today) {
-        patchDate = QDate(today.year(), today.month(), 1).addMonths(-1);
-    }
-    return patchDate.toString("yyyy-MM-dd").toStdString();
-}
+// Per-instance registry
+static QMutex s_safetyMutex;
+static QHash<QString, SafetyNetAdvancedBypass*> s_safetyRegistry;
 
 SafetyNetAdvancedBypass& SafetyNetAdvancedBypass::getInstance() {
     static SafetyNetAdvancedBypass instance;
     return instance;
+}
+
+SafetyNetAdvancedBypass& SafetyNetAdvancedBypass::getInstanceFor(const QString& instanceId) {
+    QMutexLocker lock(&s_safetyMutex);
+    if (!s_safetyRegistry.contains(instanceId)) {
+        s_safetyRegistry[instanceId] = new SafetyNetAdvancedBypass();
+    }
+    return *s_safetyRegistry[instanceId];
+}
+
+void SafetyNetAdvancedBypass::removeInstance(const QString& instanceId) {
+    QMutexLocker lock(&s_safetyMutex);
+    if (s_safetyRegistry.contains(instanceId)) {
+        delete s_safetyRegistry.take(instanceId);
+    }
 }
 
 SafetyNetAdvancedBypass::SafetyNetAdvancedBypass()
@@ -1452,7 +1453,9 @@ SafetyNetResult SafetyNetAdvancedBypass::spoofBuildVersion() {
     
     // Set build version properties
     adb.setProperty("ro.build.version.incremental", "1234567890");
-    adb.setProperty("ro.build.version.security_patch", "2024-06-01");
+    adb.setProperty("ro.build.version.security_patch",
+                    QDateTime::currentDateTimeUtc().date().addMonths(-1)
+                        .toString("yyyy-MM-01").toStdString());
     adb.setProperty("ro.build.version.baseband", "G998BXXU5EWH5");
     
     m_modifiedProperties["ro.build.version.incremental"] = "1234567890";

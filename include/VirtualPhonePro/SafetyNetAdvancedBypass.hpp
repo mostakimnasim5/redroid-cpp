@@ -3,6 +3,9 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <QString>
+#include <QHash>
+#include <QMutex>
 
 namespace VirtualPhonePro {
 
@@ -62,7 +65,9 @@ struct SafetyNetResult {
 class SafetyNetAdvancedBypass {
 public:
     static SafetyNetAdvancedBypass& getInstance();
-    
+    static SafetyNetAdvancedBypass& getInstanceFor(const QString& instanceId);
+    static void removeInstance(const QString& instanceId);
+
     SafetyNetAdvancedBypass();
     ~SafetyNetAdvancedBypass();
     

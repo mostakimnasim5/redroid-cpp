@@ -1,14 +1,34 @@
 #include "VirtualPhonePro/RealPhoneHardening.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
 #include "VirtualPhonePro/Logger.hpp"
+#include <QMutexLocker>
 #include <random>
 #include <chrono>
 
 namespace VirtualPhonePro {
 
+// Per-instance registry
+static QMutex s_hardeningMutex;
+static QHash<QString, RealPhoneHardening*> s_hardeningRegistry;
+
 RealPhoneHardening& RealPhoneHardening::getInstance() {
     static RealPhoneHardening instance;
     return instance;
+}
+
+RealPhoneHardening& RealPhoneHardening::getInstanceFor(const QString& instanceId) {
+    QMutexLocker lock(&s_hardeningMutex);
+    if (!s_hardeningRegistry.contains(instanceId)) {
+        s_hardeningRegistry[instanceId] = new RealPhoneHardening();
+    }
+    return *s_hardeningRegistry[instanceId];
+}
+
+void RealPhoneHardening::removeInstance(const QString& instanceId) {
+    QMutexLocker lock(&s_hardeningMutex);
+    if (s_hardeningRegistry.contains(instanceId)) {
+        delete s_hardeningRegistry.take(instanceId);
+    }
 }
 
 RealPhoneHardening::RealPhoneHardening()

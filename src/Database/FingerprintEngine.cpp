@@ -11,6 +11,7 @@
 #include <QUuid>
 #include <QDataStream>
 #include <QJsonObject>
+#include <QDate>
 
 namespace VirtualPhonePro {
 
@@ -120,7 +121,7 @@ DeviceFingerprint FingerprintEngine::generateFromSeed(const QString& seedString)
     defaultConfig.product = "dm3q";
     defaultConfig.androidVersion = 14;
     defaultConfig.sdkVersion = 34;
-    defaultConfig.securityPatch = "2024-01-01";
+    defaultConfig.securityPatch = QDate::currentDate().addMonths(-1).toString("yyyy-MM-01");
     defaultConfig.buildType = "user";
     defaultConfig.country = "US";
     defaultConfig.language = "en";

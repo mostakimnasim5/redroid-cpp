@@ -649,10 +649,15 @@ bool ReDroidController::stopInstance(const QString& instanceId, bool force) {
     // Update state
     info.state = InstanceState::Stopped;
     m_instances[instanceId] = info;
-    
+
+    // Clean up per-instance anti-detection module state
+    VirtualPhonePro::HypervisorBypass::removeInstance(instanceId);
+    VirtualPhonePro::SafetyNetAdvancedBypass::removeInstance(instanceId);
+    VirtualPhonePro::RealPhoneHardening::removeInstance(instanceId);
+
     emit instanceStateChanged(instanceId, InstanceState::Stopped);
     emit operationCompleted(instanceId, "stop", true);
-    
+
     return true;
 }
 
@@ -893,8 +898,9 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     DeviceTimingSeed timingSeed = timing.createDeviceSeed(instanceId);
     qDebug() << "  ✓ Timing Attack Prevention (seed:" << QString::number(timingSeed.baseSeed, 16) << ")";
     
-    // 2. Hypervisor Bypass (KVM/ARM)
-    VirtualPhonePro::HypervisorBypass& hypervisorBypass = VirtualPhonePro::HypervisorBypass::getInstance();
+    // 2. Hypervisor Bypass (KVM/ARM) — per-instance isolated state
+    VirtualPhonePro::HypervisorBypass& hypervisorBypass =
+        VirtualPhonePro::HypervisorBypass::getInstanceFor(instanceId);
     hypervisorBypass.initialize();
     hypervisorBypass.enableBypass();
     hypervisorBypass.setDeviceAsRealHardware();
@@ -902,9 +908,10 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     hypervisorBypass.enableTimingNormalization();
     hypervisorBypass.enableCacheTimingProtection();
     qDebug() << "  ✓ Hypervisor Bypass (KVM/ARM/Timing)";
-    
-    // 3. SafetyNet Advanced Bypass
-    VirtualPhonePro::SafetyNetAdvancedBypass& safetyNet = VirtualPhonePro::SafetyNetAdvancedBypass::getInstance();
+
+    // 3. SafetyNet Advanced Bypass — per-instance isolated state
+    VirtualPhonePro::SafetyNetAdvancedBypass& safetyNet =
+        VirtualPhonePro::SafetyNetAdvancedBypass::getInstanceFor(instanceId);
     safetyNet.initialize();
     safetyNet.performFullBypass();
     safetyNet.setGreenBootState();
@@ -914,9 +921,10 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     safetyNet.setLatestSecurityPatch();
     safetyNet.setAPILevel34();
     qDebug() << "  ✓ SafetyNet Advanced Bypass";
-    
-    // 4. Real Phone Hardening
-    VirtualPhonePro::RealPhoneHardening& phoneHardening = VirtualPhonePro::RealPhoneHardening::getInstance();
+
+    // 4. Real Phone Hardening — per-instance isolated state
+    VirtualPhonePro::RealPhoneHardening& phoneHardening =
+        VirtualPhonePro::RealPhoneHardening::getInstanceFor(instanceId);
     phoneHardening.initialize();
     phoneHardening.applyAllHardening();
     phoneHardening.applyEmulatorBypass();

@@ -934,7 +934,7 @@ QMap<QString, QString> AndroidRealismEngine::generateSystemProperties(const QStr
     props["ro.build.product"] = manufacturer.toLower();
     
     // Security
-    props["ro.build.version.security_patch"] = "2024-01-01";
+    props["ro.build.version.security_patch"] = QDate::currentDate().addMonths(-1).toString("yyyy-MM-01");
     props["ro.build.version.base_os"] = manufacturer + "/" + manufacturer.toLower() + "/" + manufacturer.toLower() + ":14/UP1A.231005.007/20231215:user/release-keys";
     props["ro.build.version.preview_sdk"] = "0";
     props["ro.build.version.release"] = "14";
@@ -1351,9 +1351,9 @@ SystemPropertiesConfig AndroidRealismEngine::getSystemPropsForDevice(const QStri
     config.buildHardware = brand;
     
     // Security
-    config.securityPatch = "2024-01-01";
+    config.securityPatch = QDate::currentDate().addMonths(-1).toString("yyyy-MM-01");
     config.platformVersion = "14";
-    config.platformSecurityPatch = "2024-01-01";
+    config.platformSecurityPatch = QDate::currentDate().addMonths(-1).toString("yyyy-MM-01");
     config.buildId = "UP1A.231005.007";
     config.firstApiLevel = "34";
     config.corePlatformVersion = "14";
