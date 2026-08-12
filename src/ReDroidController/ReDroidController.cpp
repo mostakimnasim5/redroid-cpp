@@ -655,6 +655,12 @@ bool ReDroidController::stopInstance(const QString& instanceId, bool force) {
     VirtualPhonePro::SafetyNetAdvancedBypass::removeInstance(instanceId);
     VirtualPhonePro::RealPhoneHardening::removeInstance(instanceId);
 
+    // Clean up per-instance ADBManager (frees the -s bound connection)
+    if (m_adbSerials.contains(instanceId)) {
+        VirtualPhonePro::ADBManager::removeInstance(
+            m_adbSerials[instanceId].toStdString());
+    }
+
     emit instanceStateChanged(instanceId, InstanceState::Stopped);
     emit operationCompleted(instanceId, "stop", true);
 

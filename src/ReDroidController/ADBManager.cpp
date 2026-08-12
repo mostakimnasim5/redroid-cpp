@@ -5,6 +5,9 @@
 #include <array>
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <unordered_map>
+#include <memory>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -19,9 +22,40 @@
 
 namespace VirtualPhonePro {
 
+// ============================================================================
+// Per-instance registry
+// ============================================================================
+static std::mutex                                          s_registryMutex;
+static std::unordered_map<std::string, ADBManager*>       s_registry;
+
 ADBManager& ADBManager::getInstance() {
     static ADBManager instance;
     return instance;
+}
+
+ADBManager& ADBManager::getInstanceFor(const std::string& adbSerial) {
+    std::lock_guard<std::mutex> lock(s_registryMutex);
+    auto it = s_registry.find(adbSerial);
+    if (it == s_registry.end()) {
+        ADBManager* mgr = new ADBManager();
+        // Pre-bind to this container's serial so every command
+        // automatically gets  -s <adbSerial>  without callers
+        // having to call selectDevice() themselves.
+        mgr->m_selectedDevice = adbSerial;
+        mgr->initialize();
+        s_registry[adbSerial] = mgr;
+        return *mgr;
+    }
+    return *it->second;
+}
+
+void ADBManager::removeInstance(const std::string& adbSerial) {
+    std::lock_guard<std::mutex> lock(s_registryMutex);
+    auto it = s_registry.find(adbSerial);
+    if (it != s_registry.end()) {
+        delete it->second;
+        s_registry.erase(it);
+    }
 }
 
 ADBManager::ADBManager()
