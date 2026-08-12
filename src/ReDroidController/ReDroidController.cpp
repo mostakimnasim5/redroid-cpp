@@ -16,6 +16,7 @@
 #include "VirtualPhonePro/ADBManager.hpp"
 #include "VirtualPhonePro/DeviceIDGenerator.hpp"
 #include "VirtualPhonePro/IPTimezoneConverter.hpp"
+#include "Android/LocaleTimezoneManager.h"
 #include "VirtualPhonePro/BankingAppSpoofer.hpp"
 #include "VirtualPhonePro/GoogleFacebookSpoofer.hpp"
 #include "VirtualPhonePro/TLSFingerprint.hpp"
@@ -2073,75 +2074,93 @@ bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig
         qWarning() << "Invalid proxy configuration";
         return false;
     }
-    
+
     qDebug() << "Assigning proxy to instance:" << instanceId;
-    
-    // Build proxy URL
+
+    // ── 1. Build proxy URL ────────────────────────────────────────────────────
     QString proxyUrl;
     if (proxy.type == "socks5") {
         proxyUrl = QString("socks5://%1:%2").arg(proxy.host).arg(proxy.port);
     } else {
         proxyUrl = QString("http://%1:%2").arg(proxy.host).arg(proxy.port);
     }
-    
     if (!proxy.username.isEmpty()) {
-        proxyUrl = proxyUrl.replace("://", 
-            QString("://%1:%2@").arg(proxy.username).arg(proxy.password));
+        proxyUrl = proxyUrl.replace("://",
+            QString("://%1:%2@").arg(proxy.username, proxy.password));
     }
-    
-    // Generate PAC file content
+
+    // ── 2. PAC file — SOCKS5 vs HTTP (bug: was always emitting "PROXY") ──────
+    const QString pacProxyType = (proxy.type == "socks5") ? "SOCKS5" : "PROXY";
     QString pacContent = QString(R"(
         function FindProxyForURL(url, host) {
-            if (isPlainHostName(host) || 
+            if (isPlainHostName(host) ||
                 shExpMatch(host, "*.local") ||
-                isInNet(dnsResolve(host), "10.0.0.0", "255.0.0.0") ||
-                isInNet(dnsResolve(host), "172.16.0.0", "255.240.0.0") ||
-                isInNet(dnsResolve(host), "192.168.0.0", "255.255.0.0") ||
+                isInNet(dnsResolve(host), "10.0.0.0",  "255.0.0.0")  ||
+                isInNet(dnsResolve(host), "172.16.0.0","255.240.0.0") ||
+                isInNet(dnsResolve(host), "192.168.0.0","255.255.0.0")||
                 isInNet(dnsResolve(host), "127.0.0.0", "255.0.0.0")) {
                 return "DIRECT";
             }
-            return "PROXY %1:%2";
+            return "%1 %2:%3";
         }
-    )").arg(proxy.host).arg(proxy.port);
-    
-    // Save PAC file locally
+    )").arg(pacProxyType, proxy.host, QString::number(proxy.port));
+
     QString profileDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QString pacPath = QString("%1/instances/%2/proxy.pac").arg(profileDir).arg(instanceId);
-    
-    QDir().mkpath(QString("%1/instances/%2").arg(profileDir).arg(instanceId));
-    
+    QString pacPath = QString("%1/instances/%2/proxy.pac").arg(profileDir, instanceId);
+    QDir().mkpath(QString("%1/instances/%2").arg(profileDir, instanceId));
+
     QFile pacFile(pacPath);
     if (pacFile.open(QIODevice::WriteOnly)) {
         pacFile.write(pacContent.toUtf8());
         pacFile.close();
     }
-    
-    // Push PAC file to container
     pushFile(instanceId, pacPath, "/data/proxy.pac");
-    
-    // Apply proxy settings via ADB
+
+    // ── 3. Apply proxy settings via ADB ──────────────────────────────────────
     QStringList commands = {
-        // Set global HTTP proxy
-        QString("settings put global http_proxy %1 %2").arg(proxy.host).arg(proxy.port),
+        // Android global HTTP proxy
+        QString("settings put global http_proxy %1:%2").arg(proxy.host).arg(proxy.port),
         QString("settings put global global_http_proxy_host %1").arg(proxy.host),
         QString("settings put global global_http_proxy_port %1").arg(proxy.port),
-        QString("settings put global global_proxy_pac_url file:///data/proxy.pac"),
-        
-        // Configure DNS to prevent leaks
-        "setprop net.dns1 8.8.8.8",
+        "settings put global global_proxy_pac_url file:///data/proxy.pac",
+
+        // DNS — use proxy host as DNS resolver when possible to prevent leak.
+        // Fall back to Cloudflare (1.1.1.1) which respects EDNS privacy.
+        QString("setprop net.dns1 %1").arg(proxy.host),
         "setprop net.dns2 1.1.1.1",
-        
-        // Disable IPv6
+
+        // Disable IPv6 to prevent IPv6 leak around the proxy
         "sysctl -w net.ipv6.conf.all.disable_ipv6=1",
         "sysctl -w net.ipv6.conf.default.disable_ipv6=1",
         "sysctl -w net.ipv6.conf.lo.disable_ipv6=1"
     };
-    
-    for (const QString& cmd : commands) {
+    for (const QString& cmd : commands)
         executeShell(instanceId, cmd);
+
+    // ── 4. Verify proxy is actually working ───────────────────────────────────
+    // Ask Android to fetch its external IP through the proxy.
+    // If it matches the proxy host range, the proxy is routing correctly.
+    QString verifyCmd = QString(
+        "curl -s --max-time 10 --proxy %1 http://ip-api.com/json/"
+    ).arg(proxyUrl);
+    QString verifyResult = executeShell(instanceId, verifyCmd);
+
+    bool proxyWorking = false;
+    if (!verifyResult.isEmpty()) {
+        QJsonDocument doc = QJsonDocument::fromJson(verifyResult.toUtf8());
+        QJsonObject json = doc.object();
+        proxyWorking = (json["status"].toString() == "success");
+        if (proxyWorking) {
+            qDebug() << "[Proxy] Verified — exit IP:"
+                     << json["query"].toString()
+                     << "country:" << json["country"].toString();
+        }
     }
-    
-    // Store proxy config
+    if (!proxyWorking) {
+        qWarning() << "[Proxy] Could not verify proxy" << proxy.host << "— traffic may not be routed correctly";
+    }
+
+    // ── 5. Store proxy config ─────────────────────────────────────────────────
     {
         QMutexLocker locker(&m_instancesMutex);
         if (m_instances.contains(instanceId)) {
@@ -2149,8 +2168,35 @@ bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig
             m_instances[instanceId].networkConfig.mode = NetworkMode::Proxy;
         }
     }
-    
-    qDebug() << "Proxy assigned successfully";
+
+    // ── 6. Auto-sync timezone + locale from proxy IP ──────────────────────────
+    // This is the critical link: the proxy's exit IP determines the real-world
+    // location. We tell LocaleTimezoneManager the proxy, then it calls
+    // ip-api.com with that IP and applies timezone + locale + carrier to Android.
+    {
+        using LTM = VirtualPhonePro::LocaleTimezoneManager;
+        LTM& ltm = LTM::instance();
+
+        VirtualPhonePro::ProxyInfo proxyInfo;
+        proxyInfo.host     = proxy.host;
+        proxyInfo.port     = proxy.port;
+        proxyInfo.type     = proxy.type;
+        proxyInfo.username = proxy.username;
+        proxyInfo.password = proxy.password;
+        proxyInfo.isValid  = true;
+
+        ltm.setProxy(instanceId, proxyInfo);
+
+        // syncFromProxy() → queryGeoLocation(proxy.host) → ip-api.com
+        // → applyTimezone(timezone) + applyLocale(locale) + applyCarrier()
+        if (ltm.syncFromProxy(instanceId)) {
+            qDebug() << "[Proxy] Timezone + locale auto-synced from proxy IP";
+        } else {
+            qWarning() << "[Proxy] Timezone sync failed — instance will keep default timezone";
+        }
+    }
+
+    qDebug() << "Proxy assigned successfully. Working:" << proxyWorking;
     return true;
 }
 
