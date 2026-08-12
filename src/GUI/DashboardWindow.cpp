@@ -657,15 +657,17 @@ void DashboardWindow::setupUI() {
     
     m_scrollContent = new QWidget();
     m_scrollContent->setStyleSheet("background-color: transparent;");
-    
+
+    // QGridLayout is installed directly as m_scrollContent's sole layout.
+    // A second QVBoxLayout must NOT be created on the same widget: Qt
+    // silently orphans the first layout, making the grid invisible and
+    // addStretch() ineffective.  Cards are pushed to the top-left via
+    // Qt::AlignTop|AlignLeft so empty rows do not expand to fill height.
     m_cardGrid = new QGridLayout(m_scrollContent);
     m_cardGrid->setSpacing(20);
     m_cardGrid->setContentsMargins(10, 10, 10, 10);
-    
-    QVBoxLayout* scrollLayout = new QVBoxLayout(m_scrollContent);
-    scrollLayout->addLayout(m_cardGrid);
-    scrollLayout->addStretch();
-    
+    m_cardGrid->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+
     m_scrollArea->setWidget(m_scrollContent);
     mainLayout->addWidget(m_scrollArea);
     
@@ -886,8 +888,18 @@ void DashboardWindow::removePhoneCard(const QString& instanceId) {
         m_cardGrid->removeWidget(card);
         delete card;
         m_phoneCards.remove(instanceId);
+
+        // Re-index all remaining cards so no holes appear in the grid.
+        // QGridLayout leaves ghost cells when a widget is removed mid-grid;
+        // we must re-add every surviving card at its new sequential position.
+        int i = 0;
+        for (PhoneCard* remaining : m_phoneCards.values()) {
+            m_cardGrid->removeWidget(remaining);
+            m_cardGrid->addWidget(remaining, i / 4, i % 4);
+            ++i;
+        }
     }
-    
+
     // Close phone window if open
     if (m_phoneWindows.contains(instanceId)) {
         PhoneWindow* window = m_phoneWindows[instanceId];
