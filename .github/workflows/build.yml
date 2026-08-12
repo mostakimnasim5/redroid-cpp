@@ -244,9 +244,23 @@ jobs:
 
           # ---------------------------------------------------------------
           # STEP 4b: Download and bundle scrcpy (30-60 FPS screen mirror)
+          # Fetch the latest release tag dynamically so this step never
+          # goes stale when a new scrcpy version is published.
           # ---------------------------------------------------------------
-          Write-Host "Downloading scrcpy..."
-          $scrcpyVersion = "v3.1"
+          Write-Host "Fetching latest scrcpy release..."
+          try {
+            $apiResponse  = Invoke-RestMethod `
+              -Uri "https://api.github.com/repos/Genymobile/scrcpy/releases/latest" `
+              -Headers @{ "User-Agent" = "redroid-cpp-ci" } `
+              -TimeoutSec 30
+            $scrcpyVersion = $apiResponse.tag_name          # e.g. "v4.1"
+          } catch {
+            # API unreachable — fall back to the last known-good version.
+            $scrcpyVersion = "v4.1"
+            Write-Warning "  GitHub API unavailable, falling back to $scrcpyVersion"
+          }
+
+          Write-Host "Downloading scrcpy $scrcpyVersion..."
           $scrcpyUrl = "https://github.com/Genymobile/scrcpy/releases/download/$scrcpyVersion/scrcpy-win64-$scrcpyVersion.zip"
           $scrcpyZip = "$env:TEMP\scrcpy.zip"
           $scrcpyDir = "$env:TEMP\scrcpy"
@@ -260,11 +274,11 @@ jobs:
 
             if ($scrcpyExe) {
               Copy-Item $scrcpyExe.FullName "$deployDir\scrcpy.exe" -Force
-              Write-Host "  [OK] scrcpy.exe bundled"
+              Write-Host "  [OK] scrcpy.exe bundled ($scrcpyVersion)"
             }
             if ($scrcpyServer) {
               Copy-Item $scrcpyServer.FullName "$deployDir\scrcpy-server" -Force
-              Write-Host "  [OK] scrcpy-server bundled"
+              Write-Host "  [OK] scrcpy-server bundled ($scrcpyVersion)"
             }
           } catch {
             Write-Warning "  [SKIP] scrcpy download failed: $_"
