@@ -70,7 +70,7 @@ DockerConfig::DockerConfig()
     , imageName("redroid/redroid:12.0.0-latest")
     , networkDriver("bridge")
     , baseAdbPort(5555)
-    , memoryLimit("1536m")
+    , memoryLimit("1536M")
     , cpuQuota(200000)
     , shmSize(256)
     , useWSL2(false)
@@ -267,14 +267,59 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // Create instance info
     InstanceInfo info;
     info.instanceId = instanceId;
-    info.containerName = QString("vpp-%1").arg(instanceId);
-    info.imageName = m_config.imageName;
-    info.state = InstanceState::Starting;
-    info.adbPort = adbPort;
+    info.imageName  = m_config.imageName;
+    info.state      = InstanceState::Starting;
+    info.adbPort    = adbPort;
     info.instanceIndex = m_instances.size();
-    info.createdAt = QDateTime::currentMSecsSinceEpoch();
-    info.profileId = profile.id;
+    info.createdAt  = QDateTime::currentMSecsSinceEpoch();
+    info.profileId  = profile.id;
     info.adbConnected = false;
+
+    // =========================================================================
+    // Fix 8: Container name collision guard.
+    //
+    // "vpp-<uuid>" is deterministic — if the app crashed and the container
+    // was not removed, docker run fails with:
+    //   "Conflict. The container name /vpp-<uuid> is already in use."
+    // Strategy:
+    //   1. Check whether a container with that name already exists (any state).
+    //   2a. If it is stopped/exited — remove it so we can reuse the name.
+    //   2b. If it is running/paused — the instance is actually alive; update
+    //       m_instances and return true without launching a duplicate.
+    //   3. If the remove fails for any reason — append a short epoch suffix to
+    //      guarantee a unique name (never block the launch).
+    // =========================================================================
+    QString baseName = QString("vpp-%1").arg(instanceId);
+    info.containerName = baseName;
+
+    // Query existing container state (empty string = does not exist)
+    QString existingState = executeDockerSync(
+        {"inspect", "-f", "{{.State.Status}}", baseName}).trimmed();
+
+    if (!existingState.isEmpty() && existingState != "no such object") {
+        if (existingState == "running" || existingState == "paused") {
+            // Container is alive from a previous session — adopt it.
+            qWarning() << "Container" << baseName
+                       << "already running (state:" << existingState
+                       << "). Adopting existing container.";
+            info.state = InstanceState::Running;
+            info.startedAt = QDateTime::currentMSecsSinceEpoch();
+            m_instances[instanceId] = info;
+            emit instanceStateChanged(instanceId, InstanceState::Running);
+            return true;
+        }
+
+        // Container exists but is stopped/exited — try to remove it.
+        OperationResult rmResult = executeDocker({"rm", "-f", baseName}, 10000);
+        if (!rmResult.success) {
+            // Remove failed; use a unique suffixed name as fallback.
+            info.containerName = QString("%1-%2")
+                .arg(baseName)
+                .arg(QDateTime::currentMSecsSinceEpoch() % 100000);
+            qWarning() << "Could not remove stale container" << baseName
+                       << "— using fallback name" << info.containerName;
+        }
+    }
     
     // Generate property file path
     QString profileDataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -333,11 +378,12 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
         addDeviceIfExists("/dev/hwbinder",  "/dev/hwbinder");
     }
 
-    // Memory limit
-    args << "-m" << m_config.memoryLimit;
-    
-    // SHM size
-    args << "--shm-size" << QString("%1m").arg(m_config.shmSize);
+    // Memory limit — Docker requires uppercase suffix (M/G/MB/GB).
+    // Normalise here so user-supplied values like "1536m" still work.
+    args << "-m" << m_config.memoryLimit.toUpper();
+
+    // SHM size — uppercase M required
+    args << "--shm-size" << QString("%1M").arg(m_config.shmSize);
     
     // CPU quota
     args << "--cpu-quota" << QString::number(m_config.cpuQuota);
