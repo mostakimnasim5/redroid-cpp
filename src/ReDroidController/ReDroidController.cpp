@@ -37,6 +37,7 @@
 #include <QMutexLocker>
 #include <QUuid>
 #include <QThread>
+#include <QStorageInfo>
 #include <QHostInfo>
 #include <QTcpServer>
 #include <QtMath>
@@ -207,6 +208,156 @@ OperationResult ReDroidController::validateDocker() {
     result.data["version"] = process.readAll().trimmed();
     
     return result;
+}
+
+// ============================================================================
+// System Prerequisite Check
+// ============================================================================
+
+SystemCheckReport ReDroidController::checkSystemRequirements() {
+    SystemCheckReport report;
+    report.canRun = true;
+
+    // ── Helper lambdas ────────────────────────────────────────────────────────
+    auto addCheck = [&](const QString& name, bool met, const QString& ok,
+                        const QString& fail, const QString& fix, bool required) {
+        SystemRequirement r;
+        r.name           = name;
+        r.met            = met;
+        r.status         = met ? ok : fail;
+        r.fixInstruction = met ? QString() : fix;
+        r.required       = required;
+        report.checks.append(r);
+        if (required && !met) report.canRun = false;
+    };
+
+    // ── 1. Docker running (REQUIRED) ──────────────────────────────────────────
+    {
+        QProcess p;
+        p.setProcessChannelMode(QProcess::MergedChannels);
+        p.start(m_config.dockerPath, {"info", "--format", "{{.ServerVersion}}"});
+        bool ok = p.waitForFinished(8000) && p.exitCode() == 0;
+        QString ver = p.readAll().trimmed();
+        addCheck("Docker",
+                 ok,
+                 QString("Running (v%1)").arg(ver),
+                 "Docker Desktop is not running or not installed",
+                 "Install Docker Desktop from https://www.docker.com/products/docker-desktop "
+                 "and ensure it is started before launching the app.",
+                 /*required=*/true);
+    }
+
+    // ── 2. Binder kernel support (REQUIRED on Linux/WSL2) ────────────────────
+    {
+#ifdef Q_OS_WIN
+        // On Windows, binder lives inside the WSL2 VM — check via `wsl` command.
+        QProcess p;
+        p.setProcessChannelMode(QProcess::MergedChannels);
+        p.start("wsl", {"--", "test", "-e", "/dev/binderfs", "||",
+                        "test", "-e", "/sys/fs/binder"});
+        bool binderfs = p.waitForFinished(8000) && p.exitCode() == 0;
+
+        // Fallback: check /dev/binder directly
+        if (!binderfs) {
+            p.start("wsl", {"--", "test", "-e", "/dev/binder"});
+            binderfs = p.waitForFinished(5000) && p.exitCode() == 0;
+        }
+
+        addCheck("WSL2 Binder Kernel",
+                 binderfs,
+                 "binderfs / /dev/binder present",
+                 "WSL2 kernel does not have Android binder support",
+                 "Install a custom WSL2 kernel with CONFIG_ANDROID_BINDERFS=y.\n"
+                 "See docs/WSL2_KERNEL_SETUP.md for step-by-step instructions.\n"
+                 "Quick install: https://github.com/kdrag0n/proton-wine/releases",
+                 /*required=*/true);
+#else
+        bool binderfs = QFileInfo::exists("/dev/binderfs") ||
+                        QFileInfo::exists("/sys/fs/binder") ||
+                        QFileInfo::exists("/dev/binder");
+        addCheck("Binder Kernel Support",
+                 binderfs,
+                 "binderfs available",
+                 "/dev/binderfs and /dev/binder not found",
+                 "Install kernel with CONFIG_ANDROID_BINDERFS=y. "
+                 "See docs/WSL2_KERNEL_SETUP.md.",
+                 /*required=*/true);
+#endif
+    }
+
+    // ── 3. Windows Hypervisor Platform (REQUIRED on Windows for WSL2) ────────
+#ifdef Q_OS_WIN
+    {
+        QProcess p;
+        p.setProcessChannelMode(QProcess::MergedChannels);
+        p.start("powershell",
+                {"-Command",
+                 "(Get-WindowsOptionalFeature -Online -FeatureName HypervisorPlatform).State"});
+        bool ok = p.waitForFinished(10000) && p.exitCode() == 0 &&
+                  p.readAll().trimmed().contains("Enabled");
+        addCheck("Windows Hypervisor Platform",
+                 ok,
+                 "Enabled",
+                 "Windows Hypervisor Platform is not enabled",
+                 "Run as Administrator:\n"
+                 "  dism /online /enable-feature /featurename:HypervisorPlatform /all /norestart\n"
+                 "Then reboot your PC.",
+                 /*required=*/true);
+    }
+#endif
+
+    // ── 4. KVM acceleration (OPTIONAL — swiftshader fallback available) ───────
+    {
+#ifdef Q_OS_WIN
+        QProcess p;
+        p.setProcessChannelMode(QProcess::MergedChannels);
+        p.start("wsl", {"--", "test", "-e", "/dev/kvm"});
+        bool kvm = p.waitForFinished(5000) && p.exitCode() == 0;
+#else
+        bool kvm = QFileInfo::exists("/dev/kvm");
+#endif
+        addCheck("KVM Hardware Acceleration",
+                 kvm,
+                 "Available (fast boot, better performance)",
+                 "Not available — will use swiftshader (slow, ~90s boot)",
+                 "Enable Intel VT-x / AMD-V in BIOS, then in WSL2:\n"
+                 "  echo 'nestedVirtualization=true' >> %USERPROFILE%\\.wslconfig\n"
+                 "  wsl --shutdown",
+                 /*required=*/false);
+    }
+
+    // ── 5. Disk space — need ≥ 4 GB free (REQUIRED) ──────────────────────────
+    {
+        QStorageInfo storage(QStandardPaths::writableLocation(
+            QStandardPaths::AppDataLocation));
+        qint64 freeGB = storage.bytesAvailable() / (1024LL * 1024 * 1024);
+        bool ok = freeGB >= 4;
+        addCheck("Disk Space",
+                 ok,
+                 QString("%1 GB free").arg(freeGB),
+                 QString("Only %1 GB free — need ≥ 4 GB for container images").arg(freeGB),
+                 "Free up disk space. Each ReDroid instance needs ~2-3 GB.",
+                 /*required=*/true);
+    }
+
+    // ── 6. ADB reachable (OPTIONAL — installed with app bundle) ──────────────
+    {
+        QProcess p;
+        p.setProcessChannelMode(QProcess::MergedChannels);
+        p.start(m_config.adbPath.isEmpty() ? "adb" : m_config.adbPath,
+                {"version"});
+        bool ok = p.waitForFinished(5000) && p.exitCode() == 0;
+        QString ver = p.readAll().split('\n').first().trimmed();
+        addCheck("ADB",
+                 ok,
+                 ver,
+                 "adb not found in PATH",
+                 "adb.exe is bundled with the app. If missing, reinstall the application "
+                 "or add Android Platform Tools to PATH.",
+                 /*required=*/false);
+    }
+
+    return report;
 }
 
 void ReDroidController::loadConfiguration() {

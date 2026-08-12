@@ -376,20 +376,48 @@ int main(int argc, char *argv[]) {
     
     // Initialize ReDroid Controller
     ReDroidController& controller = ReDroidController::instance();
-    
-    // Validate Docker on startup
-    FileLogger::instance().info("Startup", "Validating Docker...");
-    OperationResult dockerResult = controller.validateDocker();
-    
-    if (!dockerResult.success) {
-        QMessageBox::warning(nullptr, "Docker Not Available",
-            QString("Docker is not available or not running.\n\n"
-                    "Error: %1\n\n"
-                    "Please install Docker Desktop and ensure it is running.\n"
-                    "You can still use the application, but container features will be disabled.")
-                .arg(dockerResult.errorMessage));
+
+    // =========================================================================
+    // Full system prerequisite check — run before any container operation.
+    // Shows user exactly what is missing and how to fix it.
+    // =========================================================================
+    FileLogger::instance().info("Startup", "Checking system requirements...");
+    SystemCheckReport sysReport = controller.checkSystemRequirements();
+
+    if (!sysReport.canRun) {
+        // Build a readable report for the dialog
+        QString details;
+        for (const SystemRequirement& req : sysReport.checks) {
+            QString icon = req.met ? "✓" : (req.required ? "✗" : "⚠");
+            details += QString("%1  %2: %3\n").arg(icon, req.name, req.status);
+            if (!req.met && !req.fixInstruction.isEmpty()) {
+                for (const QString& line : req.fixInstruction.split('\n'))
+                    details += QString("      %1\n").arg(line);
+            }
+        }
+
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.setWindowTitle("System Requirements Not Met");
+        msgBox.setText(
+            "The following required components are missing.\n"
+            "Container features will not work until they are resolved.");
+        msgBox.setDetailedText(details);
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.exec();
+
+        FileLogger::instance().critical("Startup",
+            "Missing required components: " +
+            sysReport.missingRequired().join(", "));
+        // App continues — user can still view settings / profiles
     } else {
-        qDebug() << "[Startup] Docker validated:" << dockerResult.data.value("version").toString();
+        // Log optional warnings
+        for (const SystemRequirement& req : sysReport.checks) {
+            if (!req.met)
+                FileLogger::instance().warning("Startup",
+                    QString("[OPTIONAL] %1: %2").arg(req.name, req.status));
+        }
+        qDebug() << "[Startup] All required system checks passed.";
     }
     
     // ============================================================================

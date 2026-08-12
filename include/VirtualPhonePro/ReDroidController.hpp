@@ -117,6 +117,33 @@ struct OperationResult {
 };
 
 /**
+ * @brief Result of a single system requirement check.
+ */
+struct SystemRequirement {
+    QString name;           // Short label shown in UI
+    bool    met;            // true = OK, false = missing/failed
+    QString status;         // One-line status shown to user
+    QString fixInstruction; // Actionable fix if met == false
+    bool    required;       // true = app cannot run, false = optional
+};
+
+/**
+ * @brief Full system prerequisite report returned by checkSystemRequirements().
+ * canRun is true only when every required check passes.
+ */
+struct SystemCheckReport {
+    bool                        canRun;
+    QList<SystemRequirement>    checks;
+
+    QStringList missingRequired() const {
+        QStringList out;
+        for (const auto& c : checks)
+            if (c.required && !c.met) out << c.name;
+        return out;
+    }
+};
+
+/**
  * @brief ReDroidController - Core Controller for ReDroid Containers
  * 
  * This class manages the lifecycle of ReDroid Android emulator containers
@@ -159,6 +186,16 @@ public:
      * @brief Validate Docker installation
      */
     OperationResult validateDocker();
+
+    /**
+     * @brief Check all runtime prerequisites before launching any container.
+     *
+     * Verifies: Docker running, WSL2 binder kernel support, /dev/kvm,
+     * available disk space, and Windows Hypervisor Platform.
+     * Call this on startup and show the report to the user before
+     * allowing instance creation.
+     */
+    SystemCheckReport checkSystemRequirements();
     
     /**
      * @brief Set ADB path (default: app directory + adb.exe)
