@@ -340,6 +340,38 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     args << "--privileged";
 
     // =========================================================================
+    // ---------------------------------------------------------------
+    // REDROID_PROP_ env vars: inject ro.* properties BEFORE Android init
+    // This is the ONLY reliable way to set ro.* in standard ReDroid
+    // (resetprop requires Magisk which is not in the base image)
+    // ---------------------------------------------------------------
+    args << "-e" << "REDROID_PROP_ro.kernel.qemu=0";
+    args << "-e" << "REDROID_PROP_ro.boot.qemu=0";
+    args << "-e" << "REDROID_PROP_ro.boot.mode=normal";
+    args << "-e" << "REDROID_PROP_ro.debuggable=0";
+    args << "-e" << "REDROID_PROP_ro.secure=1";
+    args << "-e" << "REDROID_PROP_ro.build.type=user";
+    args << "-e" << "REDROID_PROP_ro.build.tags=release-keys";
+    args << "-e" << "REDROID_PROP_ro.build.selinux=0";
+    args << "-e" << "REDROID_PROP_ro.product.type=phone";
+    args << "-e" << "REDROID_PROP_ro.build.characteristics=default";
+    args << "-e" << "REDROID_PROP_ro.device.form=FACTORY";
+    args << "-e" << "REDROID_PROP_ro.product.first_api_level=33";
+    args << "-e" << "REDROID_PROP_ro.emulator=false";
+    args << "-e" << "REDROID_PROP_ro.arch=arm64";
+    args << "-e" << "REDROID_PROP_ro.cpu.abi=arm64-v8a";
+    args << "-e" << QString("REDROID_PROP_ro.product.model=%1").arg(profile.build.model);
+    args << "-e" << QString("REDROID_PROP_ro.product.manufacturer=%1").arg(profile.manufacturer);
+    args << "-e" << QString("REDROID_PROP_ro.product.brand=%1").arg(profile.manufacturer.toLower());
+    args << "-e" << QString("REDROID_PROP_ro.product.name=%1").arg(profile.build.product);
+    args << "-e" << QString("REDROID_PROP_ro.product.device=%1").arg(profile.build.device);
+    args << "-e" << QString("REDROID_PROP_ro.build.fingerprint=%1").arg(profile.build.fingerprint);
+    args << "-e" << QString("REDROID_PROP_ro.build.version.release=%1").arg(profile.build.androidVersion);
+    args << "-e" << QString("REDROID_PROP_ro.build.version.sdk=%1").arg(profile.build.sdkVersion);
+    args << "-e" << QString("REDROID_PROP_ro.hardware=%1").arg(profile.build.hardware);
+    args << "-e" << QString("REDROID_PROP_ro.serialno=%1").arg(profile.build.serial);
+    args << "-e" << QString("REDROID_PROP_ro.boot.hardware=%1").arg(profile.build.hardware);
+
     // Binder isolation — one binderfs mount namespace per instance
     //
     // Flat --device /dev/binder:/dev/binder gives every container the same
@@ -950,11 +982,14 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         QString("settings put secure android_id %1").arg(uniqueAndroidId),
         QString("setprop persist.radio.iccid %1").arg(uniqueICCID),
         QString("setprop persist.radio.imsi %1").arg(uniqueIMSI),
-        "resetprop ro.kernel.qemu 0",
-        "resetprop ro.boot.qemu 0",
-        "resetprop ro.debuggable 0",
+        // ro.* props set via REDROID_PROP_ env vars at docker run time (before init)
+        // setprop cannot modify ro.* after boot - that requires resetprop (Magisk)
+        // These are kept as setprop attempts (may succeed on some ReDroid builds):
+        "setprop ro.kernel.qemu 0",
+        "setprop ro.boot.qemu 0",
+        "setprop ro.debuggable 0",
         "setprop ro.secure 1",
-        "resetprop ro.build.selinux.enforce 0",
+        "setprop ro.build.selinux.enforce 0",
     };
     
     for (const QString& cmd : uniqueCommands) {
