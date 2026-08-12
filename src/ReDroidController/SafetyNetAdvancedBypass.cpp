@@ -891,7 +891,7 @@ SafetyNetResult SafetyNetAdvancedBypass::useMagiskHide() {
     // Configure Magisk Hide settings
     QStringList commands = {
         "magiskhide disable 2>/dev/null || true",
-        "resetprop magisk.hide false",
+        "setprop magisk.hide false",
         "settings put global magisk_hide 0"
     };
     
