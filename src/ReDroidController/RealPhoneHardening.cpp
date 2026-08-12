@@ -96,7 +96,7 @@ bool RealPhoneHardening::hideMagisk() {
     adb.executeShellCommand("magisk --denylist add com.google.android.gms 2>/dev/null || true");
     adb.executeShellCommand("magisk hide enable 2>/dev/null || true");
     
-    adb.executeShellCommand("resetprop magisk.hide true 2>/dev/null || true");
+    adb.executeShellCommand("setprop magisk.hide true 2>/dev/null || true");
     adb.setProperty("persist.magisk.hide", "true");
     
     return true;
@@ -768,9 +768,9 @@ bool RealPhoneHardening::resetBattery() {
 bool RealPhoneHardening::resetEmulatorBypass() {
     auto& adb = ADBManager::getInstance();
     
-    adb.executeShellCommand("resetprop ro.kernel.qemu 2>/dev/null || true");
-    adb.executeShellCommand("resetprop ro.kernel.android.qemu 2>/dev/null || true");
-    adb.executeShellCommand("resetprop ro.product.device 2>/dev/null || true");
+    adb.executeShellCommand("setprop ro.kernel.qemu 2>/dev/null || true");
+    adb.executeShellCommand("setprop ro.kernel.android.qemu 2>/dev/null || true");
+    adb.executeShellCommand("setprop ro.product.device 2>/dev/null || true");
     
     return true;
 }
