@@ -507,7 +507,7 @@ bool EmulatorDetectionBypass::hideProperties(const QString& instanceId) {
     ReDroidController& controller = ReDroidController::instance();
     
     for (const QString& prop : config.hideProperties) {
-        // Use resetprop to delete property
+        // Use setprop with empty value to clear property (resetprop not available in ReDroid)
         controller.executeShell(instanceId, QString("setprop %1").arg(prop));
     }
     
