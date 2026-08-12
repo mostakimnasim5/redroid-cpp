@@ -348,7 +348,6 @@ if(BUILD_QT6_GUI)
     add_executable(ReDroidCPP WIN32
         ${REDROID_SOURCES}
         ${REDROID_HEADERS}
-        src/qtmain.cpp
     )
     
     # Include directories
