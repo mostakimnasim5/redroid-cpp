@@ -739,7 +739,7 @@ CompleteBuildInfo RealisticDeviceProfile::generateBuild(const QString& manufactu
     build.androidVersion = androidVersion;
     build.releaseVersion = "14"; // UpsideDownCake for 14, Revelation for 15
     build.sdkVersion = androidVersion == "14" ? "34" : "35";
-    build.securityPatch = "2024-01-01";
+    build.securityPatch = QDate::currentDate().addMonths(-1).toString("yyyy-MM-01");
     build.buildDescription = build.model + " " + androidVersion + " " + build.buildId + " release-keys";
     build.buildId = "UP1A.231005.007";
     build.buildDisplay = "UP1A.231005.007";

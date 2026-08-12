@@ -10,6 +10,7 @@
 #include <QRandomGenerator>
 #include <QCryptographicHash>
 #include <QJsonObject>
+#include <QDate>
 
 namespace VirtualPhonePro {
 
@@ -68,7 +69,7 @@ HardwareSecurityState HardwareAttestation::getSecurityState(const QString& insta
     defaultState.isHDCPCompliant = true;
     defaultState.teeVendor = "QSEE";
     defaultState.teeVersion = "4.1";
-    defaultState.teePatchLevel = "2024-01";
+    defaultState.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM").toStdString();
     defaultState.socManufacturer = "Qualcomm";
     defaultState.socModel = "Snapdragon";
     
@@ -428,7 +429,7 @@ bool HardwareAttestation::resetSecurity(const QString& instanceId) {
     defaultState.isHDCPCompliant = true;
     defaultState.teeVendor = "QSEE";
     defaultState.teeVersion = "4.1";
-    defaultState.teePatchLevel = "2024-01";
+    defaultState.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM").toStdString();
     defaultState.socManufacturer = "Qualcomm";
     defaultState.socModel = "Snapdragon 8 Gen 3";
     defaultState.hardwareVendor = "Samsung";
@@ -553,7 +554,7 @@ HardwareSecurityState HardwareAttestation::getDeviceDefaults(const QString& manu
     state.isEncryptionEnabled = true;
     state.isEncryptionSupported = true;
     state.isHDCPCompliant = true;
-    state.teePatchLevel = "2024-01";
+    state.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM").toStdString();
     
     return state;
 }

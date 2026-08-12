@@ -24,6 +24,7 @@
 #include <QDebug>
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <QDate>
 #include <QRandomGenerator>
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -1894,7 +1895,7 @@ HardwareAttestationResult PlayIntegrityManager::performHardwareAttestation(
         config.isDeviceLocked = true;
         config.isRootHidden = true;
         config.isSystemVerified = true;
-        config.securityPatchLevel = "2024-06-01";
+        config.securityPatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM-01");
         m_attestationConfigs[instanceId] = config;
     }
     

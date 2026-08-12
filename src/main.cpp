@@ -128,7 +128,7 @@ public:
         std::string model = getModelForManufacturer(manufacturer);
         std::string codename = getCodename(manufacturer);
         buildId = "UP1A.231005.007";
-        securityPatch = "2024-01-01";
+        securityPatch = []{ auto t=std::time(nullptr); auto tm=*std::localtime(&t); char buf[11]; tm.tm_mday=1; tm.tm_mon=(tm.tm_mon==0?11:tm.tm_mon-1); if(tm.tm_mon==11)tm.tm_year--; std::strftime(buf,sizeof(buf),"%Y-%m-%d",&tm); return std::string(buf); }();
         bootloader = serialNumber;
         
         fingerprint = manufacturer + "/" + codename + "/" + codename + ":" +
