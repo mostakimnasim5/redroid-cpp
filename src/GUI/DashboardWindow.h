@@ -23,11 +23,14 @@
 #include <QMenuBar>
 #include <QMenu>
 
+#include <QProgressBar>
+
 #include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/DeviceProfile.hpp"
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/BankingAppSpoofer.hpp"
 #include "VirtualPhonePro/SafetyNetSpoofer.hpp"
+#include "VirtualPhonePro/RequirementsManager.hpp"
 #include "PhoneWindow.h"
 
 namespace VirtualPhonePro {
@@ -174,6 +177,14 @@ private slots:
     void onAdbConnectionChanged(const QString& instanceId, bool connected);
     void setupConnections();
 
+    // Requirements (WSL2 + Docker Desktop) install/uninstall
+    void onInstallRequirementsClicked();
+    void onUninstallRequirementsClicked();
+    void onRequirementsLog(const QString& line);
+    void onRequirementsProgress(int percent);
+    void onRequirementsFinished(bool success, const QString& summary);
+    void refreshRequirementsState();
+
 private:
     void setupUI();
     void setupMenuBar();
@@ -189,6 +200,10 @@ private:
     
     QPushButton* m_newPhoneButton;
     QPushButton* m_refreshButton;
+    QPushButton* m_installRequirementsButton;
+    QPushButton* m_uninstallRequirementsButton;
+    QProgressBar* m_requirementsProgressBar;
+    RequirementsManager* m_requirementsManager;
     QLabel* m_statusLabel;
     
     QMap<QString, PhoneCard*> m_phoneCards;

@@ -234,6 +234,9 @@ if(BUILD_QT6_GUI)
         
         # OpenSSL Stub
         src/ReDroidController/openssl_stub.cpp
+
+        # Requirements installer (WSL2 + Docker Desktop)
+        src/ReDroidController/RequirementsManager.cpp
         
         # GUI Windows
         src/GUI/PhoneWindow.cpp
@@ -281,6 +284,7 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/ADBManager.hpp
         include/VirtualPhonePro/DeviceIDGenerator.hpp
         include/VirtualPhonePro/IPTimezoneConverter.hpp
+        include/VirtualPhonePro/RequirementsManager.hpp
         include/VirtualPhonePro/PlayIntegrityManager.hpp
         include/VirtualPhonePro/EmulatorDetectionBypass.hpp
         include/VirtualPhonePro/AndroidRealismEngine.h

@@ -187,6 +187,8 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceProfileGenerator.hpp
     # NEW: Logger (centralized logging)
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/Logger.hpp
+    # NEW: Requirements installer (WSL2 + Docker Desktop)
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/RequirementsManager.hpp
 )
 
 set(REDCONTROLLER_SOURCES
@@ -281,6 +283,8 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/Logger.cpp
     # NEW: OpenSSL Stub (crypto without OpenSSL dependency)
     ${PROJECT_SOURCE_DIR}/openssl_stub.cpp
+    # NEW: Requirements installer (WSL2 + Docker Desktop)
+    ${PROJECT_SOURCE_DIR}/RequirementsManager.cpp
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════

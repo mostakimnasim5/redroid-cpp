@@ -640,10 +640,80 @@ void DashboardWindow::setupUI() {
     );
     connect(m_refreshButton, &QPushButton::clicked, this, &DashboardWindow::onRefreshClicked);
     toolbarLayout->addWidget(m_refreshButton);
-    
+
+    // Install Requirements button — sits immediately to the right of Refresh.
+    m_installRequirementsButton = new QPushButton("⬇ Install Requirements", this);
+    m_installRequirementsButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #8e44ad;"
+        "    color: white;"
+        "    border: none;"
+        "    padding: 10px 20px;"
+        "    border-radius: 6px;"
+        "    font-size: 14px;"
+        "}"
+        "QPushButton:hover { background-color: #9b59b6; }"
+        "QPushButton:disabled { background-color: #555; color: #aaa; }"
+    );
+    connect(m_installRequirementsButton, &QPushButton::clicked,
+            this, &DashboardWindow::onInstallRequirementsClicked);
+    toolbarLayout->addWidget(m_installRequirementsButton);
+
+    // Uninstall button — only shown after install completes.
+    m_uninstallRequirementsButton = new QPushButton("🗑 Uninstall", this);
+    m_uninstallRequirementsButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #c0392b;"
+        "    color: white;"
+        "    border: none;"
+        "    padding: 10px 20px;"
+        "    border-radius: 6px;"
+        "    font-size: 14px;"
+        "}"
+        "QPushButton:hover { background-color: #e74c3c; }"
+        "QPushButton:disabled { background-color: #555; color: #aaa; }"
+    );
+    m_uninstallRequirementsButton->hide();
+    connect(m_uninstallRequirementsButton, &QPushButton::clicked,
+            this, &DashboardWindow::onUninstallRequirementsClicked);
+    toolbarLayout->addWidget(m_uninstallRequirementsButton);
+
     toolbarLayout->addStretch();
-    
+
     mainLayout->addLayout(toolbarLayout);
+
+    // Blue progress bar — sits above the card grid, animates left→right
+    // while install/uninstall runs. Hidden when idle.
+    m_requirementsProgressBar = new QProgressBar(this);
+    m_requirementsProgressBar->setRange(0, 100);
+    m_requirementsProgressBar->setValue(0);
+    m_requirementsProgressBar->setTextVisible(false);
+    m_requirementsProgressBar->setFixedHeight(6);
+    m_requirementsProgressBar->setStyleSheet(
+        "QProgressBar {"
+        "    background-color: #1a1a2e;"
+        "    border: none;"
+        "    border-radius: 3px;"
+        "}"
+        "QProgressBar::chunk {"
+        "    background-color: #3498db;"
+        "    border-radius: 3px;"
+        "}"
+    );
+    m_requirementsProgressBar->hide();
+    mainLayout->addWidget(m_requirementsProgressBar);
+
+    // Requirements manager (lives for the lifetime of the window).
+    m_requirementsManager = new RequirementsManager(this);
+    connect(m_requirementsManager, &RequirementsManager::logMessage,
+            this, &DashboardWindow::onRequirementsLog);
+    connect(m_requirementsManager, &RequirementsManager::progress,
+            this, &DashboardWindow::onRequirementsProgress);
+    connect(m_requirementsManager, &RequirementsManager::finished,
+            this, &DashboardWindow::onRequirementsFinished);
+
+    refreshRequirementsState();
+
     
     // Scroll area with phone cards
     m_scrollArea = new QScrollArea(this);
@@ -995,6 +1065,114 @@ void DashboardWindow::onRefreshScreenshots() {
             it.value()->refreshInstance();
         }
     }
+}
+
+// ============================================================================
+// Requirements (WSL2 + Docker Desktop) install / uninstall
+// ============================================================================
+
+void DashboardWindow::refreshRequirementsState()
+{
+    const bool installed = RequirementsManager::areRequirementsInstalled();
+    const bool busy = m_requirementsManager && m_requirementsManager->isBusy();
+
+    if (busy) {
+        m_installRequirementsButton->setEnabled(false);
+        m_uninstallRequirementsButton->setEnabled(false);
+        return;
+    }
+
+    if (installed) {
+        m_installRequirementsButton->setText("✓ Installed Requirements");
+        m_installRequirementsButton->setEnabled(false);
+        m_uninstallRequirementsButton->show();
+        m_uninstallRequirementsButton->setEnabled(true);
+    } else {
+        m_installRequirementsButton->setText("⬇ Install Requirements");
+        m_installRequirementsButton->setEnabled(true);
+        m_uninstallRequirementsButton->hide();
+    }
+}
+
+void DashboardWindow::onInstallRequirementsClicked()
+{
+    if (m_requirementsManager->isBusy()) return;
+
+    // Confirm: WSL2 install needs elevation + a reboot.
+    auto confirm = QMessageBox::question(
+        this, "Install Requirements",
+        "This will install WSL2 and Docker Desktop.\n\n"
+        "Notes:\n"
+        "• Windows may show a UAC (admin) prompt — please accept.\n"
+        "• Enabling WSL2 requires a system reboot afterwards.\n\n"
+        "Continue?",
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (confirm != QMessageBox::Yes) return;
+
+    // UI → "Installing Requirements" state.
+    m_installRequirementsButton->setText("⏳ Installing Requirements...");
+    m_installRequirementsButton->setEnabled(false);
+    m_uninstallRequirementsButton->hide();
+
+    m_requirementsProgressBar->setValue(0);
+    m_requirementsProgressBar->show();
+    m_statusLabel->setText("Installing requirements...");
+
+    m_requirementsManager->install();
+}
+
+void DashboardWindow::onUninstallRequirementsClicked()
+{
+    if (m_requirementsManager->isBusy()) return;
+
+    auto confirm = QMessageBox::question(
+        this, "Uninstall Requirements",
+        "This will uninstall Docker Desktop and remove WSL2 components.\n\n"
+        "Any running containers will be stopped.\n\nContinue?",
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (confirm != QMessageBox::Yes) return;
+
+    m_installRequirementsButton->hide();
+    m_uninstallRequirementsButton->setText("⏳ Uninstalling...");
+    m_uninstallRequirementsButton->setEnabled(false);
+
+    m_requirementsProgressBar->setValue(0);
+    m_requirementsProgressBar->show();
+    m_statusLabel->setText("Uninstalling requirements...");
+
+    m_requirementsManager->uninstall();
+}
+
+void DashboardWindow::onRequirementsLog(const QString& line)
+{
+    qDebug() << "[Requirements]" << line;
+    m_statusLabel->setText(line);
+}
+
+void DashboardWindow::onRequirementsProgress(int percent)
+{
+    m_requirementsProgressBar->setValue(percent);
+}
+
+void DashboardWindow::onRequirementsFinished(bool success, const QString& summary)
+{
+    m_requirementsProgressBar->setValue(success ? 100 : m_requirementsProgressBar->value());
+    m_statusLabel->setText(summary);
+
+    // Keep the bar visible briefly so the user sees it reach the end,
+    // then hide it and restore button state.
+    QTimer::singleShot(1200, this, [this]() {
+        m_requirementsProgressBar->hide();
+        m_uninstallRequirementsButton->setText("🗑 Uninstall");
+        refreshRequirementsState();
+    });
+
+    QMessageBox::information(this,
+        success ? "Requirements Installed" : "Requirements — Finished",
+        summary + "\n\n" +
+        (success ? "If WSL2 was just enabled, please reboot Windows once "
+                   "before launching phone instances."
+                 : "Check the status line for details."));
 }
 
 void DashboardWindow::updateInstanceCard(const QString& instanceId, InstanceState state) {
