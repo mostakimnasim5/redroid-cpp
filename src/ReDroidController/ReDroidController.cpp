@@ -384,7 +384,7 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     args << "-e" << QString("REDROID_PROP_ro.build.version.release=%1").arg(profile.build.androidVersion);
     args << "-e" << QString("REDROID_PROP_ro.build.version.sdk=%1").arg(profile.build.sdkVersion);
     args << "-e" << QString("REDROID_PROP_ro.hardware=%1").arg(profile.build.hardware);
-    args << "-e" << QString("REDROID_PROP_ro.serialno=%1").arg(profile.build.serial);
+    args << "-e" << QString("REDROID_PROP_ro.serialno=%1").arg(profile.identity.serialNumber);
     args << "-e" << QString("REDROID_PROP_ro.boot.hardware=%1").arg(profile.build.hardware);
 
     // Binder isolation — one binderfs mount namespace per instance
@@ -1044,7 +1044,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     integrityConfig.isDeviceRooted = false;
     integrityConfig.isDebuggable = false;
     integrityConfig.isGMSCertified = true;
-    integrityConfig.securityPatchLevel = QString::fromStdString(currentSecurityPatchDate());
+    integrityConfig.securityPatchLevel = currentSecurityPatchDate();
     integrityConfig.targetVerdict = IntegrityVerdict::PLAY_INTEGRITY_DEVICE;
     
     integrity.setConfig(instanceId, integrityConfig);

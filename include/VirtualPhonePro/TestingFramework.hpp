@@ -83,7 +83,7 @@ struct TestReport {
 class TestingFramework : public QObject {
     Q_OBJECT
 public:
-    explicit TestingFramework(QObject* parent = nullptr);
+    explicit TestingFramework(QObject* parent);
     virtual ~TestingFramework();
     static TestingFramework& instance();
     

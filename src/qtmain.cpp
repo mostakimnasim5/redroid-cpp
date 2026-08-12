@@ -133,7 +133,7 @@ static bool installCrashHandler(QObject* parent) {
     int addrLen = sizeof(addr);
     ::getsockname(listener, reinterpret_cast<sockaddr*>(&addr), &addrLen);
     g_crashPipe[1] = static_cast<int>(::socket(AF_INET, SOCK_STREAM, 0));
-    ::connect(reinterpret_cast<SOCKET>(g_crashPipe[1]),
+    ::connect(static_cast<SOCKET>(g_crashPipe[1]),
               reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
     g_crashPipe[0] = static_cast<int>(::accept(listener, nullptr, nullptr));
     ::closesocket(listener);
