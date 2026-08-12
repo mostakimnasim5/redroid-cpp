@@ -348,15 +348,9 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // PhoneWindow captures screen via: adb exec-out screencap -p
     // This works on all platforms without VcXsrv/X11
     
-    // Optional X11 for Windows (only if VcXsrv is running)
-    QString displayEnv = qgetenv("DISPLAY");
-    if (!displayEnv.isEmpty()) {
-        args << "-e" << QString("DISPLAY=%1").arg(displayEnv);
-    } else {
-        // Windows default X11 server address
-        args << "-e" << "DISPLAY=host.docker.internal:0";
-        args << "--add-host" << "host.docker.internal:host-gateway";
-    }
+    // Screen capture is done via: adb exec-out screencap -p
+    // This works on all platforms without X11/VcXsrv.
+    // DISPLAY is intentionally not injected.
     
     // Redroid configuration
     args << "-e" << "REDROID_CTS=0";
