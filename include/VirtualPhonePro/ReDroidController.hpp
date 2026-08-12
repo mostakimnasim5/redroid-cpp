@@ -505,6 +505,16 @@ signals:
      */
     void operationCompleted(const QString& instanceId, const QString& operation, bool success);
 
+    /**
+     * @brief Emitted periodically during long-running operations (e.g. boot wait).
+     * @param instanceId  Target instance
+     * @param operation   Operation name ("boot", "install", …)
+     * @param percent     Progress 0-100
+     * @param status      Human-readable status message
+     */
+    void operationProgress(const QString& instanceId, const QString& operation,
+                           int percent, const QString& status);
+
 private:
     explicit ReDroidController(QObject* parent = nullptr);
     Q_DISABLE_COPY(ReDroidController)

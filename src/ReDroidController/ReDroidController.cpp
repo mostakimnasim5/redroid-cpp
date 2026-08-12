@@ -436,21 +436,67 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     info.state = InstanceState::Running;
     info.startedAt = QDateTime::currentMSecsSinceEpoch();
     m_instances[instanceId] = info;
-    
-    // Wait for ADB to be ready
-    QThread::msleep(5000);
-    
-    // Connect ADB
+
+    // =========================================================================
+    // Fix 4: Wait for sys.boot_completed=1 before declaring ADB ready.
+    //
+    // Android property daemon starts INSIDE /init. Polling
+    // sys.boot_completed via ADB shell getprop is the only reliable
+    // signal that property_service is up and the system is fully booted.
+    // A fixed msleep(5000) was used previously — too short for slow
+    // swiftshader boots (~40-90s) and too long for fast ones.
+    // =========================================================================
+    const int BOOT_TIMEOUT_SEC = 180;   // 3 minutes max
+    const int POLL_INTERVAL_MS = 2000;
+    bool bootCompleted = false;
+
+    qDebug() << "[Boot] Waiting for sys.boot_completed (timeout:" << BOOT_TIMEOUT_SEC << "s)";
+    emit operationProgress(instanceId, "boot", 0,
+                           QStringLiteral("Waiting for Android to boot..."));
+
     QString adbSerial = QString("127.0.0.1:%1").arg(adbPort);
-    executeAdbSync(instanceId, {"connect", adbSerial}, 15000);
-    
+
+    // First establish ADB connection (retried until port accepts)
+    {
+        int connectRetries = 0;
+        while (connectRetries < 30) {
+            QString out = executeAdbSync(instanceId, {"connect", adbSerial}, 5000);
+            if (out.contains("connected")) break;
+            QThread::msleep(2000);
+            ++connectRetries;
+        }
+    }
+
+    for (int elapsed = 0; elapsed < BOOT_TIMEOUT_SEC * 1000; elapsed += POLL_INTERVAL_MS) {
+        QThread::msleep(POLL_INTERVAL_MS);
+        QString val = executeAdbSync(instanceId,
+                                     {"shell", "getprop", "sys.boot_completed"},
+                                     3000).trimmed();
+        if (val == QStringLiteral("1")) {
+            bootCompleted = true;
+            qDebug() << "[Boot] sys.boot_completed=1 after" << elapsed / 1000 << "s";
+            emit operationProgress(instanceId, "boot", 100,
+                                   QStringLiteral("Android boot completed"));
+            break;
+        }
+        int pct = qMin(99, elapsed * 99 / (BOOT_TIMEOUT_SEC * 1000));
+        emit operationProgress(instanceId, "boot", pct,
+                               QStringLiteral("Booting... %1s").arg(elapsed / 1000));
+    }
+
+    if (!bootCompleted) {
+        qWarning() << "[Boot] Timeout waiting for sys.boot_completed — instance may be unstable";
+        emit error(QStringLiteral("Instance %1: boot timeout (%2s). "
+                                  "Check container logs for /init errors.")
+                       .arg(instanceId).arg(BOOT_TIMEOUT_SEC));
+    }
+
     // Store ADB serial
     m_adbSerials[instanceId] = adbSerial;
-    
+
     // Check ADB connection
     QString devicesOutput = executeAdbSync(instanceId, {"devices"});
     info.adbConnected = devicesOutput.contains(adbSerial);
-    
     m_instances[instanceId] = info;
     
     // Start monitoring
@@ -487,13 +533,18 @@ bool ReDroidController::stopInstance(const QString& instanceId, bool force) {
     }
     
     // Stop container
-    QStringList stopArgs = {"stop"};
-    if (force) {
-        stopArgs << "-t" << "0";
-    }
-    stopArgs << containerName;
-    
-    OperationResult result = executeDocker(stopArgs, 30000);
+    // --time N: Docker sends SIGTERM, waits N seconds, then SIGKILL.
+    // force=true  → --time 0  (immediate SIGKILL, used for crash/CI)
+    // force=false → --time 10 (10s graceful shutdown for Android init)
+    //
+    // Qt-side timeout must be > Docker's wait time to avoid the
+    // QProcess being killed before Docker finishes its own wait.
+    // We give Qt (dockerTimeout) = (stopSeconds + 5) * 1000 ms.
+    const int stopSeconds   = force ? 0 : 10;
+    const int dockerTimeout = (stopSeconds + 5) * 1000;
+
+    QStringList stopArgs = {"stop", "--time", QString::number(stopSeconds), containerName};
+    OperationResult result = executeDocker(stopArgs, dockerTimeout);
     
     if (!result.success) {
         qWarning() << "Failed to stop container:" << result.errorMessage;
@@ -627,6 +678,27 @@ bool ReDroidController::isAdbConnected(const QString& instanceId) const {
 
 bool ReDroidController::applyProfile(const QString& instanceId, const DeviceProfile& profile) {
     qDebug() << "Applying profile to instance:" << instanceId;
+
+    // =========================================================================
+    // Fix 5: Guard against pre-boot setprop calls.
+    //
+    // property_service (the daemon that handles setprop) is started by
+    // Android's /init. Calling setprop before sys.boot_completed=1 writes
+    // to a socket that does not yet exist — every call silently fails.
+    // We verify boot is complete before issuing any property writes.
+    // =========================================================================
+    QString bootVal = executeAdbSync(instanceId,
+                                     {"shell", "getprop", "sys.boot_completed"},
+                                     3000).trimmed();
+    if (bootVal != QStringLiteral("1")) {
+        qWarning() << "applyProfile called before boot_completed on" << instanceId
+                   << "— aborting to prevent silent setprop failure";
+        emit error(QStringLiteral("applyProfile: instance %1 has not finished booting "
+                                  "(sys.boot_completed=%2). "
+                                  "Call applyProfile only after boot is confirmed.")
+                       .arg(instanceId, bootVal));
+        return false;
+    }
     
     // Set build properties
     setProperty(instanceId, "ro.product.brand", profile.build.brand);
