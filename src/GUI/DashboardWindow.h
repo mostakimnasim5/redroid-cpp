@@ -167,6 +167,7 @@ public:
 
 private slots:
     void onNewPhoneClicked();
+    void onBatchLaunchClicked();
     void onPhoneCardOpen(const QString& instanceId);
     void onPhoneCardStart(const QString& instanceId);
     void onPhoneCardStop(const QString& instanceId);
@@ -201,6 +202,7 @@ private:
     QPushButton* m_newPhoneButton;
     QPushButton* m_refreshButton;
     QPushButton* m_installRequirementsButton;
+    QPushButton* m_batchLaunchButton;
     QPushButton* m_uninstallRequirementsButton;
     QProgressBar* m_requirementsProgressBar;
     RequirementsManager* m_requirementsManager;

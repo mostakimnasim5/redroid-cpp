@@ -587,6 +587,8 @@ private:
     // Instance management
     QMap<QString, InstanceInfo> m_instances;
     mutable QMutex m_instancesMutex;
+    QMutex         m_globalAdbMutex;  // Serialises global ADBManager::selectDevice()
+                                      // across concurrent applyCompleteRealism() calls
     int m_nextAdbPort;
     
     // Monitoring

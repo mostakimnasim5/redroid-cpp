@@ -95,59 +95,90 @@ void MultiInstanceManager::updateResourceTracking(const QString& instanceId, boo
 BatchStatus MultiInstanceManager::deployBatch(const InstanceDeployConfig& config) {
     BatchStatus status;
     status.total = config.count;
-    
-    qDebug() << "Starting batch deployment of" << config.count << "instances";
-    
-    QString batchId = QUuid::createUuid().toString();
-    
-    for (int i = 0; i < config.count; ++i) {
-        if (!canDeploy(1)) {
-            qWarning() << "Cannot deploy more instances - resource limit reached";
-            emit resourceWarning("Resource limit reached. Cannot deploy more instances.");
-            break;
-        }
-        
-        QString instanceId = generateUniqueId(config.profilePrefix, i);
-        
-        // Clone profile with unique identity
-        DeviceProfile profile = cloneProfile(config.baseProfile, instanceId, i);
-        
-        // Set unique ports
-        if (config.assignUniquePort) {
-            profile.adbPort = config.portStart + (i * 2);
-        }
-        
-        qDebug() << "Deploying instance" << i + 1 << "/" << config.count << ":" << instanceId;
-        
-        // Start instance
-        ReDroidController& ctrl = ReDroidController::instance();
-        bool success = ctrl.startInstance(instanceId, profile);
-        
-        status.completed++;
-        status.instanceResults[instanceId] = success;
-        
-        if (success) {
-            updateResourceTracking(instanceId, true);
-        } else {
-            status.failed++;
-            status.errors.append(QString("Failed to deploy %1: Unknown error").arg(instanceId));
-        }
-        
-        emit batchProgress(batchId, i + 1, config.count);
-        
-        // Delay between deployments
-        if (config.delayBetween > 0 && i < config.count - 1) {
-            QThread::msleep(config.delayBetween);
-        }
+
+    if (!canDeploy(config.count)) {
+        emit resourceWarning("Resource limit reached. Cannot deploy requested instances.");
+        status.failed = config.count;
+        return status;
     }
-    
-    status.running = status.total - status.failed;
-    
-    qDebug() << "Batch deployment complete:" << status.completed << "succeeded," 
+
+    qDebug() << "Batch deploy:" << config.count << "instances (parallel)";
+    const QString batchId = QUuid::createUuid().toString();
+
+    // ── 1. Pre-allocate instanceId + profile list ─────────────────────────────
+    // Do this synchronously so every instance has a unique identity before any
+    // container starts. cloneProfile() generates unique IMEI/serial/MAC — must
+    // not run concurrently (uses QRandomGenerator which is not thread-safe here).
+    struct LaunchItem {
+        QString       instanceId;
+        DeviceProfile profile;
+    };
+    QList<LaunchItem> items;
+    items.reserve(config.count);
+
+    for (int i = 0; i < config.count; ++i) {
+        LaunchItem item;
+        item.instanceId = generateUniqueId(config.profilePrefix, i);
+        item.profile    = cloneProfile(config.baseProfile, item.instanceId, i);
+        if (config.assignUniquePort)
+            item.profile.adbPort = config.portStart + (i * 2);
+        items.append(item);
+    }
+
+    // ── 2. Launch all containers in parallel ──────────────────────────────────
+    // startInstance() is thread-safe (internal QMutexLocker on m_instancesMutex,
+    // socket-level port probe, binderfs isolation per container).
+    // applyCompleteRealism() is serialised by m_globalAdbMutex so the global
+    // ADBManager selectDevice() cannot interleave between instances.
+    QMutex           resultMutex;
+    std::atomic<int> completed{0};
+    std::atomic<int> failed{0};
+
+    ReDroidController& ctrl = ReDroidController::instance();
+
+    QList<QFuture<void>> futures;
+    futures.reserve(items.size());
+
+    for (const LaunchItem& item : items) {
+        QFuture<void> f = QtConcurrent::run([&, item]() {
+            bool ok = ctrl.startInstance(item.instanceId, item.profile);
+
+            {
+                QMutexLocker lk(&resultMutex);
+                status.instanceResults[item.instanceId] = ok;
+                if (ok) {
+                    updateResourceTracking(item.instanceId, true);
+                } else {
+                    ++failed;
+                    status.errors.append(
+                        QString("Failed to deploy %1").arg(item.instanceId));
+                }
+            }
+
+            int done = ++completed;
+            emit batchProgress(batchId, done, config.count);
+        });
+        futures.append(f);
+
+        // Optional stagger — reduces simultaneous Docker API load.
+        // config.delayBetween == 0 means fully parallel (no stagger).
+        if (config.delayBetween > 0 && &item != &items.last())
+            QThread::msleep(config.delayBetween);
+    }
+
+    // ── 3. Wait for all futures ───────────────────────────────────────────────
+    for (QFuture<void>& f : futures)
+        f.waitForFinished();
+
+    status.completed = completed.load();
+    status.failed    = failed.load();
+    status.running   = status.completed - status.failed;
+
+    qDebug() << "Batch deploy complete:"
+             << status.completed - status.failed << "OK,"
              << status.failed << "failed";
-    
+
     emit batchCompleted(batchId, status);
-    
     return status;
 }
 

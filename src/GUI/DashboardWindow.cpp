@@ -16,12 +16,15 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QProgressDialog>
 #include <QTimer>
 #include <QDebug>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QtConcurrent>
 
+#include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/NetworkConfigManager.hpp"
 #include "SettingsDialog.h"
 
@@ -625,6 +628,25 @@ void DashboardWindow::setupUI() {
     );
     connect(m_newPhoneButton, &QPushButton::clicked, this, &DashboardWindow::onNewPhoneClicked);
     toolbarLayout->addWidget(m_newPhoneButton);
+
+    // ── Batch Launch button ──────────────────────────────────────────────────
+    m_batchLaunchButton = new QPushButton("⚡ Batch Launch", this);
+    m_batchLaunchButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #e67e22;"
+        "    color: white;"
+        "    border: none;"
+        "    padding: 10px 20px;"
+        "    border-radius: 6px;"
+        "    font-size: 14px;"
+        "    font-weight: bold;"
+        "}"
+        "QPushButton:hover { background-color: #f39c12; }"
+        "QPushButton:disabled { background-color: #555; color: #aaa; }"
+    );
+    connect(m_batchLaunchButton, &QPushButton::clicked,
+            this, &DashboardWindow::onBatchLaunchClicked);
+    toolbarLayout->addWidget(m_batchLaunchButton);
     
     m_refreshButton = new QPushButton("🔄 Refresh", this);
     m_refreshButton->setStyleSheet(
@@ -923,7 +945,102 @@ void DashboardWindow::onNewPhoneClicked() {
     }
 }
 
-void DashboardWindow::createPhoneCard(const QString& instanceId) {
+void DashboardWindow::onBatchLaunchClicked() {
+    // ── Dialog — ask how many instances and which profile ────────────────────
+    QDialog dlg(this);
+    dlg.setWindowTitle("Batch Launch");
+    dlg.setFixedWidth(420);
+
+    QVBoxLayout* dlgLayout = new QVBoxLayout(&dlg);
+    dlgLayout->setSpacing(12);
+    dlgLayout->setContentsMargins(20, 20, 20, 20);
+
+    dlgLayout->addWidget(new QLabel("<b>Number of instances:</b>", &dlg));
+    QSpinBox* countSpin = new QSpinBox(&dlg);
+    countSpin->setRange(1, 20);
+    countSpin->setValue(3);
+    countSpin->setFixedHeight(32);
+    dlgLayout->addWidget(countSpin);
+
+    dlgLayout->addWidget(new QLabel("<b>Stagger delay between launches (ms):</b>", &dlg));
+    QSpinBox* delaySpin = new QSpinBox(&dlg);
+    delaySpin->setRange(0, 10000);
+    delaySpin->setValue(500);
+    delaySpin->setSingleStep(250);
+    delaySpin->setFixedHeight(32);
+    dlgLayout->addWidget(delaySpin);
+
+    dlgLayout->addWidget(new QLabel("<b>Profile prefix (e.g. 'farm'):</b>", &dlg));
+    QLineEdit* prefixEdit = new QLineEdit("phone", &dlg);
+    prefixEdit->setFixedHeight(32);
+    dlgLayout->addWidget(prefixEdit);
+
+    auto* buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    dlgLayout->addWidget(buttons);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    const int     count  = countSpin->value();
+    const int     delay  = delaySpin->value();
+    const QString prefix = prefixEdit->text().trimmed().isEmpty()
+                           ? "phone" : prefixEdit->text().trimmed();
+
+    // ── Build config ─────────────────────────────────────────────────────────
+    InstanceDeployConfig config;
+    config.count         = count;
+    config.profilePrefix = prefix;
+    config.baseProfile   = DeviceProfile::createSamsungS24Ultra();
+    config.assignUniquePort = true;
+    config.portStart     = 5560;
+    config.delayBetween  = delay;
+
+    // ── Progress dialog ───────────────────────────────────────────────────────
+    QProgressDialog* prog = new QProgressDialog(
+        QString("Launching %1 instances in parallel...").arg(count),
+        "Cancel", 0, count, this);
+    prog->setWindowTitle("Batch Launch");
+    prog->setWindowModality(Qt::WindowModal);
+    prog->setMinimumDuration(0);
+    prog->setValue(0);
+
+    MultiInstanceManager& mgr = MultiInstanceManager::instance();
+
+    // Connect progress signal BEFORE starting so we don't miss early updates
+    connect(&mgr, &MultiInstanceManager::batchProgress,
+            prog, [prog](const QString&, int done, int total) {
+        prog->setMaximum(total);
+        prog->setValue(done);
+        prog->setLabelText(QString("Launched %1 / %2 instances...").arg(done).arg(total));
+        QCoreApplication::processEvents();
+    });
+
+    connect(&mgr, &MultiInstanceManager::batchCompleted,
+            this, [this, prog](const QString&, const BatchStatus& status) {
+        prog->close();
+        refreshInstances();
+        QMessageBox::information(this, "Batch Launch Complete",
+            QString("✅  %1 launched successfully\n"
+                    "❌  %2 failed")
+                .arg(status.completed - status.failed)
+                .arg(status.failed));
+    });
+
+    // Disable button during launch to prevent double-click
+    m_batchLaunchButton->setEnabled(false);
+    connect(&mgr, &MultiInstanceManager::batchCompleted,
+            this, [this]() { m_batchLaunchButton->setEnabled(true); });
+
+    // Launch asynchronously so the UI stays responsive
+    QtConcurrent::run([&mgr, config]() {
+        mgr.deployBatch(config);
+    });
+
+    prog->exec();
+}
     PhoneCard* card = new PhoneCard(instanceId, m_scrollContent);
     
     // Load profile if exists

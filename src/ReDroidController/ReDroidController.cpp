@@ -1035,6 +1035,19 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // manager before any global-ADB module runs, so every singleton below
     // operates on the correct container.
     // =========================================================================
+    // =========================================================================
+    // Global ADBManager serialisation lock.
+    // applyCompleteRealism() calls 11 phases that all route through the
+    // global ADBManager singleton (getInstance()). Without this lock, two
+    // concurrent launches can interleave selectDevice() calls, causing
+    // Phase-N of instance-A to fire commands at instance-B's serial.
+    // The lock is held for the entire realism pipeline of one instance;
+    // other instances queue behind it. Each instance's pipeline takes
+    // ~5-15 s, so contention is brief relative to the 90-180 s boot wait
+    // that already precedes this call.
+    // =========================================================================
+    QMutexLocker globalAdbLock(&m_globalAdbMutex);
+
     {
         const QString adbSerial = getAdbSerial(instanceId);
         VirtualPhonePro::ADBManager& globalAdb = VirtualPhonePro::ADBManager::getInstance();
