@@ -2,13 +2,14 @@
  * @file qtmain.cpp
  * @brief Qt6 GUI Application Main Entry Point
  * @version 2.0.0
- * 
+ *
  * VirtualPhonePro Qt6 GUI with Docker Auto-Start support
  * Includes Firebase-based admin authentication
  */
 
 #include <QApplication>
 #include <QMessageBox>
+#include <QSocketNotifier>
 #include <QStyleFactory>
 #include <QDir>
 #include <QJsonDocument>
@@ -27,51 +28,143 @@
 
 #include <csignal>
 
+#ifdef Q_OS_WIN
+#  include <io.h>
+#  include <fcntl.h>
+   // Windows has no pipe() — use a self-connected UDP socket pair instead.
+#  include <winsock2.h>
+#else
+#  include <unistd.h>   // pipe(), write(), read()
+#endif
+
 using namespace VirtualPhonePro;
 
 // ============================================================================
-// Crash Handler - Catches unhandled exceptions and signals
+// Crash Handler — async-signal-safe pipe bridge
+//
+// POSIX (and Windows SEH) prohibit calling anything that acquires a lock,
+// allocates heap memory, or touches Qt internals from inside a signal
+// handler.  That rules out QString, QMessageBox, QList, FileLogger, and
+// every other Qt class.
+//
+// Solution: the raw signal handler does ONE thing — write(2) the signal
+// number into a self-pipe.  A QSocketNotifier on the main Qt thread reads
+// that byte and dispatches the real cleanup + UI from safe context.
 // ============================================================================
 
-void crashHandler(int signal) {
-    QString message;
-    
-    switch (signal) {
+// Self-pipe file descriptors (write-end written by signal handler,
+// read-end watched by QSocketNotifier on the main thread).
+static int g_crashPipe[2] = {-1, -1};
+
+// The only code that runs inside the signal handler.
+// write(2) is async-signal-safe; everything else is forbidden here.
+static void rawSignalHandler(int signum) noexcept {
+#ifdef Q_OS_WIN
+    // On Windows we use a loopback socket pair; send() is safe enough
+    // for our purposes (called once, no retry needed).
+    char byte = static_cast<char>(signum);
+    ::send(g_crashPipe[1], &byte, 1, 0);
+#else
+    char byte = static_cast<char>(signum);
+    // Ignore return value — we cannot do anything useful on failure
+    // inside a signal handler.
+    (void)::write(g_crashPipe[1], &byte, 1);
+#endif
+}
+
+// Called on the main Qt thread by QSocketNotifier — all Qt APIs are safe.
+static void onCrashSignalReceived(int signum) {
+    const char* sigName = "Unknown Signal";
+    const char* detail  = "An unexpected error occurred.";
+
+    switch (signum) {
         case SIGSEGV:
-            message = "Segmentation Fault (SIGSEGV)\n\n"
-                     "The application encountered a memory access error.";
+            sigName = "SIGSEGV";
+            detail  = "Segmentation fault — illegal memory access.";
             break;
         case SIGABRT:
-            message = "Abnormal Termination (SIGABRT)\n\n"
-                     "The application was forced to terminate.";
+            sigName = "SIGABRT";
+            detail  = "Abnormal termination — assertion or abort() called.";
             break;
         case SIGFPE:
-            message = "Floating Point Exception (SIGFPE)\n\n"
-                     "The application encountered a math error.";
+            sigName = "SIGFPE";
+            detail  = "Floating-point exception — division by zero or overflow.";
             break;
-        default:
-            message = QString("Unexpected Signal: %1").arg(signal);
     }
-    
-    // Log the crash
-    FileLogger::instance().critical("CrashHandler", message);
-    
-    // Save state
-    ReDroidController& controller = ReDroidController::instance();
-    QList<InstanceInfo> instances = controller.listInstances();
+
+    // 1. Write to log (safe — we are on the main thread now).
+    const QString logMsg = QString("[%1] %2").arg(sigName, detail);
+    FileLogger::instance().critical("CrashHandler", logMsg);
+
+    // 2. Stop all running containers gracefully.
+    ReDroidController& ctrl = ReDroidController::instance();
+    const QList<InstanceInfo> instances = ctrl.listInstances();
     for (const InstanceInfo& info : instances) {
         if (info.state == InstanceState::Running) {
-            controller.stopInstance(info.instanceId, true);
+            ctrl.stopInstance(info.instanceId, /*force=*/true);
         }
     }
-    
-    // Show error dialog
-    QMessageBox::critical(nullptr, "Application Crash",
-        QString("%1\n\nError Code: %2\n\nCheck log file: %3")
-            .arg(message).arg(signal).arg(FileLogger::instance().getLogFilePath())
+
+    // 3. Show user-facing dialog (safe — main thread, event loop still alive).
+    QMessageBox::critical(
+        nullptr,
+        QStringLiteral("Application Crash — %1").arg(sigName),
+        QString("Signal: %1\n\n%2\n\nLog: %3")
+            .arg(sigName, detail, FileLogger::instance().getLogFilePath())
     );
-    
-    exit(1);
+
+    // 4. Hard exit — do not re-enter Qt event loop after a fatal signal.
+    ::exit(1);
+}
+
+// Install the self-pipe and register the raw signal handler.
+// Returns false if pipe creation fails (non-fatal: app runs without handler).
+static bool installCrashHandler(QObject* parent) {
+#ifdef Q_OS_WIN
+    // Windows: loopback socket pair (Winsock must already be initialised
+    // by Qt at this point).
+    SOCKET listener = ::socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in addr{};
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port        = 0;
+    ::bind(listener, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+    ::listen(listener, 1);
+    int addrLen = sizeof(addr);
+    ::getsockname(listener, reinterpret_cast<sockaddr*>(&addr), &addrLen);
+    g_crashPipe[1] = static_cast<int>(::socket(AF_INET, SOCK_STREAM, 0));
+    ::connect(reinterpret_cast<SOCKET>(g_crashPipe[1]),
+              reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+    g_crashPipe[0] = static_cast<int>(::accept(listener, nullptr, nullptr));
+    ::closesocket(listener);
+#else
+    if (::pipe(g_crashPipe) != 0)
+        return false;
+#endif
+
+    // QSocketNotifier watches the read-end on the main thread.
+    auto* notifier = new QSocketNotifier(g_crashPipe[0],
+                                         QSocketNotifier::Read, parent);
+    QObject::connect(notifier, &QSocketNotifier::activated,
+                     [notifier](QSocketDescriptor) {
+        // Disable notifier before reading to avoid re-entrancy.
+        notifier->setEnabled(false);
+
+        char byte = 0;
+#ifdef Q_OS_WIN
+        ::recv(g_crashPipe[0], &byte, 1, 0);
+#else
+        (void)::read(g_crashPipe[0], &byte, 1);
+#endif
+        onCrashSignalReceived(static_cast<int>(byte));
+    });
+
+    // Register the async-signal-safe raw handler for each fatal signal.
+    ::signal(SIGSEGV, rawSignalHandler);
+    ::signal(SIGABRT, rawSignalHandler);
+    ::signal(SIGFPE,  rawSignalHandler);
+
+    return true;
 }
 
 // ============================================================================
@@ -234,13 +327,6 @@ AutoStartManager* g_autoStartManager = nullptr;
 // ============================================================================
 
 int main(int argc, char *argv[]) {
-    // =========================================================================
-    // Install Crash Handlers FIRST (before anything else)
-    // =========================================================================
-    signal(SIGSEGV, crashHandler);
-    signal(SIGABRT, crashHandler);
-    signal(SIGFPE, crashHandler);
-    
     // Initialize FileLogger FIRST (before everything else)
     FileLogger::instance().info("Startup", "========================================");
     FileLogger::instance().info("Startup", "VirtualPhonePro v3.0.0 Starting...");
@@ -254,6 +340,19 @@ int main(int argc, char *argv[]) {
     // Create application
     QApplication app(argc, argv);
     app.setStyle(QStyleFactory::create("Fusion"));
+
+    // =========================================================================
+    // Install crash handler AFTER QApplication exists.
+    // QSocketNotifier requires a running event loop; the pipe write-end is
+    // filled by a minimal async-signal-safe raw handler, and the real
+    // cleanup (FileLogger, QMessageBox, container shutdown) runs safely on
+    // the main thread via the notifier callback.
+    // =========================================================================
+    if (!installCrashHandler(&app)) {
+        FileLogger::instance().warning("Startup",
+            "Could not install crash handler (pipe creation failed). "
+            "Crashes will not be caught gracefully.");
+    }
     
     // Setup dark theme palette
     QPalette darkPalette;
