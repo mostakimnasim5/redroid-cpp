@@ -241,7 +241,6 @@ private:
     QSpinBox* m_memoryLimitSpin;
     QSpinBox* m_cpuQuotaSpin;
     QSpinBox* m_baseAdbPortSpin;
-    QSpinBox* m_baseVncPortSpin;
     QCheckBox* m_autoConnectCheck;
     QCheckBox* m_autoSpoofCheck;
     QLabel* m_connectionStatusLabel;

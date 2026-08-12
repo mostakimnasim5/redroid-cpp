@@ -195,7 +195,6 @@ public:
 
     // Runtime assignment
     int adbPort;                // ADB port (e.g., 5555)
-    int vncPort;                // VNC port (e.g., 5900)
     int instanceIndex;          // Zero-based instance index
 
 public:

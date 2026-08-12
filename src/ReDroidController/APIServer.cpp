@@ -327,7 +327,6 @@ QJsonObject APIServer::listInstances() {
         instance["name"] = info.containerName;
         instance["state"] = stateToString(info.state);
         instance["adbPort"] = info.adbPort;
-        instance["vncPort"] = info.vncPort;
         instance["ipAddress"] = info.ipAddress;
         instance["adbConnected"] = info.adbConnected;
         instances.append(instance);
@@ -755,10 +754,8 @@ QJsonObject APIServer::instanceToJson(const InstanceInfo& info) {
     obj["name"] = info.containerName;
     obj["state"] = stateToString(info.state);
     obj["adbPort"] = info.adbPort;
-    obj["vncPort"] = info.vncPort;
     obj["ipAddress"] = info.ipAddress;
     obj["adbConnected"] = info.adbConnected;
-    obj["vncEnabled"] = info.vncEnabled;
     obj["memoryUsage"] = static_cast<qint64>(info.memoryUsage);
     obj["memoryLimit"] = static_cast<qint64>(info.memoryLimit);
     obj["cpuUsage"] = info.cpuUsage;

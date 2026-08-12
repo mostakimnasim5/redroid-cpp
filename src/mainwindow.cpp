@@ -1328,10 +1328,6 @@ void SettingsDialog::setupUI() {
     m_baseAdbPortSpin->setValue(5555);
     form->addRow("Base ADB Port:", m_baseAdbPortSpin);
     
-    m_baseVncPortSpin = new QSpinBox(this);
-    m_baseVncPortSpin->setRange(1024, 65535);
-    m_baseVncPortSpin->setValue(5900);
-    form->addRow("Base VNC Port:", m_baseVncPortSpin);
     
     m_autoConnectCheck = new QCheckBox("Auto-connect ADB on start", this);
     form->addRow("", m_autoConnectCheck);
@@ -1361,7 +1357,6 @@ DockerConfig SettingsDialog::getConfig() const {
     config.memoryLimit = QString("%1m").arg(m_memoryLimitSpin->value());
     config.cpuQuota = m_cpuQuotaSpin->value() * 100000;
     config.baseAdbPort = m_baseAdbPortSpin->value();
-    config.baseVncPort = m_baseVncPortSpin->value();
     return config;
 }
 
@@ -1373,7 +1368,6 @@ void SettingsDialog::setConfig(const DockerConfig& config) {
     m_memoryLimitSpin->setValue(config.memoryLimit.left(config.memoryLimit.size()-1).toInt());
     m_cpuQuotaSpin->setValue(config.cpuQuota / 100000);
     m_baseAdbPortSpin->setValue(config.baseAdbPort);
-    m_baseVncPortSpin->setValue(config.baseVncPort);
 }
 
 void SettingsDialog::onBrowseDocker() {
@@ -2029,10 +2023,6 @@ void SettingsDialog::setupUI() {
     m_baseAdbPortSpin->setValue(5555);
     portLayout->addRow("Base ADB Port:", m_baseAdbPortSpin);
     
-    m_baseVncPortSpin = new QSpinBox(this);
-    m_baseVncPortSpin->setRange(5000, 6000);
-    m_baseVncPortSpin->setValue(5900);
-    portLayout->addRow("Base VNC Port:", m_baseVncPortSpin);
     
     mainLayout->addWidget(portGroup);
     
@@ -2081,7 +2071,6 @@ void SettingsDialog::setConfig(const DockerConfig& config) {
     m_memoryLimitSpin->setValue(config.memoryLimit.replace("m", "").toInt());
     m_cpuQuotaSpin->setValue(config.cpuQuota / 100000);
     m_baseAdbPortSpin->setValue(config.baseAdbPort);
-    m_baseVncPortSpin->setValue(config.baseVncPort);
 }
 
 void SettingsDialog::onBrowseDocker() {
@@ -2117,7 +2106,6 @@ void SettingsDialog::onOk() {
     m_config.memoryLimit = QString::number(m_memoryLimitSpin->value()) + "m";
     m_config.cpuQuota = m_cpuQuotaSpin->value() * 100000;
     m_config.baseAdbPort = m_baseAdbPortSpin->value();
-    m_config.baseVncPort = m_baseVncPortSpin->value();
     
     accept();
 }

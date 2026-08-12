@@ -32,7 +32,6 @@ struct InstanceInfo {
     
     InstanceState state;           // Current state
     int adbPort;                   // ADB port on host
-    int vncPort;                   // VNC port on host
     int instanceIndex;             // Zero-based index
     
     QString ipAddress;             // Container internal IP
@@ -47,7 +46,6 @@ struct InstanceInfo {
     
     // Connection info
     bool adbConnected;             // ADB connected flag
-    bool vncEnabled;               // VNC enabled flag
     
     // Network configuration
     NetworkIsolationConfig networkConfig;
@@ -91,7 +89,6 @@ struct DockerConfig {
     QString networkDriver;         // Network driver (bridge, host)
     
     int baseAdbPort;               // Base ADB port (default: 5555)
-    int baseVncPort;               // Base VNC port (default: 5900)
     
     QString memoryLimit;           // Memory limit (e.g., "512m")
     int cpuQuota;                  // CPU quota (e.g., 200000 = 2 cores)
@@ -517,7 +514,6 @@ private:
     QString getAdbSerial(const QString& instanceId) const;
     QString getContainerName(const QString& instanceId) const;
     int allocateAdbPort();
-    int allocateVncPort();
     
     QString convertToWSL2Path(const QString& windowsPath) const;
     QString convertToWindowsPath(const QString& wsl2Path) const;
@@ -545,7 +541,6 @@ private:
     QMap<QString, InstanceInfo> m_instances;
     mutable QMutex m_instancesMutex;
     int m_nextAdbPort;
-    int m_nextVncPort;
     
     // Monitoring
     QTimer* m_monitoringTimer;

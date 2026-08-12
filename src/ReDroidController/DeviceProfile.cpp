@@ -257,7 +257,7 @@ void SecurityConfig::fromVariantMap(const QVariantMap& map) {
 
 DeviceProfile::DeviceProfile()
     : adbPort(5555)
-    , vncPort(5900)
+
     , instanceIndex(0)
 {
     id = QUuid::createUuid().toString();
@@ -310,7 +310,6 @@ QJsonObject DeviceProfile::toJson() const {
     
     // Runtime
     root["adbPort"] = adbPort;
-    root["vncPort"] = vncPort;
     root["instanceIndex"] = instanceIndex;
     
     return root;
@@ -359,7 +358,6 @@ void DeviceProfile::fromJson(const QJsonObject& json) {
     
     // Runtime
     adbPort = json["adbPort"].toInt(5555);
-    vncPort = json["vncPort"].toInt(5900);
     instanceIndex = json["instanceIndex"].toInt(0);
 }
 

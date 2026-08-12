@@ -789,7 +789,6 @@ void DashboardWindow::onNewPhoneClicked() {
         
         // Set ports
         profile.adbPort = port;
-        profile.vncPort = port + 1;
         
         // Start instance
         ReDroidController& controller = ReDroidController::instance();

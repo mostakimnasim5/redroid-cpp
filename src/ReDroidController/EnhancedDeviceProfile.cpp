@@ -545,7 +545,6 @@ EnhancedDeviceProfile::EnhancedDeviceProfile() {
     id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     createdAt = QDateTime::currentDateTime().toString(Qt::ISODate);
     adbPort = 5555;
-    vncPort = 5900;
 }
 
 EnhancedDeviceProfile EnhancedDeviceProfile::createForBanking(const QString& manufacturer) {
@@ -599,7 +598,6 @@ QJsonObject EnhancedDeviceProfile::toJson() const {
     json["deviceClass"] = deviceClass;
     json["createdAt"] = createdAt;
     json["adbPort"] = adbPort;
-    json["vncPort"] = vncPort;
     return json;
 }
 
@@ -610,7 +608,6 @@ void EnhancedDeviceProfile::fromJson(const QJsonObject& json) {
     deviceClass = json["deviceClass"].toString();
     createdAt = json["createdAt"].toString();
     adbPort = json["adbPort"].toInt();
-    vncPort = json["vncPort"].toInt();
 }
 
 bool EnhancedDeviceProfile::isValidForBanking() const {

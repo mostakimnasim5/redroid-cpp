@@ -345,7 +345,6 @@ public:
     
     // Runtime
     int adbPort;
-    int vncPort;
     
 public:
     EnhancedDeviceProfile();

@@ -69,7 +69,6 @@ DockerConfig::DockerConfig()
     , imageName("redroid/redroid:12.0.0-latest")
     , networkDriver("bridge")
     , baseAdbPort(5555)
-    , baseVncPort(5900)
     , memoryLimit("1536m")
     , cpuQuota(200000)
     , shmSize(256)
@@ -86,7 +85,6 @@ DockerConfig::DockerConfig()
 ReDroidController::ReDroidController(QObject* parent)
     : QObject(parent)
     , m_nextAdbPort(5555)
-    , m_nextVncPort(5900)
     , m_monitoringTimer(nullptr)
     , m_monitoring(false)
 {
@@ -207,7 +205,6 @@ void ReDroidController::loadConfiguration() {
     m_config.cpuQuota = settings.value("docker/cpuQuota", m_config.cpuQuota).toInt();
     m_config.shmSize = settings.value("docker/shmSize", m_config.shmSize).toInt();
     m_config.baseAdbPort = settings.value("docker/baseAdbPort", m_config.baseAdbPort).toInt();
-    m_config.baseVncPort = settings.value("docker/baseVncPort", m_config.baseVncPort).toInt();
     m_config.useWSL2 = settings.value("docker/useWSL2", m_config.useWSL2).toBool();
     m_config.wslDistro = settings.value("docker/wslDistro", m_config.wslDistro).toString();
 }
@@ -225,7 +222,6 @@ void ReDroidController::saveConfiguration() {
     settings.setValue("docker/cpuQuota", m_config.cpuQuota);
     settings.setValue("docker/shmSize", m_config.shmSize);
     settings.setValue("docker/baseAdbPort", m_config.baseAdbPort);
-    settings.setValue("docker/baseVncPort", m_config.baseVncPort);
     settings.setValue("docker/useWSL2", m_config.useWSL2);
     settings.setValue("docker/wslDistro", m_config.wslDistro);
 }
@@ -247,10 +243,9 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     qDebug() << "Starting instance:" << instanceId;
     
     // Allocate ports BEFORE taking the mutex
-    // allocateAdbPort/allocateVncPort also lock m_instancesMutex
-    // Calling them inside the lock below would cause a deadlock (non-recursive mutex)
+    // allocateAdbPort also locks m_instancesMutex
+    // Calling it inside the lock below would cause a deadlock (non-recursive mutex)
     int adbPort = allocateAdbPort();
-    int vncPort = allocateVncPort();
     
     QMutexLocker locker(&m_instancesMutex);
     
@@ -270,12 +265,10 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     info.imageName = m_config.imageName;
     info.state = InstanceState::Starting;
     info.adbPort = adbPort;
-    info.vncPort = vncPort;
     info.instanceIndex = m_instances.size();
     info.createdAt = QDateTime::currentMSecsSinceEpoch();
     info.profileId = profile.id;
     info.adbConnected = false;
-    info.vncEnabled = true;
     
     // Generate property file path
     QString profileDataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -370,9 +363,8 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     args << "-e" << "ROG_BOOTANIMATION=false";
     args << "-e" << "ROG_DISABLE_FPS_LIMIT=true";
     
-    // Ports
+    // Ports — ADB only; ReDroid does not use VNC
     args << "-p" << QString("%1:5555").arg(adbPort);
-    args << "-p" << QString("%1:5900").arg(vncPort);
     
     // Device passthrough
     args << "-v" << QString("%1:/opt/vpp/config/device.properties:ro").arg(propertyFile);
@@ -1230,30 +1222,6 @@ int ReDroidController::allocateAdbPort() {
         // Reset if we hit the limit
         if (m_nextAdbPort > 65535) {
             m_nextAdbPort = 5555;
-        }
-    }
-}
-
-int ReDroidController::allocateVncPort() {
-    QMutexLocker locker(&m_instancesMutex);
-    
-    while (true) {
-        bool used = false;
-        for (const InstanceInfo& info : m_instances.values()) {
-            if (info.vncPort == m_nextVncPort) {
-                used = true;
-                break;
-            }
-        }
-        
-        if (!used) {
-            return m_nextVncPort++;
-        }
-        
-        m_nextVncPort++;
-        
-        if (m_nextVncPort > 65535) {
-            m_nextVncPort = 5900;
         }
     }
 }

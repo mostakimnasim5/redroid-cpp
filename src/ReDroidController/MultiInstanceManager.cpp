@@ -119,7 +119,6 @@ BatchStatus MultiInstanceManager::deployBatch(const InstanceDeployConfig& config
         // Set unique ports
         if (config.assignUniquePort) {
             profile.adbPort = config.portStart + (i * 2);
-            profile.vncPort = config.portStart + (i * 2) + 1;
         }
         
         qDebug() << "Deploying instance" << i + 1 << "/" << config.count << ":" << instanceId;
