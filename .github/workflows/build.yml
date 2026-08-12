@@ -343,7 +343,7 @@ jobs:
         run: |
           sudo apt-get install -y -qq cppcheck
           cppcheck --std=c++17 --suppress=missingInclude \
-            --error-exitcode=0 src/ include/ 2>&1 | tail -10 || true
+            --error-exitcode=1 src/ include/ 2>&1 | tail -30
 
   # ============================================================================
   # Security Scan
@@ -351,7 +351,6 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-22.04
-    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -364,6 +363,6 @@ jobs:
             https://aquasecurity.github.io/trivy-repo/deb generic main" \
             | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update -qq && sudo apt-get install -y trivy
-          trivy fs . --severity HIGH,CRITICAL --exit-code 0 \
-            --no-progress --timeout 5m || true
+          trivy fs . --severity HIGH,CRITICAL --exit-code 1 \
+            --no-progress --timeout 5m
 
