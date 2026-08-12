@@ -13,13 +13,9 @@
 
 namespace VirtualPhonePro {
 
-DeviceBehaviorManager* DeviceBehaviorManager::s_instance = nullptr;
-
 DeviceBehaviorManager& DeviceBehaviorManager::instance() {
-    if (!s_instance) {
-        s_instance = new DeviceBehaviorManager();
-    }
-    return *s_instance;
+    static DeviceBehaviorManager s_instance;
+    return s_instance;
 }
 
 DeviceBehaviorManager::DeviceBehaviorManager() {

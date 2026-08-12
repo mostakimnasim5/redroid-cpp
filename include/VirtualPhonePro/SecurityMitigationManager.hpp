@@ -586,7 +586,6 @@ private:
     ~SecurityMitigationManager();
     
     // Singleton
-    static SecurityMitigationManager* s_instance;
     
     // State management
     QMap<QString, SecurityMitigationState> m_states;

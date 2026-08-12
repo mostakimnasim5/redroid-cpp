@@ -20,13 +20,9 @@ namespace VirtualPhonePro {
 // SINGLETON
 // ========================================================================
 
-EmulatorDetectionBypass* EmulatorDetectionBypass::s_instance = nullptr;
-
 EmulatorDetectionBypass& EmulatorDetectionBypass::instance() {
-    if (!s_instance) {
-        s_instance = new EmulatorDetectionBypass();
-    }
-    return *s_instance;
+    static EmulatorDetectionBypass s_instance;
+    return s_instance;
 }
 
 EmulatorDetectionBypass::EmulatorDetectionBypass(QObject* parent)

@@ -572,7 +572,6 @@ private:
     void loadProfilesFromDisk();
     
     // Singleton
-    static NetworkProfileManager* s_instance;
     
     // State
     QNetworkAccessManager* m_networkManager;

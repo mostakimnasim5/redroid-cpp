@@ -360,7 +360,6 @@ public:
     
 private:
     DeviceBehaviorManager();
-    static DeviceBehaviorManager* s_instance;
     
     // Helper methods
     QString powerProfileToString(PowerProfile profile) const;

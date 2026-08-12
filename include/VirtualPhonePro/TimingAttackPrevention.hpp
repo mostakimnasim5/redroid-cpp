@@ -452,7 +452,6 @@ private:
     TimingAttackPrevention(const TimingAttackPrevention&) = delete;
     TimingAttackPrevention& operator=(const TimingAttackPrevention&) = delete;
     
-    static TimingAttackPrevention* s_instance;
     
     mutable QMutex m_mutex;
     

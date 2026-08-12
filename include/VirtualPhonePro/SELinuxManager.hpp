@@ -294,7 +294,6 @@ private:
     SELinuxManager(const SELinuxManager&) = delete;
     SELinuxManager& operator=(const SELinuxManager&) = delete;
     
-    static SELinuxManager* s_instance;
     
     mutable QMutex m_mutex;
     QMap<QString, MitigationSELinuxConfig> m_configs;

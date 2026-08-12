@@ -16,13 +16,9 @@
 
 namespace VirtualPhonePro {
 
-RealisticDeviceProfile* RealisticDeviceProfile::s_instance = nullptr;
-
 RealisticDeviceProfile& RealisticDeviceProfile::instance() {
-    if (!s_instance) {
-        s_instance = new RealisticDeviceProfile();
-    }
-    return *s_instance;
+    static RealisticDeviceProfile s_instance;
+    return s_instance;
 }
 
 RealisticDeviceProfile::RealisticDeviceProfile() {

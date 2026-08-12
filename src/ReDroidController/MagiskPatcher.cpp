@@ -18,13 +18,9 @@
 
 namespace VirtualPhonePro {
 
-MagiskPatcher* MagiskPatcher::s_instance = nullptr;
-
 MagiskPatcher& MagiskPatcher::instance() {
-    if (!s_instance) {
-        s_instance = new MagiskPatcher();
-    }
-    return *s_instance;
+    static MagiskPatcher s_instance;
+    return s_instance;
 }
 
 MagiskPatcher::MagiskPatcher()

@@ -423,13 +423,9 @@ static QByteArray generateKeymasterInfo(int version) {
 // SINGLETON
 // ========================================================================
 
-PlayIntegrityManager* PlayIntegrityManager::s_instance = nullptr;
-
 PlayIntegrityManager& PlayIntegrityManager::instance() {
-    if (!s_instance) {
-        s_instance = new PlayIntegrityManager();
-    }
-    return *s_instance;
+    static PlayIntegrityManager s_instance;
+    return s_instance;
 }
 
 PlayIntegrityManager::PlayIntegrityManager(QObject* parent)

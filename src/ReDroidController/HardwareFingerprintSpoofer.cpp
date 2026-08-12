@@ -31,13 +31,9 @@ namespace VirtualPhonePro {
 // Singleton
 // ===========================================================================
 
-HardwareFingerprintSpoofer* HardwareFingerprintSpoofer::s_instance = nullptr;
-
 HardwareFingerprintSpoofer& HardwareFingerprintSpoofer::instance() {
-    if (!s_instance) {
-        s_instance = new HardwareFingerprintSpoofer();
-    }
-    return *s_instance;
+    static HardwareFingerprintSpoofer s_instance;
+    return s_instance;
 }
 
 HardwareFingerprintSpoofer::HardwareFingerprintSpoofer()

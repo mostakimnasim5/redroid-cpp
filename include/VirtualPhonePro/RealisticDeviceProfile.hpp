@@ -551,7 +551,6 @@ public:
     QStringList getMissingFields(const QJsonObject& profile);
     
 private:
-    static RealisticDeviceProfile* s_instance;
     RealisticDeviceProfile();
     
     // Internal generators

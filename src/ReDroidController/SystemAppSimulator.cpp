@@ -12,13 +12,9 @@
 
 namespace VirtualPhonePro {
 
-SystemAppSimulator* SystemAppSimulator::s_instance = nullptr;
-
 SystemAppSimulator& SystemAppSimulator::instance() {
-    if (!s_instance) {
-        s_instance = new SystemAppSimulator();
-    }
-    return *s_instance;
+    static SystemAppSimulator s_instance;
+    return s_instance;
 }
 
 SystemAppSimulator::SystemAppSimulator() {

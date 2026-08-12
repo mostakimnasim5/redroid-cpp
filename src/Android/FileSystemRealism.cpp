@@ -17,13 +17,9 @@
 
 namespace VirtualPhonePro {
 
-FileSystemRealism* FileSystemRealism::s_instance = nullptr;
-
 FileSystemRealism& FileSystemRealism::instance() {
-    if (!s_instance) {
-        s_instance = new FileSystemRealism();
-    }
-    return *s_instance;
+    static FileSystemRealism s_instance;
+    return s_instance;
 }
 
 FileSystemRealism::FileSystemRealism(QObject* parent)

@@ -50,13 +50,13 @@ namespace VirtualPhonePro {
 // Singleton
 // ============================================================================
 
-ReDroidController* ReDroidController::s_instance = nullptr;
-
+// Meyers Singleton — C++11 §6.7 guarantees this static local is
+// initialised exactly once, even under concurrent first-call races,
+// without any explicit mutex.  The raw s_instance pointer and its
+// associated data race have been removed entirely.
 ReDroidController& ReDroidController::instance() {
-    if (!s_instance) {
-        s_instance = new ReDroidController();
-    }
-    return *s_instance;
+    static ReDroidController s_instance;
+    return s_instance;
 }
 
 // ============================================================================

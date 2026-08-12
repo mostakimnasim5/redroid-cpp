@@ -9,13 +9,9 @@
 
 namespace VirtualPhonePro {
 
-ConfigManager* ConfigManager::s_instance = nullptr;
-
 ConfigManager& ConfigManager::instance() {
-    if (!s_instance) {
-        s_instance = new ConfigManager(qApp);
-    }
-    return *s_instance;
+    static ConfigManager s_instance;
+    return s_instance;
 }
 
 ConfigManager::ConfigManager(QObject* parent)

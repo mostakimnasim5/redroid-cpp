@@ -17,13 +17,9 @@
 
 namespace VirtualPhonePro {
 
-PersistentIdentityManager* PersistentIdentityManager::s_instance = nullptr;
-
 PersistentIdentityManager& PersistentIdentityManager::instance() {
-    if (!s_instance) {
-        s_instance = new PersistentIdentityManager();
-    }
-    return *s_instance;
+    static PersistentIdentityManager s_instance;
+    return s_instance;
 }
 
 PersistentIdentityManager::PersistentIdentityManager() {

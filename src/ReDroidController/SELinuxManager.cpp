@@ -20,13 +20,9 @@ namespace VirtualPhonePro {
 // SINGLETON
 // ========================================================================
 
-SELinuxManager* SELinuxManager::s_instance = nullptr;
-
 SELinuxManager& SELinuxManager::instance() {
-    if (!s_instance) {
-        s_instance = new SELinuxManager();
-    }
-    return *s_instance;
+    static SELinuxManager s_instance;
+    return s_instance;
 }
 
 SELinuxManager::SELinuxManager(QObject* parent)

@@ -12,13 +12,9 @@
 
 namespace VirtualPhonePro {
 
-CarrierNetworkSimulator* CarrierNetworkSimulator::s_instance = nullptr;
-
 CarrierNetworkSimulator& CarrierNetworkSimulator::instance() {
-    if (!s_instance) {
-        s_instance = new CarrierNetworkSimulator();
-    }
-    return *s_instance;
+    static CarrierNetworkSimulator s_instance;
+    return s_instance;
 }
 
 CarrierNetworkSimulator::CarrierNetworkSimulator() {

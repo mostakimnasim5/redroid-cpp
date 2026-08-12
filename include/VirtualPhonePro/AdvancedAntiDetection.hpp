@@ -108,7 +108,6 @@ public:
     void initializeDefaultStates();
     
 private:
-    static BehavioralAnalysisPrevention* s_instance;
     BehavioralAnalysisPrevention();
     
     TypingPattern m_typingPattern;
@@ -207,7 +206,6 @@ public:
     QMap<QString, QString> getPowerStats();
     
 private:
-    static AdvancedHardwareEmulator* s_instance;
     AdvancedHardwareEmulator();
     
     CPUState m_cpuState;
@@ -275,7 +273,6 @@ public:
     bool applyToInstance(const QString& instanceId);
     
 private:
-    static AdvancedGraphicsSpoofing* s_instance;
     AdvancedGraphicsSpoofing();
     
     std::mt19937 m_generator;
@@ -311,7 +308,6 @@ public:
     QString generateDetectionReport();
     
 private:
-    static UltraAntiDetectionEngine* s_instance;
     UltraAntiDetectionEngine();
     
     BehavioralAnalysisPrevention* m_behavioral;

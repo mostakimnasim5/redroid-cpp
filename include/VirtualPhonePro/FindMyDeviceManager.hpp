@@ -250,7 +250,6 @@ public:
     bool reset(const QString& instanceId);
     
 private:
-    static FindMyDeviceManager* s_instance;
     FindMyDeviceManager();
     
     // Helper methods

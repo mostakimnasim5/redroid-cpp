@@ -300,7 +300,6 @@ private:
     PersistentIdentityManager();
     ~PersistentIdentityManager();
     
-    static PersistentIdentityManager* s_instance;
     
     QString generateHash(const QString& input);
     QString generateRandomString(int length);

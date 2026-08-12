@@ -23,13 +23,9 @@ namespace VirtualPhonePro {
 // SINGLETON
 // ========================================================================
 
-BankingAppSpoofer* BankingAppSpoofer::s_instance = nullptr;
-
 BankingAppSpoofer& BankingAppSpoofer::instance() {
-    if (!s_instance) {
-        s_instance = new BankingAppSpoofer();
-    }
-    return *s_instance;
+    static BankingAppSpoofer s_instance;
+    return s_instance;
 }
 
 BankingAppSpoofer::BankingAppSpoofer() {

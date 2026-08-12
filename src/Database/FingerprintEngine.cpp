@@ -14,13 +14,9 @@
 
 namespace VirtualPhonePro {
 
-FingerprintEngine* FingerprintEngine::s_instance = nullptr;
-
 FingerprintEngine& FingerprintEngine::instance() {
-    if (!s_instance) {
-        s_instance = new FingerprintEngine();
-    }
-    return *s_instance;
+    static FingerprintEngine s_instance;
+    return s_instance;
 }
 
 FingerprintEngine::FingerprintEngine() {

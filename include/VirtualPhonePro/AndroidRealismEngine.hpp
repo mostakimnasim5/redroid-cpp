@@ -415,7 +415,6 @@ public:
     bool configureForHuawei(const QString& instanceId);
     
 private:
-    static AndroidRealismEngine* s_instance;
     AndroidRealismEngine();
     ~AndroidRealismEngine();
     

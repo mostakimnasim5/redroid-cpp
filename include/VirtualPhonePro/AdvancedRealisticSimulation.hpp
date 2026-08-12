@@ -55,7 +55,6 @@ public:
     QJsonObject getCompleteState(const QString& instanceId) const;
     
 private:
-    static AdvancedRealisticSimulator* s_instance;
     AdvancedRealisticSimulator() = default;
 };
 

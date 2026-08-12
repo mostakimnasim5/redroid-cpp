@@ -14,13 +14,9 @@
 
 namespace VirtualPhonePro {
 
-ScreenStateManager* ScreenStateManager::s_instance = nullptr;
-
 ScreenStateManager& ScreenStateManager::instance() {
-    if (!s_instance) {
-        s_instance = new ScreenStateManager();
-    }
-    return *s_instance;
+    static ScreenStateManager s_instance;
+    return s_instance;
 }
 
 ScreenStateManager::ScreenStateManager() {

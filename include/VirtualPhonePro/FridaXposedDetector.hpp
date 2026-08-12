@@ -278,7 +278,6 @@ private:
     FridaXposedDetector();
     ~FridaXposedDetector();
     
-    static FridaXposedDetector* s_instance;
     
     void initializeBypassConfigs(const QString& instanceId);
     

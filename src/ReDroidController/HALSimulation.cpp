@@ -11,13 +11,9 @@
 
 namespace VirtualPhonePro {
 
-HALSimulation* HALSimulation::s_instance = nullptr;
-
 HALSimulation& HALSimulation::instance() {
-    if (!s_instance) {
-        s_instance = new HALSimulation();
-    }
-    return *s_instance;
+    static HALSimulation s_instance;
+    return s_instance;
 }
 
 HALSimulation::HALSimulation() {

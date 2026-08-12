@@ -17,13 +17,9 @@
 
 namespace VirtualPhonePro {
 
-AppCloner* AppCloner::s_instance = nullptr;
-
 AppCloner& AppCloner::instance() {
-    if (!s_instance) {
-        s_instance = new AppCloner(nullptr);
-    }
-    return *s_instance;
+    static AppCloner s_instance;
+    return s_instance;
 }
 
 AppCloner::AppCloner(QObject* parent)

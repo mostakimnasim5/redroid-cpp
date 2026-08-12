@@ -25,13 +25,9 @@
 
 namespace VirtualPhonePro {
 
-WebhookManager* WebhookManager::s_instance = nullptr;
-
 WebhookManager& WebhookManager::instance() {
-    if (!s_instance) {
-        s_instance = new WebhookManager();
-    }
-    return *s_instance;
+    static WebhookManager s_instance;
+    return s_instance;
 }
 
 WebhookManager::WebhookManager(QObject* parent)

@@ -163,7 +163,6 @@ private:
     AntiDetectionManager(const AntiDetectionManager&) = delete;
     AntiDetectionManager& operator=(const AntiDetectionManager&) = delete;
     
-    static AntiDetectionManager* s_instance;
     
     QMap<QString, bool> m_protectedInstances;
     QMap<QString, QJsonObject> m_protectionStatuses;

@@ -535,7 +535,6 @@ private:
     std::map<std::string, std::string> getDetailedStatus();
 
     
-    static HardwareFingerprintSpoofer* s_instance;
     
     void initializeHardwareProfiles();
     void adbShell(const QString& instanceId, const QString& cmd);

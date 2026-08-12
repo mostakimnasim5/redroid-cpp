@@ -134,7 +134,6 @@ public:
     bool executeSwipe(const QString& instanceId, GestureType direction, float startX, float startY);
     
 private:
-    static HyperRealisticTouchEmulator* s_instance;
     HyperRealisticTouchEmulator();
     
     TouchProfile m_profile;

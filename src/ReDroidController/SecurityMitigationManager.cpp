@@ -28,13 +28,9 @@ namespace VirtualPhonePro {
 // Static Instance
 // ============================================================================
 
-SecurityMitigationManager* SecurityMitigationManager::s_instance = nullptr;
-
 SecurityMitigationManager& SecurityMitigationManager::instance() {
-    if (!s_instance) {
-        s_instance = new SecurityMitigationManager();
-    }
-    return *s_instance;
+    static SecurityMitigationManager s_instance;
+    return s_instance;
 }
 
 // ============================================================================

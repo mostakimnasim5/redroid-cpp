@@ -17,13 +17,9 @@
 
 namespace VirtualPhonePro {
 
-GoogleFacebookSpoofer* GoogleFacebookSpoofer::s_instance = nullptr;
-
 GoogleFacebookSpoofer& GoogleFacebookSpoofer::instance() {
-    if (!s_instance) {
-        s_instance = new GoogleFacebookSpoofer();
-    }
-    return *s_instance;
+    static GoogleFacebookSpoofer s_instance;
+    return s_instance;
 }
 
 bool GoogleFacebookSpoofer::executeCommand(const QString& instanceId, const QString& command) {

@@ -13,13 +13,9 @@
 
 namespace VirtualPhonePro {
 
-FridaXposedDetector* FridaXposedDetector::s_instance = nullptr;
-
 FridaXposedDetector& FridaXposedDetector::instance() {
-    if (!s_instance) {
-        s_instance = new FridaXposedDetector();
-    }
-    return *s_instance;
+    static FridaXposedDetector s_instance;
+    return s_instance;
 }
 
 FridaXposedDetector::FridaXposedDetector() {

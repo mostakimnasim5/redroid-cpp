@@ -13,13 +13,9 @@
 
 namespace VirtualPhonePro {
 
-HardwareAttestation* HardwareAttestation::s_instance = nullptr;
-
 HardwareAttestation& HardwareAttestation::instance() {
-    if (!s_instance) {
-        s_instance = new HardwareAttestation();
-    }
-    return *s_instance;
+    static HardwareAttestation s_instance;
+    return s_instance;
 }
 
 HardwareAttestation::HardwareAttestation() {

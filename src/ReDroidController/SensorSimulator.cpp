@@ -17,13 +17,9 @@
 
 namespace VirtualPhonePro {
 
-SensorSimulator* SensorSimulator::s_instance = nullptr;
-
 SensorSimulator& SensorSimulator::instance() {
-    if (!s_instance) {
-        s_instance = new SensorSimulator();
-    }
-    return *s_instance;
+    static SensorSimulator s_instance;
+    return s_instance;
 }
 
 SensorSimulator::SensorSimulator(QObject* parent)

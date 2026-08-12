@@ -170,7 +170,6 @@ public:
     QJsonObject getNetworkInfo(const QString& instanceId);
 
 private:
-    static NetworkConfigManager* s_instance;
     QMap<QString, ProxyConfig> m_proxyConfigs;
     QMap<QString, VPNConfig> m_vpnConfigs;
 };

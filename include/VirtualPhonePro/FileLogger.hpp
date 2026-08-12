@@ -70,7 +70,6 @@ private:
     void closeLogFile();
     static QString logLevelToString(LogLevel level);
     
-    static FileLogger* s_instance;
     
     QFile* m_logFile;
     QTextStream* m_logStream;

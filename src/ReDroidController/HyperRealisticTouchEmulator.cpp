@@ -14,13 +14,9 @@
 
 namespace VirtualPhonePro {
 
-HyperRealisticTouchEmulator* HyperRealisticTouchEmulator::s_instance = nullptr;
-
 HyperRealisticTouchEmulator& HyperRealisticTouchEmulator::instance() {
-    if (!s_instance) {
-        s_instance = new HyperRealisticTouchEmulator();
-    }
-    return *s_instance;
+    static HyperRealisticTouchEmulator s_instance;
+    return s_instance;
 }
 
 HyperRealisticTouchEmulator::HyperRealisticTouchEmulator()

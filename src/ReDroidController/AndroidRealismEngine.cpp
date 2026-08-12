@@ -19,13 +19,9 @@
 
 namespace VirtualPhonePro {
 
-AndroidRealismEngine* AndroidRealismEngine::s_instance = nullptr;
-
 AndroidRealismEngine& AndroidRealismEngine::instance() {
-    if (!s_instance) {
-        s_instance = new AndroidRealismEngine();
-    }
-    return *s_instance;
+    static AndroidRealismEngine s_instance;
+    return s_instance;
 }
 
 AndroidRealismEngine::AndroidRealismEngine() {

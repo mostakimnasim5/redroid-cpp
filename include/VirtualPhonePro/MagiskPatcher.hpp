@@ -136,7 +136,6 @@ public:
 private:
     MagiskPatcher();
     ~MagiskPatcher();
-    static MagiskPatcher* s_instance;
     
     bool executeCommand(const QString& instanceId, const QString& command);
     QString executeCommandSync(const QString& instanceId, const QString& command);

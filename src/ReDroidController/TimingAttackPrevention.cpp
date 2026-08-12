@@ -155,13 +155,9 @@ QJsonObject SensorNoiseConfig::toJson() const {
 // TIMING ATTACK PREVENTION
 // ========================================================================
 
-TimingAttackPrevention* TimingAttackPrevention::s_instance = nullptr;
-
 TimingAttackPrevention& TimingAttackPrevention::instance() {
-    if (!s_instance) {
-        s_instance = new TimingAttackPrevention();
-    }
-    return *s_instance;
+    static TimingAttackPrevention s_instance;
+    return s_instance;
 }
 
 TimingAttackPrevention::TimingAttackPrevention(QObject* parent)

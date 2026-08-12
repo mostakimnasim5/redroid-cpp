@@ -12,13 +12,9 @@
 
 namespace VirtualPhonePro {
 
-DeviceIntegrityManager* DeviceIntegrityManager::s_instance = nullptr;
-
 DeviceIntegrityManager& DeviceIntegrityManager::instance() {
-    if (!s_instance) {
-        s_instance = new DeviceIntegrityManager();
-    }
-    return *s_instance;
+    static DeviceIntegrityManager s_instance;
+    return s_instance;
 }
 
 DeviceIntegrityManager::DeviceIntegrityManager() {

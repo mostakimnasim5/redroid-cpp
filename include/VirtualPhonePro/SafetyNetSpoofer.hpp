@@ -148,7 +148,6 @@ public:
     bool setPlayProtectionRating(const QString& instanceId, const QString& rating);
 
 private:
-    static SafetyNetSpoofer* s_instance;
     SafetyNetSpoofer() = default;
     
     // Internal helpers

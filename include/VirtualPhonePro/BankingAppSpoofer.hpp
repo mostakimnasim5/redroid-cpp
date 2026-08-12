@@ -168,7 +168,6 @@ public:
     QJsonObject getDetectionStatus(const QString& instanceId);
     
 private:
-    static BankingAppSpoofer* s_instance;
     BankingAppSpoofer();
     
     int m_bypassLevel = 3;

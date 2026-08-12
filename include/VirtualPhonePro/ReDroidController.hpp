@@ -538,9 +538,6 @@ private:
     void stopMonitoring();
     void checkInstanceStatus(const QString& instanceId);
     
-    // Singleton
-    static ReDroidController* s_instance;
-    
     // Configuration
     DockerConfig m_config;
     

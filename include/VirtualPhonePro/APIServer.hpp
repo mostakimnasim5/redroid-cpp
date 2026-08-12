@@ -86,7 +86,6 @@ private:
     QJsonObject instanceToJson(const InstanceInfo& info);
     QJsonObject profileToJson(const DeviceProfile& profile);
     QJsonObject createProfileInfo(const QString& name, const QString& manufacturer, const QString& model);
-    static APIServer* s_instance;
     explicit APIServer(QObject* parent = nullptr);
     
     void handleRequest(QTcpSocket* socket);

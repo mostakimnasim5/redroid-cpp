@@ -13,13 +13,9 @@
 
 namespace VirtualPhonePro {
 
-FindMyDeviceManager* FindMyDeviceManager::s_instance = nullptr;
-
 FindMyDeviceManager& FindMyDeviceManager::instance() {
-    if (!s_instance) {
-        s_instance = new FindMyDeviceManager();
-    }
-    return *s_instance;
+    static FindMyDeviceManager s_instance;
+    return s_instance;
 }
 
 FindMyDeviceManager::FindMyDeviceManager() {

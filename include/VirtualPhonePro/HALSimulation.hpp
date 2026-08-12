@@ -279,7 +279,6 @@ public:
     bool resetHAL(const QString& instanceId);
     
 private:
-    static HALSimulation* s_instance;
     HALSimulation();
     
     CameraConfig getCameraDefaults(CameraFacing facing, const QString& manufacturer, const QString& model);

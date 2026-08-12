@@ -19,13 +19,9 @@
 
 namespace VirtualPhonePro {
 
-TestingFramework* TestingFramework::s_instance = nullptr;
-
 TestingFramework& TestingFramework::instance() {
-    if (!s_instance) {
-        s_instance = new TestingFramework(nullptr);
-    }
-    return *s_instance;
+    static TestingFramework s_instance;
+    return s_instance;
 }
 
 TestingFramework::TestingFramework(QObject* parent)

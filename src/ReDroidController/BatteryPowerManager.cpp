@@ -12,13 +12,9 @@
 
 namespace VirtualPhonePro {
 
-BatteryPowerManager* BatteryPowerManager::s_instance = nullptr;
-
 BatteryPowerManager& BatteryPowerManager::instance() {
-    if (!s_instance) {
-        s_instance = new BatteryPowerManager();
-    }
-    return *s_instance;
+    static BatteryPowerManager s_instance;
+    return s_instance;
 }
 
 BatteryPowerManager::BatteryPowerManager() {

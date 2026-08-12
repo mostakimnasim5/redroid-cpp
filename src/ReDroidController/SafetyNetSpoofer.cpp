@@ -13,13 +13,9 @@
 
 namespace VirtualPhonePro {
 
-SafetyNetSpoofer* SafetyNetSpoofer::s_instance = nullptr;
-
 SafetyNetSpoofer& SafetyNetSpoofer::instance() {
-    if (!s_instance) {
-        s_instance = new SafetyNetSpoofer();
-    }
-    return *s_instance;
+    static SafetyNetSpoofer s_instance;
+    return s_instance;
 }
 
 bool SafetyNetSpoofer::executeCommand(const QString& instanceId, const QString& command) {

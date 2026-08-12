@@ -350,7 +350,6 @@ private:
     EmulatorDetectionBypass(const EmulatorDetectionBypass&) = delete;
     EmulatorDetectionBypass& operator=(const EmulatorDetectionBypass&) = delete;
     
-    static EmulatorDetectionBypass* s_instance;
     
     mutable QMutex m_mutex;
     QMap<QString, DetectionConfig> m_configs;

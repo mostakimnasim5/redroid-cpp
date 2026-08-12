@@ -37,13 +37,9 @@
 
 namespace VirtualPhonePro {
 
-MultiInstanceManager* MultiInstanceManager::s_instance = nullptr;
-
 MultiInstanceManager& MultiInstanceManager::instance() {
-    if (!s_instance) {
-        s_instance = new MultiInstanceManager();
-    }
-    return *s_instance;
+    static MultiInstanceManager s_instance;
+    return s_instance;
 }
 
 MultiInstanceManager::MultiInstanceManager(QObject* parent)

@@ -36,13 +36,9 @@ static QString joinInts(const QVector<quint16>& values, const QString& delimiter
 // SINGLETON INITIALIZATION
 // ========================================================================
 
-TLSFingerprint* TLSFingerprint::s_instance = nullptr;
-
 TLSFingerprint& TLSFingerprint::instance() {
-    if (!s_instance) {
-        s_instance = new TLSFingerprint();
-    }
-    return *s_instance;
+    static TLSFingerprint s_instance;
+    return s_instance;
 }
 
 TLSFingerprint::TLSFingerprint() {

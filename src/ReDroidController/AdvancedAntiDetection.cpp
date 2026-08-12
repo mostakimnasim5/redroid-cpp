@@ -20,13 +20,9 @@ namespace VirtualPhonePro {
 // BehavioralAnalysisPrevention Implementation
 // ========================================================================
 
-BehavioralAnalysisPrevention* BehavioralAnalysisPrevention::s_instance = nullptr;
-
 BehavioralAnalysisPrevention& BehavioralAnalysisPrevention::instance() {
-    if (!s_instance) {
-        s_instance = new BehavioralAnalysisPrevention();
-    }
-    return *s_instance;
+    static BehavioralAnalysisPrevention s_instance;
+    return s_instance;
 }
 
 BehavioralAnalysisPrevention::BehavioralAnalysisPrevention() 
@@ -159,13 +155,9 @@ float BehavioralAnalysisPrevention::calculateFatigueMultiplier(float elapsedMinu
 // AdvancedHardwareEmulator Implementation
 // ========================================================================
 
-AdvancedHardwareEmulator* AdvancedHardwareEmulator::s_instance = nullptr;
-
 AdvancedHardwareEmulator& AdvancedHardwareEmulator::instance() {
-    if (!s_instance) {
-        s_instance = new AdvancedHardwareEmulator();
-    }
-    return *s_instance;
+    static AdvancedHardwareEmulator s_instance;
+    return s_instance;
 }
 
 AdvancedHardwareEmulator::AdvancedHardwareEmulator()
@@ -412,13 +404,9 @@ QMap<QString, QString> AdvancedHardwareEmulator::getPowerStats() {
 // AdvancedGraphicsSpoofing Implementation
 // ========================================================================
 
-AdvancedGraphicsSpoofing* AdvancedGraphicsSpoofing::s_instance = nullptr;
-
 AdvancedGraphicsSpoofing& AdvancedGraphicsSpoofing::instance() {
-    if (!s_instance) {
-        s_instance = new AdvancedGraphicsSpoofing();
-    }
-    return *s_instance;
+    static AdvancedGraphicsSpoofing s_instance;
+    return s_instance;
 }
 
 AdvancedGraphicsSpoofing::AdvancedGraphicsSpoofing()
@@ -566,13 +554,9 @@ QString AdvancedGraphicsSpoofing::hashCanvas(const QString& data) {
 // UltraAntiDetectionEngine Implementation
 // ========================================================================
 
-UltraAntiDetectionEngine* UltraAntiDetectionEngine::s_instance = nullptr;
-
 UltraAntiDetectionEngine& UltraAntiDetectionEngine::instance() {
-    if (!s_instance) {
-        s_instance = new UltraAntiDetectionEngine();
-    }
-    return *s_instance;
+    static UltraAntiDetectionEngine s_instance;
+    return s_instance;
 }
 
 UltraAntiDetectionEngine::UltraAntiDetectionEngine()

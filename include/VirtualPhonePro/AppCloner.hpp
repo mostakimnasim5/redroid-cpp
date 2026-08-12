@@ -105,7 +105,6 @@ public:
     QMap<QString, QString> listClonedApps(const QString& instanceId);
     
 private:
-    static AppCloner* s_instance;
     AppCloner() = default;
     
     bool executeCommand(const QString& instanceId, const QString& command);

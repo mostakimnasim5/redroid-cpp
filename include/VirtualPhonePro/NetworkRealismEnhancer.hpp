@@ -385,7 +385,6 @@ public:
     
 private:
     NetworkRealismEnhancer();
-    static NetworkRealismEnhancer* s_instance;
     
     // Helper methods
     void initializeCACombinations();

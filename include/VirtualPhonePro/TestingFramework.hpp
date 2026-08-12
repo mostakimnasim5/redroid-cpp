@@ -221,7 +221,6 @@ public:
 private:
     QMap<QString, TestSuite> m_suites;
     QMap<QString, TestReport> m_reports;
-    static TestingFramework* s_instance;
     TestingFramework() = default;
     
     bool m_stopRequested = false;

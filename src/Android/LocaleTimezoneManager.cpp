@@ -107,13 +107,9 @@ const QMap<QString, QString> LocaleTimezoneManager::COUNTRY_TO_LOCALE = {
     {"PE", "es_PE"},
 };
 
-LocaleTimezoneManager* LocaleTimezoneManager::s_instance = nullptr;
-
 LocaleTimezoneManager& LocaleTimezoneManager::instance() {
-    if (!s_instance) {
-        s_instance = new LocaleTimezoneManager();
-    }
-    return *s_instance;
+    static LocaleTimezoneManager s_instance;
+    return s_instance;
 }
 
 LocaleTimezoneManager::LocaleTimezoneManager(QObject* parent)

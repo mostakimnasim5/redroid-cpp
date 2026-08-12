@@ -14,13 +14,9 @@
 
 namespace VirtualPhonePro {
 
-SSLCertificateManager* SSLCertificateManager::s_instance = nullptr;
-
 SSLCertificateManager& SSLCertificateManager::instance() {
-    if (!s_instance) {
-        s_instance = new SSLCertificateManager();
-    }
-    return *s_instance;
+    static SSLCertificateManager s_instance;
+    return s_instance;
 }
 
 SSLCertificateManager::SSLCertificateManager() {

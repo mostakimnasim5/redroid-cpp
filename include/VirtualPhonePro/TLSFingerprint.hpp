@@ -374,7 +374,6 @@ public:
     QJsonObject getTLSProperties(const QString& instanceId);
     
 private:
-    static TLSFingerprint* s_instance;
     TLSFingerprint();
     
     OSTLSConfig m_config;

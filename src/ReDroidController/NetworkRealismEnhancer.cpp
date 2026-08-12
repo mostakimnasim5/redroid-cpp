@@ -12,13 +12,9 @@
 
 namespace VirtualPhonePro {
 
-NetworkRealismEnhancer* NetworkRealismEnhancer::s_instance = nullptr;
-
 NetworkRealismEnhancer& NetworkRealismEnhancer::instance() {
-    if (!s_instance) {
-        s_instance = new NetworkRealismEnhancer();
-    }
-    return *s_instance;
+    static NetworkRealismEnhancer s_instance;
+    return s_instance;
 }
 
 NetworkRealismEnhancer::NetworkRealismEnhancer() {

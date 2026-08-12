@@ -11,13 +11,9 @@
 
 namespace VirtualPhonePro {
 
-FileLogger* FileLogger::s_instance = nullptr;
-
 FileLogger& FileLogger::instance() {
-    if (!s_instance) {
-        s_instance = new FileLogger();
-    }
-    return *s_instance;
+    static FileLogger s_instance;
+    return s_instance;
 }
 
 FileLogger::FileLogger()

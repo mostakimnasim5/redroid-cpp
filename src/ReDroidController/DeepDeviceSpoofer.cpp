@@ -16,13 +16,9 @@
 
 namespace VirtualPhonePro {
 
-DeepDeviceSpoofer* DeepDeviceSpoofer::s_instance = nullptr;
-
 DeepDeviceSpoofer& DeepDeviceSpoofer::instance() {
-    if (!s_instance) {
-        s_instance = new DeepDeviceSpoofer();
-    }
-    return *s_instance;
+    static DeepDeviceSpoofer s_instance;
+    return s_instance;
 }
 
 bool DeepDeviceSpoofer::writeFile(const QString& instanceId, const QString& path, const QString& content) {

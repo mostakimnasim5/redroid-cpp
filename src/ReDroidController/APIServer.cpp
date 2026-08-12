@@ -25,13 +25,9 @@ namespace VirtualPhonePro {
 // Singleton
 // ============================================================================
 
-APIServer* APIServer::s_instance = nullptr;
-
 APIServer& APIServer::instance() {
-    if (!s_instance) {
-        s_instance = new APIServer();
-    }
-    return *s_instance;
+    static APIServer s_instance;
+    return s_instance;
 }
 
 // ============================================================================

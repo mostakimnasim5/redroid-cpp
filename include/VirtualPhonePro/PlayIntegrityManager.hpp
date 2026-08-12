@@ -593,7 +593,6 @@ private:
     PlayIntegrityManager(const PlayIntegrityManager&) = delete;
     PlayIntegrityManager& operator=(const PlayIntegrityManager&) = delete;
     
-    static PlayIntegrityManager* s_instance;
     
     mutable QMutex m_mutex;
     QMap<QString, IntegrityConfig> m_configs;

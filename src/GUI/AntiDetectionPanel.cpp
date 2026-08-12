@@ -45,13 +45,9 @@ QJsonObject AntiDetectionModuleStatus::toJson() const {
 // AntiDetectionManager Implementation
 // ============================================================================
 
-AntiDetectionManager* AntiDetectionManager::s_instance = nullptr;
-
 AntiDetectionManager& AntiDetectionManager::instance() {
-    if (!s_instance) {
-        s_instance = new AntiDetectionManager();
-    }
-    return *s_instance;
+    static AntiDetectionManager s_instance;
+    return s_instance;
 }
 
 AntiDetectionManager::AntiDetectionManager(QObject* parent)

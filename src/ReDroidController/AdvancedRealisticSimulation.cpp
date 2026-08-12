@@ -11,13 +11,9 @@
 
 namespace VirtualPhonePro {
 
-AdvancedRealisticSimulator* AdvancedRealisticSimulator::s_instance = nullptr;
-
 AdvancedRealisticSimulator& AdvancedRealisticSimulator::instance() {
-    if (!s_instance) {
-        s_instance = new AdvancedRealisticSimulator();
-    }
-    return *s_instance;
+    static AdvancedRealisticSimulator s_instance;
+    return s_instance;
 }
 
 bool AdvancedRealisticSimulator::configureDevice(const QString& instanceId, 

@@ -12,13 +12,9 @@
 
 namespace VirtualPhonePro {
 
-OEMDeepSpoofing* OEMDeepSpoofing::s_instance = nullptr;
-
 OEMDeepSpoofing& OEMDeepSpoofing::instance() {
-    if (!s_instance) {
-        s_instance = new OEMDeepSpoofing();
-    }
-    return *s_instance;
+    static OEMDeepSpoofing s_instance;
+    return s_instance;
 }
 
 OEMDeepSpoofing::OEMDeepSpoofing() {

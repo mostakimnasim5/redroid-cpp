@@ -199,7 +199,6 @@ private:
     QMap<QString,QTimer*> m_sensorTimers;
     QMap<QString,QTimer*> m_gpsTimers;
     void enableMockLocation(const QString& instanceId);
-    static SensorSimulator* s_instance;
     explicit SensorSimulator(QObject* parent = nullptr);
     
     struct SensorState {

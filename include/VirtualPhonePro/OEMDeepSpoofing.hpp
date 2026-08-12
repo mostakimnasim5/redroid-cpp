@@ -243,7 +243,6 @@ public:
     bool resetOEM(const QString& instanceId);
     
 private:
-    static OEMDeepSpoofing* s_instance;
     OEMDeepSpoofing();
     
     OEMState getDefaultsForType(OEMType type) const;

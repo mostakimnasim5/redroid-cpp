@@ -14,13 +14,9 @@
 
 namespace VirtualPhonePro {
 
-SensorInjector* SensorInjector::s_instance = nullptr;
-
 SensorInjector& SensorInjector::instance() {
-    if (!s_instance) {
-        s_instance = new SensorInjector();
-    }
-    return *s_instance;
+    static SensorInjector s_instance;
+    return s_instance;
 }
 
 SensorInjector::SensorInjector(QObject* parent)

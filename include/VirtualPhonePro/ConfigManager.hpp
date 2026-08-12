@@ -82,7 +82,6 @@ private:
     
     bool createDefaultConfig();
     
-    static ConfigManager* s_instance;
     QJsonObject m_config;
 };
 

@@ -17,14 +17,9 @@
 
 namespace VirtualPhonePro {
 
-NetworkConfigManager* NetworkConfigManager::s_instance = nullptr;
-// static member init
-
 NetworkConfigManager& NetworkConfigManager::instance() {
-    if (!s_instance) {
-        s_instance = new NetworkConfigManager();
-    }
-    return *s_instance;
+    static NetworkConfigManager s_instance;
+    return s_instance;
 }
 
 NetworkConfigManager::NetworkConfigManager(QObject* parent)
