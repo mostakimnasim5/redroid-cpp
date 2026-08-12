@@ -1,260 +1,72 @@
-#!/bin/bash
+#!/bin/sh
 # ==============================================================================
-# VirtualPhonePro - Docker Entrypoint Script
-# Initialize and start the Android emulator
+# VirtualPhonePro — ReDroid Container Entrypoint
+#
+# CRITICAL RULE: exec /init must happen as fast as possible.
+# Android's property daemon (property_service) starts INSIDE /init.
+# setprop / getprop talk to that daemon via /dev/socket/property_service.
+# Calling setprop or getprop BEFORE exec /init = socket does not exist
+# → every call silently fails or blocks indefinitely.
+#
+# Pre-boot allowed:  mount checks, binder checks, logging, env var reads.
+# Post-boot (setprop, getprop, ADB, stop/start service): handled by the
+# C++ host application after it detects sys.boot_completed = 1 via ADB.
 # ==============================================================================
 
 set -e
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+log() {
+    echo "[VPP] $(date '+%H:%M:%S') $*"
+}
 
-# Configuration
-ANDROID_HOME="/system"
-REDROID_DATA="/data"
+# ==============================================================================
+# 1. Binder device check — required for Android IPC
+# ==============================================================================
+log "Checking binder..."
+if [ -e /dev/binder ]; then
+    log "  /dev/binder OK"
+elif [ -e /dev/binderfs/binder ]; then
+    log "  /dev/binderfs/binder OK (binderfs)"
+else
+    log "  WARNING: no binder device — WSL2 custom kernel required"
+fi
+
+# ==============================================================================
+# 2. KVM check — optional, improves performance
+# ==============================================================================
+if [ -e /dev/kvm ]; then
+    log "  /dev/kvm OK (hardware acceleration)"
+else
+    log "  /dev/kvm absent — swiftshader/software rendering"
+fi
+
+# ==============================================================================
+# 3. Log active ReDroid env-var config
+#    ReDroid reads these directly from the process environment during /init.
+#    No setprop call needed or possible here.
+# ==============================================================================
+log "Config:"
+log "  GPU mode  : ${REDROID_GPU_MODE:-swiftshader_indirect}"
+log "  Mem limit : ${REDROID_MEM_SIZE:-1536M}"
+log "  ADB port  : ${REDROID_ADBD_PORT:-5555}"
+log "  Profile   : ${DEVICE_PROFILE_ID:-(none)}"
+
+# ==============================================================================
+# 4. Optional: load a pre-boot device-profile env script
+#    The script may only export additional REDROID_* env vars — no setprop.
+# ==============================================================================
 PROFILE_DIR="/opt/vpp/config"
-SCRIPTS_DIR="/opt/vpp/scripts"
-ADB_PORT="${ADB_PORT:-15555}"
-BIN_DIR="/opt/vpp/bin"
+if [ -n "$DEVICE_PROFILE_ID" ] && [ -f "$PROFILE_DIR/${DEVICE_PROFILE_ID}.sh" ]; then
+    log "Loading profile env: $DEVICE_PROFILE_ID"
+    # shellcheck disable=SC1090
+    . "$PROFILE_DIR/${DEVICE_PROFILE_ID}.sh"
+fi
 
-# Print banner
-print_banner() {
-    echo -e "${CYAN}"
-    echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║                                                                  ║"
-    echo "║   ██████╗ ███████╗███╗   ██╗███████╗████████╗███████╗██████╗ ███╗   ║"
-    echo "║   ██╔══██╗██╔════╝████╗  ██║██╔════╝╚══██╔══╝██╔════╝██╔══██╗████╗  ║"
-    echo "║   ██████╔╝█████╗  ██╔██╗ ██║███████╗   ██║   █████╗  ██████╔╝██╔████╔██║"
-    echo "║   ██╔═══╝ ██╔══╝  ██║╚██╗██║╚════██║   ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║"
-    echo "║   ██║     ███████╗██║ ╚████║███████║   ██║   ███████╗██║  ██║██║ ╚═╝ ║"
-    echo "║   ╚═╝     ╚══════╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝ ║"
-    echo "║                                                                  ║"
-    echo "║         Docker-based Android Emulator v3.0.0                     ║"
-    echo "║         Device Profile Integration Ready                         ║"
-    echo "║                                                                  ║"
-    echo "╚══════════════════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
-}
-
-# Logging functions
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $(date '+%H:%M:%S') - $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $(date '+%H:%M:%S') - $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $(date '+%H:%M:%S') - $1"
-}
-
-# Check for required devices
-check_devices() {
-    log_info "Checking required devices..."
-    
-    local required_devices=(
-        "/dev/kvm"
-        "/dev/binderfs/binder"
-        "/dev/binder"
-    )
-    
-    local missing=0
-    for device in "${required_devices[@]}"; do
-        if [ -c "$device" ] || [ -d "$device" ]; then
-            echo "  ✓ $device"
-        else
-            echo "  ✗ $device (missing)"
-            missing=1
-        fi
-    done
-    
-    if [ $missing -eq 1 ]; then
-        log_warn "Some devices are missing. Emulator may not work properly."
-    fi
-}
-
-# Setup device profile
-setup_device() {
-    log_info "Setting up device profile..."
-    
-    # Check for profile file
-    if [ -n "$DEVICE_PROFILE_ID" ] && [ -f "$PROFILE_DIR/${DEVICE_PROFILE_ID}.sh" ]; then
-        log_info "Loading profile: $DEVICE_PROFILE_ID"
-        source "$PROFILE_DIR/${DEVICE_PROFILE_ID}.sh"
-    else
-        log_info "Generating new device profile..."
-        
-        # Check if init script exists
-        if [ -f ${BIN_DIR}/init.sh ]; then
-            chmod +x ${BIN_DIR}/init.sh
-            ${BIN_DIR}/init.sh setup
-        else
-            log_warn "Init script not found, skipping device setup"
-        fi
-    fi
-}
-
-# Configure network
-setup_network() {
-    log_info "Configuring network..."
-    
-    # Set hostname
-    hostname android-emulator
-    echo "android-emulator" > /etc/hostname
-    
-    # Configure ADB
-    setprop service.adb.tcp.port 5555 2>/dev/null || true
-}
-
-# Configure GPU
-setup_gpu() {
-    log_info "Configuring GPU (mode: ${REDROID_GPU_MODE:-auto})..."
-    
-    # GPU mode can be: host, swiftshader, software, auto
-    if [ -n "$REDROID_GPU_MODE" ]; then
-        setprop ro.hardware.gralloc "$REDROID_GPU_MODE" 2>/dev/null || true
-    fi
-}
-
-# Start Android services
-start_android() {
-    log_info "Starting Android system..."
-    
-    # Wait for boot
-    local boot_timeout=120
-    local boot_count=0
-    
-    echo -n "Waiting for Android to boot"
-    while [ $boot_count -lt $boot_timeout ]; do
-        if getprop sys.boot_completed 2>/dev/null | grep -q "1"; then
-            echo ""
-            log_info "Android boot completed!"
-            return 0
-        fi
-        echo -n "."
-        sleep 1
-        boot_count=$((boot_count + 1))
-    done
-    
-    echo ""
-    log_warn "Boot timeout reached, continuing anyway..."
-    return 1
-}
-
-# Run ADB server
-start_adb() {
-    log_info "Starting ADB server on port $ADB_PORT..."
-    
-    # Enable ADB over network
-    setprop service.adb.tcp.port 5555 2>/dev/null || true
-    
-    # Stop existing adbd if running
-    stop adbd 2>/dev/null || true
-    
-    # Start adbd
-    start adbd 2>/dev/null || true
-    
-    log_info "ADB server started"
-}
-
-# Start VNC server (if installed)
-start_vnc() {
-    if command -v x11vnc &> /dev/null; then
-        log_info "Starting VNC server..."
-        x11vnc -display :0 -forever -shared -rfbport 5900 &
-    else
-        log_warn "VNC server not installed"
-    fi
-}
-
-# Print status
-print_status() {
-    echo ""
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "                    EMULATOR STATUS"
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    
-    echo -e "${YELLOW}[ DEVICE INFO ]${NC}"
-    echo "  Manufacturer: $(getprop ro.product.manufacturer 2>/dev/null || echo 'Unknown')"
-    echo "  Model:        $(getprop ro.product.model 2>/dev/null || echo 'Unknown')"
-    echo "  Android:      $(getprop ro.build.version.release 2>/dev/null || echo 'Unknown')"
-    echo "  SDK:          $(getprop ro.build.version.sdk 2>/dev/null || echo 'Unknown')"
-    echo ""
-    
-    echo -e "${YELLOW}[ IDENTITY ]${NC}"
-    echo "  Serial:       $(getprop ro.serialno 2>/dev/null || echo 'Not set')"
-    echo "  IMEI:         $(getprop ro.gsm.imei 2>/dev/null || echo 'Not set')"
-    echo "  Android ID:   $(getprop ro.android_id 2>/dev/null || echo 'Not set')"
-    echo ""
-    
-    echo -e "${YELLOW}[ NETWORK ]${NC}"
-    echo "  ADB Port:     $ADB_PORT"
-    echo "  MAC (WiFi):   $(getprop wifi_mac 2>/dev/null || echo 'Not set')"
-    echo ""
-    
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-    echo ""
-}
-
-# Cleanup on exit
-cleanup() {
-    log_info "Shutting down emulator..."
-    stop adbd 2>/dev/null || true
-}
-
-trap cleanup EXIT
-
-# Main
-main() {
-    print_banner
-    
-    log_info "RedroidCPP Emulator starting..."
-    log_info "Data directory: $REDROID_DATA"
-    log_info "Profile directory: $PROFILE_DIR"
-    
-    # Check devices
-    check_devices
-    
-    # Setup
-    setup_device
-    setup_network
-    setup_gpu
-    
-    # Start Android
-    start_android
-    
-    # Start services
-    start_adb
-    
-    # Print status
-    print_status
-    
-    # Handle commands
-    case "${1:-shell}" in
-        start)
-            log_info "Emulator running. Press Ctrl+C to stop."
-            while true; do
-                sleep 60
-            done
-            ;;
-        shell)
-            log_info "Starting shell..."
-            exec /system/bin/sh
-            ;;
-        adb)
-            exec adb "$@"
-            ;;
-        *)
-            exec "$@"
-            ;;
-    esac
-}
-
-main "$@"
+# ==============================================================================
+# 5. Hand off to Android init — THIS is where Android boots.
+#    Everything after this line never executes.
+#    Post-boot config (setprop, getprop, ADB commands, adbd restart) is
+#    performed by ReDroidController.cpp after sys.boot_completed = 1.
+# ==============================================================================
+log "Handing off to Android init (exec /init)..."
+exec /init
