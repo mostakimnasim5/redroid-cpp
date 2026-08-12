@@ -952,14 +952,46 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // PHASE 3: HARDWARE & NETWORK SPOOFING
     // =========================================================================
     qDebug() << "\n[Phase 3] Hardware & Network Spoofing...";
-    
-    // Hardware Fingerprint Spoofer
-    // Note: Using available methods from HardwareFingerprintSpoofer
-    qDebug() << "  ✓ Hardware Fingerprint Spoofer";
-    
-    // Network Stack Spoofer
-    // Note: Using available methods from NetworkStackSpoofer
-    qDebug() << "  ✓ Network Stack Spoofer";
+
+    // Hardware Fingerprint Spoofer — rewrites /sys/class/* nodes and
+    // low-level hardware capability strings that banking apps read directly
+    // (bypassing Android properties).
+    HardwareFingerprintSpoofer& hwSpoofer = HardwareFingerprintSpoofer::instance();
+    if (hwSpoofer.initialize(instanceId)) {
+        hwSpoofer.applyCPUSpoofing(instanceId);
+        hwSpoofer.applyGPUSpoofing(instanceId);
+        hwSpoofer.applyBatterySpoofing(instanceId);
+        hwSpoofer.applyThermalSpoofing(instanceId);
+        hwSpoofer.applyMemoryStorageSpoofing(instanceId);
+        hwSpoofer.applySensorCalibration(instanceId);
+        qDebug() << "  ✓ Hardware Fingerprint Spoofer (CPU/GPU/Battery/Thermal/Memory/Sensor)";
+    } else {
+        qWarning() << "  ✗ HardwareFingerprintSpoofer failed to initialize for" << instanceId;
+    }
+
+    // Network Stack Spoofer — spoofs TTL, MAC, HTTP headers, WebRTC IP,
+    // and mobile operator identity. These are checked by banking apps that
+    // correlate network-layer fingerprints with device identity.
+    VirtualPhonePro::NetworkStackSpoofer netSpoofer;
+    if (netSpoofer.initialize()) {
+        netSpoofer.setDeviceTTL();                        // real device TTL=64
+        netSpoofer.spoofMACAddress("A4:50:46:XX:XX:XX"); // Samsung OUI prefix
+        netSpoofer.spoofInterfaceName();                  // wlan0 not eth0
+        netSpoofer.spoofMobileOperator("T-Mobile");
+        netSpoofer.spoofMobileCountryCode(310);           // US MCC
+        netSpoofer.spoofMobileNetworkCode(260);           // T-Mobile MNC
+        netSpoofer.spoofNetworkType("4G");
+        netSpoofer.spoofUserAgent(
+            "Mozilla/5.0 (Linux; Android 14; " +
+            model.toStdString() +
+            " Build/UP1A.231005.007) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0.6099.144 Mobile Safari/537.36");
+        netSpoofer.applySamsungNetworkProfile();
+        netSpoofer.applyAllChanges();
+        qDebug() << "  ✓ Network Stack Spoofer (TTL/MAC/HTTP/Operator/UA)";
+    } else {
+        qWarning() << "  ✗ NetworkStackSpoofer failed to initialize";
+    }
     
     // TLS Fingerprint
     TLSFingerprint& tlsFingerprint = TLSFingerprint::instance();
