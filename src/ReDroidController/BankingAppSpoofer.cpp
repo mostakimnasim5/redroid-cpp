@@ -239,8 +239,8 @@ bool BankingAppSpoofer::hideMagisk(const QString& instanceId) {
         "pm hide com.topjohnwu.magisk 2>/dev/null || true",
         
         // Reset Magisk props
-        "resetprop ro.magisk.disable 1",
-        "resetprop magisk.disable 1"
+        "setprop ro.magisk.disable 1",
+        "setprop magisk.disable 1"
     };
     
     for (const QString& cmd : commands) {
@@ -521,11 +521,11 @@ bool BankingAppSpoofer::bypassQEMUDetection(const QString& instanceId) {
     // QEMU-specific detection bypasses
     QStringList commands = {
         // Hide QEMU properties - use real Samsung device values
-        "resetprop ro.hardware qcom",
-        "resetprop ro.bootloader G991BXXU9EXC1",
-        "resetprop ro.product.model SM-S928B",
-        "resetprop ro.product.name dm3q",
-        "resetprop ro.product.device dm3q",
+        "setprop ro.hardware qcom",
+        "setprop ro.bootloader G991BXXU9EXC1",
+        "setprop ro.product.model SM-S928B",
+        "setprop ro.product.name dm3q",
+        "setprop ro.product.device dm3q",
         
         // Remove QEMU markers
         "rm -rf /system/lib64/hw/audio.primary.goldfish.so 2>/dev/null || true",
@@ -551,10 +551,10 @@ bool BankingAppSpoofer::bypassGenymotionDetection(const QString& instanceId) {
     mountRW(instanceId);
     
     QStringList commands = {
-        "resetprop ro.product.model Samsung Galaxy S23",
-        "resetprop ro.product.manufacturer samsung",
-        "resetprop ro.product.brand samsung",
-        "resetprop ro.build.fingerprint samsung/a53xq/a53xq:13/SB0A/123456:user/release-keys",
+        "setprop ro.product.model Samsung Galaxy S23",
+        "setprop ro.product.manufacturer samsung",
+        "setprop ro.product.brand samsung",
+        "setprop ro.build.fingerprint samsung/a53xq/a53xq:13/SB0A/123456:user/release-keys",
         
         "rm -rf /system/lib64/libhoudini.so 2>/dev/null || true",
         "rm -rf /system/lib/libhoudini.so 2>/dev/null || true"
@@ -574,9 +574,9 @@ bool BankingAppSpoofer::bypassBlueStacksDetection(const QString& instanceId) {
     mountRW(instanceId);
     
     QStringList commands = {
-        "resetprop ro.product.model Samsung Galaxy S23 Ultra",
-        "resetprop ro.product.manufacturer samsung",
-        "resetprop ro.product.brand samsung",
+        "setprop ro.product.model Samsung Galaxy S23 Ultra",
+        "setprop ro.product.manufacturer samsung",
+        "setprop ro.product.brand samsung",
         
         "pm hide com.bluestacks.home 2>/dev/null || true",
         "pm hide com.bluestacks.appguide 2>/dev/null || true",
@@ -707,21 +707,21 @@ bool BankingAppSpoofer::patchAndroidProperties(const QString& instanceId) {
     
     QStringList commands = {
         // Hide emulator properties
-        "resetprop ro.kernel.qemu 0",
-        "resetprop ro.bootmode unknown",
-        "resetprop ro.baseband unknown",
-        "resetprop ro.serialno " + QString::number(QRandomGenerator::global()->bounded(1000000000)),
-        "resetprop ro.build.characteristics tablet",
+        "setprop ro.kernel.qemu 0",
+        "setprop ro.bootmode unknown",
+        "setprop ro.baseband unknown",
+        "setprop ro.serialno " + QString::number(QRandomGenerator::global()->bounded(1000000000)),
+        "setprop ro.build.characteristics tablet",
         
         // Make device appear as physical
-        "resetprop ro.build.type user",
-        "resetprop ro.debuggable 0",
-        "resetprop ro.secure 1",
+        "setprop ro.build.type user",
+        "setprop ro.debuggable 0",
+        "setprop ro.secure 1",
         
         // Hide virtualization
-        "resetprop ro.hardware.overlay null",
-        "resetprop dalvik.vm.dex2oat-Xms 64m",
-        "resetprop dalvik.vm.dex2oat-Xmx 512m"
+        "setprop ro.hardware.overlay null",
+        "setprop dalvik.vm.dex2oat-Xms 64m",
+        "setprop dalvik.vm.dex2oat-Xmx 512m"
     };
     
     for (const QString& cmd : commands) {
@@ -826,18 +826,18 @@ bool BankingAppSpoofer::spoofBuildProperties(const QString& instanceId) {
     mountRW(instanceId);
     
     QStringList commands = {
-        "resetprop ro.product.manufacturer " + profile.mfr,
-        "resetprop ro.product.model " + profile.model,
-        "resetprop ro.product.brand " + profile.mfr.toLower(),
-        "resetprop ro.product.device " + profile.device,
-        "resetprop ro.product.name " + profile.product,
-        "resetprop ro.build.fingerprint " + profile.fingerprint,
-        "resetprop ro.bootimage.build.fingerprint " + profile.fingerprint,
-        "resetprop ro.vendor.build.fingerprint " + profile.fingerprint,
-        "resetprop ro.build.display.id " + profile.buildId,
-        "resetprop ro.build.id " + profile.buildId,
-        "resetprop ro.build.version.release 14",
-        "resetprop ro.build.version.sdk 34",
+        "setprop ro.product.manufacturer " + profile.mfr,
+        "setprop ro.product.model " + profile.model,
+        "setprop ro.product.brand " + profile.mfr.toLower(),
+        "setprop ro.product.device " + profile.device,
+        "setprop ro.product.name " + profile.product,
+        "setprop ro.build.fingerprint " + profile.fingerprint,
+        "setprop ro.bootimage.build.fingerprint " + profile.fingerprint,
+        "setprop ro.vendor.build.fingerprint " + profile.fingerprint,
+        "setprop ro.build.display.id " + profile.buildId,
+        "setprop ro.build.id " + profile.buildId,
+        "setprop ro.build.version.release 14",
+        "setprop ro.build.version.sdk 34",
     };
     
     for (const QString& cmd : commands) {
@@ -852,12 +852,12 @@ bool BankingAppSpoofer::spoofHardwareProperties(const QString& instanceId) {
     qDebug() << "[BankingSpoofer] Spoofing hardware properties";
     
     QStringList commands = {
-        "resetprop ro.hardware qcom",
-        "resetprop ro.bootimage.build.fingerprint samsung/a53xq/a53xq:13/SB0A/123456:user/release-keys",
-        "resetprop ro.board.platform oplus",
-        "resetprop ro.arch arm64",
-        "resetprop ro.build.version.sdk 33",
-        "resetprop ro.vendor.build.version.sdk 33"
+        "setprop ro.hardware qcom",
+        "setprop ro.bootimage.build.fingerprint samsung/a53xq/a53xq:13/SB0A/123456:user/release-keys",
+        "setprop ro.board.platform oplus",
+        "setprop ro.arch arm64",
+        "setprop ro.build.version.sdk 33",
+        "setprop ro.vendor.build.version.sdk 33"
     };
     
     for (const QString& cmd : commands) {
@@ -1087,7 +1087,7 @@ bool BankingAppSpoofer::blockMagiskHide(const QString& instanceId) {
     qDebug() << "[BankingSpoofer] Blocking Magisk hide detection";
     
     QStringList commands = {
-        "resetprop magisk.hide false",
+        "setprop magisk.hide false",
         "settings put global magisk_hide 0"
     };
     
@@ -1123,7 +1123,7 @@ bool BankingAppSpoofer::bypassMockLocationDetection(const QString& instanceId) {
     
     QStringList commands = {
         "settings put secure mock_location 0",
-        "resetprop persist.mocklocation.enable 0"
+        "setprop persist.mocklocation.enable 0"
     };
     
     for (const QString& cmd : commands) {
