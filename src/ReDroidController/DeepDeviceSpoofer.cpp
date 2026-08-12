@@ -533,17 +533,17 @@ ro.setupwizard.enable_by_default=true
 bool DeepDeviceSpoofer::removeEmulatorProperties(const QString& instanceId) {
     QStringList commands = {
         // Remove QEMU properties
-        "resetprop ro.kernel.qemu",
-        "resetprop ro.boot.qemu",
-        "resetprop ro.hardware",
-        "resetprop dalvik.vm.isa.x86",
-        "resetprop dalvik.vm.isa.x86_64",
+        "setprop ro.kernel.qemu",
+        "setprop ro.boot.qemu",
+        "setprop ro.hardware",
+        "setprop dalvik.vm.isa.x86",
+        "setprop dalvik.vm.isa.x86_64",
         
         // Remove generic properties
-        "resetprop ro.arch",
-        "resetprop ro.product.cpu.abi",
-        "resetprop xposed.hide",
-        "resetprop magisk.hide",
+        "setprop ro.arch",
+        "setprop ro.product.cpu.abi",
+        "setprop xposed.hide",
+        "setprop magisk.hide",
         
         // Ensure proper values
         "setprop ro.product.first_api_level 29",
