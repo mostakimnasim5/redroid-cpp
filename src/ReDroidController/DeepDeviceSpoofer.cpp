@@ -65,7 +65,7 @@ QString DeepDeviceSpoofer::generateRealisticBootParams() {
         "androidboot.memcg=1 "
         "lpm_levels.sleep_disabled=1 "
         "androidboot.useRamdump=true "
-        "buildvariant=userdebug"
+        "buildvariant=user"
     );
 }
 

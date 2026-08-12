@@ -11,6 +11,19 @@
 
 namespace VirtualPhonePro {
 
+// Current month's Android security patch date, formatted as the real
+// ro.build.version.security_patch property ("YYYY-MM-01"). Keeps generated
+// profiles from advertising a stale patch. Clamped so it never lands in the
+// future relative to the host clock.
+static QString currentSecurityPatchDate() {
+    QDate today = QDateTime::currentDateTimeUtc().date();
+    QDate patchDate(today.year(), today.month(), 1);
+    if (patchDate > today) {
+        patchDate = QDate(today.year(), today.month(), 1).addMonths(-1);
+    }
+    return patchDate.toString("yyyy-MM-dd");
+}
+
 // ============================================================================
 // DeviceIdentity Implementation
 // ============================================================================
@@ -525,8 +538,8 @@ DeviceProfile DeviceProfile::createSamsungS24Ultra() {
     profile.build.hardware = "qcom";
     profile.build.bootloader = "S928BXXU1AXXX";
     profile.build.buildId = "UP1A.231005.007";
-    profile.build.buildType = "userdebug";
-    profile.build.securityPatch = "2024-01-01";
+    profile.build.buildType = "user";  // real consumer devices are user, never userdebug
+    profile.build.securityPatch = currentSecurityPatchDate();
     profile.build.androidVersion = 14;
     profile.build.sdkVersion = 34;
     
@@ -605,8 +618,8 @@ DeviceProfile DeviceProfile::createGooglePixel8Pro() {
     profile.build.hardware = "gschip";
     profile.build.bootloader = "mainline";
     profile.build.buildId = "UP1A.231005.007";
-    profile.build.buildType = "userdebug";
-    profile.build.securityPatch = "2024-01-01";
+    profile.build.buildType = "user";  // real consumer devices are user, never userdebug
+    profile.build.securityPatch = currentSecurityPatchDate();
     profile.build.androidVersion = 14;
     profile.build.sdkVersion = 34;
     
@@ -697,8 +710,8 @@ DeviceProfile DeviceProfile::createRandom() {
     profile.build.hardware = "qcom";
     profile.build.bootloader = "bootloader";
     profile.build.buildId = "UP1A.231005.007";
-    profile.build.buildType = "userdebug";
-    profile.build.securityPatch = "2024-01-01";
+    profile.build.buildType = "user";  // real consumer devices are user, never userdebug
+    profile.build.securityPatch = currentSecurityPatchDate();
     profile.build.androidVersion = 14;
     profile.build.sdkVersion = 34;
     

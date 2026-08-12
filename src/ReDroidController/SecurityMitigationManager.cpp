@@ -24,6 +24,18 @@
 
 namespace VirtualPhonePro {
 
+// Current month's Android security patch date — avoids presenting a stale
+// patch (flagged by Play Integrity / banking apps). Pinned to "-01" and
+// clamped so it never lands in the future.
+static QString currentSecurityPatchDate() {
+    QDate today = QDateTime::currentDateTimeUtc().date();
+    QDate patchDate(today.year(), today.month(), 1);
+    if (patchDate > today) {
+        patchDate = QDate(today.year(), today.month(), 1).addMonths(-1);
+    }
+    return patchDate.toString("yyyy-MM-dd");
+}
+
 // ============================================================================
 // Static Instance
 // ============================================================================
@@ -337,7 +349,7 @@ bool SecurityMitigationManager::sanitizeProcCmdline(const QString& instanceId) {
     // Remove any qemu, emulator, or container-related cmdline args
     QStringList commands = {
         "mount -o bind /dev/null /proc/1/environ 2>/dev/null || true",
-        "echo 'androidboot.hardware=qcom androidboot.bootloader=bootloader androidboot.baseband=baseband androidboot.security_patch=2024-01-01' > /proc/cmdline",
+        QString("echo 'androidboot.hardware=qcom androidboot.bootloader=bootloader androidboot.baseband=baseband androidboot.security_patch=%1' > /proc/cmdline").arg(currentSecurityPatchDate()),
         "chmod 444 /proc/cmdline",
     };
     
@@ -612,7 +624,9 @@ bool SecurityMitigationManager::mountOverlayForPath(const QString& instanceId, c
 
 bool SecurityMitigationManager::setRetailBuildProperties(const QString& instanceId) {
     ReDroidController& ctrl = ReDroidController::instance();
-    
+
+    const QString patch = currentSecurityPatchDate();
+
     QStringList properties = {
         // Security flags
         "setprop ro.debuggable 0",
@@ -621,7 +635,7 @@ bool SecurityMitigationManager::setRetailBuildProperties(const QString& instance
         
         // Build tags - retail keys
         "setprop ro.build.tags release-keys",
-        "setprop ro.build.description userdebug release-keys",
+        "setprop ro.build.description user release-keys",
         
         // Verified boot
         "setprop ro.boot.verifiedbootstate green",
@@ -632,11 +646,11 @@ bool SecurityMitigationManager::setRetailBuildProperties(const QString& instance
         // SELinux
         "setprop ro.build.selinux Enforcing",
         
-        // Security patch
-        "setprop ro.build.version.security_patch 2024-01-01",
-        "setprop ro.system_ext.security_patch 2024-01-01",
-        "setprop ro.vendor.security_patch 2024-01-01",
-        "setprop ro.product.security_patch 2024-01-01",
+        // Security patch (current month — never stale)
+        QString("setprop ro.build.version.security_patch %1").arg(patch),
+        QString("setprop ro.system_ext.security_patch %1").arg(patch),
+        QString("setprop ro.vendor.security_patch %1").arg(patch),
+        QString("setprop ro.product.security_patch %1").arg(patch),
         
         // Hardware security
         "setprop ro.hardware.backed_hardware 1",

@@ -17,6 +17,25 @@
 
 namespace VirtualPhonePro {
 
+// Security patch dates follow Google's "Android Security Bulletin" calendar
+// (first Monday of each month). We synthesize a current patch date from the
+// host clock so it never ages past the build, which otherwise lets Play
+// Integrity / banking apps flag an "outdated patch" device. The result is
+// pinned to the 01st of the current month to match the real property format
+// ("YYYY-MM-DD") while staying within the supported patch window.
+static std::string currentSecurityPatchDate() {
+    QDate today = QDateTime::currentDateTimeUtc().date();
+    // Clamp to a stable, realistic patch day (security bulletins ship on the
+    // first Monday, but the ro.build.version.security_patch property is
+    // conventionally recorded as "-01").
+    QDate patchDate(today.year(), today.month(), 1);
+    // Never emit a future patch relative to today.
+    if (patchDate > today) {
+        patchDate = QDate(today.year(), today.month(), 1).addMonths(-1);
+    }
+    return patchDate.toString("yyyy-MM-dd").toStdString();
+}
+
 SafetyNetAdvancedBypass& SafetyNetAdvancedBypass::getInstance() {
     static SafetyNetAdvancedBypass instance;
     return instance;
@@ -355,18 +374,21 @@ SafetyNetResult SafetyNetAdvancedBypass::setLatestSecurityPatch() {
     result.success = false;
     
     auto& adb = ADBManager::getInstance();
-    
-    // Set latest security patch date (Android 14)
-    adb.setProperty("ro.build.version.security_patch", "2024-01-01");
-    adb.setProperty("ro.system.build.version.security_patch", "2024-01-01");
-    adb.setProperty("ro.vendor.build.version.security_patch", "2024-01-01");
-    adb.setProperty("ro.product.build.version.security_patch", "2024-01-01");
-    
-    m_modifiedProperties["ro.build.version.security_patch"] = "2024-01-01";
-    
+
+    // Use the current month's security patch date so the device does not
+    // present a stale patch (a hard red flag for Play Integrity / banking apps).
+    const std::string patchDate = currentSecurityPatchDate();
+
+    adb.setProperty("ro.build.version.security_patch", patchDate);
+    adb.setProperty("ro.system.build.version.security_patch", patchDate);
+    adb.setProperty("ro.vendor.build.version.security_patch", patchDate);
+    adb.setProperty("ro.product.build.version.security_patch", patchDate);
+
+    m_modifiedProperties["ro.build.version.security_patch"] = patchDate;
+
     result.success = true;
-    result.message = "Latest security patch applied (2024-01-01)";
-    
+    result.message = "Latest security patch applied (" + patchDate + ")";
+
     return result;
 }
 

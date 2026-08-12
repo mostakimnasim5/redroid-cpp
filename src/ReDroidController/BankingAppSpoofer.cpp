@@ -750,6 +750,7 @@ bool BankingAppSpoofer::setDebugProperties(const QString& instanceId) {
     qDebug() << "[BankingSpoofer] Setting debug properties";
     
     QStringList commands = {
+        "setprop ro.secure 1",
         "setprop ro.debuggable 0",
         "setprop persist.sys.debuggable 0",
         "setprop service.adb.enable 0",
@@ -838,6 +839,15 @@ bool BankingAppSpoofer::spoofBuildProperties(const QString& instanceId) {
         "setprop ro.build.id " + profile.buildId,
         "setprop ro.build.version.release 14",
         "setprop ro.build.version.sdk 34",
+        // build type / tags / characteristics — banking apps read these as
+        // separate properties (not just from the fingerprint string) and
+        // flag anything that is not "user" / "release-keys".
+        "setprop ro.build.type user",
+        "setprop ro.build.tags release-keys",
+        "setprop ro.build.characteristics nosdcs",
+        "setprop ro.boot.veritymode enforcing",
+        "setprop ro.boot.verifiedbootstate green",
+        "setprop ro.boot.flash.locked 1",
     };
     
     for (const QString& cmd : commands) {
@@ -850,20 +860,29 @@ bool BankingAppSpoofer::spoofBuildProperties(const QString& instanceId) {
 
 bool BankingAppSpoofer::spoofHardwareProperties(const QString& instanceId) {
     qDebug() << "[BankingSpoofer] Spoofing hardware properties";
-    
+
+    // NOTE: previously this set ro.hardware=qcom alongside ro.board.platform=oplus
+    // and overwrote ro.build.version.sdk with 33 (Android 13) while
+    // spoofBuildProperties() set it to 34 (Android 14), and stamped a Galaxy A53
+    // Android-13 bootimage fingerprint on top of the Android-14 build fingerprint.
+    // Those cross-inconsistencies are themselves a detection signal — banking
+    // apps cross-check ro.hardware vs ro.board.platform, and SDK vs build
+    // version. Keep the hardware surface consistent with the Android-14 / Qualcomm
+    // profile used elsewhere.
     QStringList commands = {
         "setprop ro.hardware qcom",
-        "setprop ro.bootimage.build.fingerprint samsung/a53xq/a53xq:13/SB0A/123456:user/release-keys",
-        "setprop ro.board.platform oplus",
+        "setprop ro.board.platform kalama",   // Snapdragon 8 Gen 2 (S23/Pixel 8)
         "setprop ro.arch arm64",
-        "setprop ro.build.version.sdk 33",
-        "setprop ro.vendor.build.version.sdk 33"
+        "setprop ro.product.cpu.abi arm64-v8a",
+        "setprop ro.product.cpu.abilist arm64-v8a,armeabi-v7a,armeabi",
+        "setprop ro.build.version.sdk 34",
+        "setprop ro.vendor.build.version.sdk 34"
     };
-    
+
     for (const QString& cmd : commands) {
         executeCommand(instanceId, cmd);
     }
-    
+
     return true;
 }
 

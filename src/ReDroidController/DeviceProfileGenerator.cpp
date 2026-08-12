@@ -36,6 +36,25 @@
 
 namespace VirtualPhonePro {
 
+// Current month's Android security patch date ("YYYY-MM-01"). Keeps device
+// profiles from advertising a stale patch (Play Integrity flags aged patches).
+// Derived from the host clock and clamped to never land in the future.
+static std::string currentSecurityPatchDate() {
+    std::time_t now = std::time(nullptr);
+    std::tm* lt = std::gmtime(&now);
+    int year = lt->tm_year + 1900;
+    int month = lt->tm_mon + 1;
+    // If we are on day 1 of a month, use the previous month's patch so the
+    // patch date never exceeds today.
+    if (lt->tm_mday <= 1) {
+        if (month == 1) { year -= 1; month = 12; }
+        else { month -= 1; }
+    }
+    std::ostringstream ss;
+    ss << year << "-" << std::setw(2) << std::setfill('0') << month << "-01";
+    return ss.str();
+}
+
 // ════════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ════════════════════════════════════════════════════════════════════════════════
@@ -724,7 +743,9 @@ DeviceIdentityProfile DeviceProfileGenerator::generateProfile(
     profile.bootloader_version = tmpl.bootloader;
     profile.android_version = tmpl.android_version;
     profile.sdk_version = tmpl.sdk_version;
-    profile.security_patch = tmpl.security_patch;
+    // Override the template's historical patch with the current month so the
+    // generated profile never advertises an outdated security patch.
+    profile.security_patch = currentSecurityPatchDate();
     profile.build_id = tmpl.build_id;
     
     // ─────────────────────────────────────────────────────────────────────────

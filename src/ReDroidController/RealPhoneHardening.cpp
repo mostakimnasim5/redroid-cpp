@@ -410,7 +410,10 @@ bool RealPhoneHardening::bypassBlueStacksDetection() {
     adb.setProperty("ro.product.model", "Samsung Galaxy S21 Ultra");
     adb.setProperty("ro.product.device", "dreamlte");
     adb.setProperty("ro.product.manufacturer", "samsung");
-    adb.setProperty("ro.build.fingerprint", "samsung/dreamltexx/dreamlte:9/PPR1.180610.011/eng.root:20180919.201423:userdebug/dev-keys");
+    // Real consumer devices ship "user" builds signed with release-keys, never
+    // an "eng.root:userdebug/dev-keys" engineering build — banking apps flag
+    // that immediately. Use a realistic retail Pixel fingerprint instead.
+    adb.setProperty("ro.build.fingerprint", "google/redfin/redfin:13/TQ3A.230805.001/10316531:user/release-keys");
     
     adb.executeShellCommand("settings delete global bst_emulator_id 2>/dev/null || true");
     adb.executeShellCommand("settings delete secure bst_force_orientation 2>/dev/null || true");

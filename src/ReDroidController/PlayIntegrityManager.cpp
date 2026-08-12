@@ -171,6 +171,318 @@ static QString base64UrlEncodeNoPadding(const QByteArray& data) {
 }
 
 // ========================================================================
+// BIG INTEGER ARITHMETIC (for RSA key generation & signing)
+// ========================================================================
+//
+// RSA-2048 needs arithmetic on 2048-bit integers. Qt has no bigint type and
+// the project deliberately does not link OpenSSL, so we provide a minimal
+// big-endian unsigned bigint with the operations RSA requires: add, sub,
+// mul, divmod, modexp, modinv, gcd, and a Miller-Rabin primality test.
+// Representation: big-endian byte array (MSB first) — same convention as the
+// existing RSAKeyPair byte arrays, so values flow in and out without conversion.
+
+class BigInt {
+public:
+    QByteArray bytes; // big-endian, no leading zero bytes (except value 0 = empty)
+
+    BigInt() = default;
+    explicit BigInt(const QByteArray& b) : bytes(stripLeadingZeros(b)) {}
+    explicit BigInt(unsigned long long v) { setU64(v); }
+    static BigInt fromRandom(int bitLength);
+
+    bool isZero() const { for (char c : bytes) if (static_cast<quint8>(c) != 0) return false; return true; }
+    bool isEven() const { return bytes.isEmpty() || ((static_cast<quint8>(bytes.back()) & 1) == 0); }
+    int bitLength() const;
+    quint8 bit(int i) const; // bit 0 = LSB
+    void setBit(int i);
+    BigInt mod(const BigInt& m) const;
+    BigInt add(const BigInt& o) const;
+    BigInt sub(const BigInt& o) const; // assumes *this >= o
+    BigInt mul(const BigInt& o) const;
+    BigInt modPow(const BigInt& exp, const BigInt& mod) const;
+    BigInt modInverse(const BigInt& m) const;
+    QByteArray toBytesBE() const { return bytes; }
+
+    static int cmp(const BigInt& a, const BigInt& b); // -1,0,1
+    static BigInt gcd(const BigInt& a, const BigInt& b);
+    static BigInt divmod(const BigInt& a, const BigInt& b, BigInt& rem);
+
+private:
+    static QByteArray stripLeadingZeros(const QByteArray& b);
+    void setU64(unsigned long long v);
+};
+
+QByteArray BigInt::stripLeadingZeros(const QByteArray& b) {
+    int i = 0;
+    while (i < b.size() - 1 && b[i] == 0) ++i;
+    return b.mid(i);
+}
+
+void BigInt::setU64(unsigned long long v) {
+    QByteArray b(8, 0);
+    for (int i = 7; i >= 0; --i) { b[7 - i] = static_cast<char>((v >> (i * 8)) & 0xFF); }
+    bytes = stripLeadingZeros(b);
+}
+
+int BigInt::bitLength() const {
+    if (bytes.isEmpty()) return 0;
+    int bits = (bytes.size() - 1) * 8;
+    quint8 top = static_cast<quint8>(bytes[0]);
+    while (top) { ++bits; top >>= 1; }
+    return bits;
+}
+
+quint8 BigInt::bit(int i) const {
+    int byteIdx = bytes.size() - 1 - (i / 8);
+    if (byteIdx < 0 || byteIdx >= bytes.size()) return 0;
+    return (static_cast<quint8>(bytes[byteIdx]) >> (i % 8)) & 1;
+}
+
+void BigInt::setBit(int i) {
+    int need = i / 8 + 1;
+    while (bytes.size() < need) bytes.prepend('\0');
+    int byteIdx = bytes.size() - 1 - (i / 8);
+    bytes[byteIdx] = static_cast<char>(static_cast<quint8>(bytes[byteIdx]) | (1 << (i % 8)));
+}
+
+BigInt BigInt::fromRandom(int bitLength) {
+    if (bitLength <= 0) return BigInt();
+    int byteLen = (bitLength + 7) / 8;
+    QByteArray b = generateSecureRandomBytes(byteLen);
+    int extra = byteLen * 8 - bitLength;
+    if (extra > 0) {
+        b[0] = static_cast<char>(static_cast<quint8>(b[0]) & static_cast<quint8>(0xFF >> extra));
+    }
+    if (extra == 0) {
+        b[0] = static_cast<char>(static_cast<quint8>(b[0]) | 0x80);
+    } else {
+        b[0] = static_cast<char>(static_cast<quint8>(b[0]) | static_cast<quint8>(1 << (7 - extra)));
+    }
+    return BigInt(b);
+}
+
+int BigInt::cmp(const BigInt& a, const BigInt& b) {
+    if (a.bytes.size() != b.bytes.size()) return a.bytes.size() < b.bytes.size() ? -1 : 1;
+    for (int i = 0; i < a.bytes.size(); ++i) {
+        quint8 x = static_cast<quint8>(a.bytes[i]);
+        quint8 y = static_cast<quint8>(b.bytes[i]);
+        if (x != y) return x < y ? -1 : 1;
+    }
+    return 0;
+}
+
+BigInt BigInt::add(const BigInt& o) const {
+    int n = qMax(bytes.size(), o.bytes.size());
+    QByteArray r(n, 0);
+    int carry = 0;
+    for (int i = 0; i < n; ++i) {
+        int a = (i < bytes.size()) ? static_cast<quint8>(bytes[bytes.size() - 1 - i]) : 0;
+        int b = (i < o.bytes.size()) ? static_cast<quint8>(o.bytes[o.bytes.size() - 1 - i]) : 0;
+        int s = a + b + carry;
+        r[n - 1 - i] = static_cast<char>(s & 0xFF);
+        carry = s >> 8;
+    }
+    if (carry) r.prepend(static_cast<char>(carry));
+    return BigInt(r);
+}
+
+BigInt BigInt::sub(const BigInt& o) const {
+    QByteArray r = bytes;
+    int borrow = 0;
+    int on = o.bytes.size();
+    for (int i = 0; i < static_cast<int>(r.size()); ++i) {
+        int a = static_cast<quint8>(r[r.size() - 1 - i]);
+        int b = (i < on) ? static_cast<quint8>(o.bytes[on - 1 - i]) : 0;
+        int s = a - b - borrow;
+        if (s < 0) { s += 256; borrow = 1; } else borrow = 0;
+        r[r.size() - 1 - i] = static_cast<char>(s & 0xFF);
+    }
+    return BigInt(r);
+}
+
+BigInt BigInt::mul(const BigInt& o) const {
+    if (isZero() || o.isZero()) return BigInt();
+    QByteArray r(bytes.size() + o.bytes.size(), 0);
+    for (int i = 0; i < bytes.size(); ++i) {
+        int carry = 0;
+        quint8 a = static_cast<quint8>(bytes[bytes.size() - 1 - i]);
+        for (int j = 0; j < o.bytes.size(); ++j) {
+            int idx = r.size() - 1 - i - j;
+            int b = static_cast<quint8>(o.bytes[o.bytes.size() - 1 - j]);
+            int prod = a * b + static_cast<quint8>(r[idx]) + carry;
+            r[idx] = static_cast<char>(prod & 0xFF);
+            carry = prod >> 8;
+        }
+        int idx = r.size() - 1 - i - o.bytes.size();
+        while (carry && idx >= 0) {
+            int prod = static_cast<quint8>(r[idx]) + carry;
+            r[idx] = static_cast<char>(prod & 0xFF);
+            carry = prod >> 8;
+            --idx;
+        }
+    }
+    return BigInt(r);
+}
+
+BigInt BigInt::divmod(const BigInt& a, const BigInt& b, BigInt& rem) {
+    // Long division, base 256. For each input byte, shift the remainder left
+    // by one byte and find the largest quotient digit d in [0,255] with b*d <= rem.
+    if (b.isZero()) { rem = a; return BigInt(); }
+    if (cmp(a, b) < 0) { rem = a; return BigInt(); } // fast path: a < b => q=0, r=a
+    QByteArray q;
+    rem = BigInt();
+    for (int i = 0; i < a.bytes.size(); ++i) {
+        rem.bytes.append(a.bytes[i]);
+        rem.bytes = stripLeadingZeros(rem.bytes);
+        // Binary search for the largest quotient digit d in [0,255] with b*d <= rem.
+        // 8 mul calls max instead of up to 256 (linear scan).
+        int lo = 0, hi = 255, qd = 0;
+        BigInt prod;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            BigInt p = b.mul(BigInt(static_cast<unsigned long long>(mid)));
+            if (cmp(p, rem) <= 0) { qd = mid; prod = p; lo = mid + 1; }
+            else { hi = mid - 1; }
+        }
+        q.append(static_cast<char>(qd));
+        rem = rem.sub(prod);
+    }
+    rem.bytes = stripLeadingZeros(rem.bytes);
+    return BigInt(q);
+}
+
+BigInt BigInt::mod(const BigInt& m) const {
+    if (cmp(*this, m) < 0) return *this;
+    BigInt rem;
+    divmod(*this, m, rem);
+    return rem;
+}
+
+BigInt BigInt::modPow(const BigInt& exp, const BigInt& m) const {
+    if (m.bytes.size() == 1 && static_cast<quint8>(m.bytes[0]) == 1) return BigInt();
+    BigInt result(static_cast<unsigned long long>(1));
+    BigInt base = this->mod(m);
+    int bl = exp.bitLength();
+    for (int i = 0; i < bl; ++i) {
+        if (exp.bit(i)) {
+            result = result.mul(base).mod(m);
+        }
+        base = base.mul(base).mod(m);
+    }
+    return result;
+}
+
+BigInt BigInt::gcd(const BigInt& a, const BigInt& b) {
+    BigInt x = a, y = b;
+    while (!y.isZero()) {
+        BigInt r;
+        divmod(x, y, r);
+        x = y;
+        y = r;
+    }
+    return x;
+}
+
+// Signed bigint used only by modInverse (extended Euclidean coefficients).
+struct SBigInt {
+    bool neg = false;
+    BigInt mag;
+};
+static SBigInt sSub(const SBigInt& a, const SBigInt& b) {
+    if (a.neg == b.neg) {
+        int c = BigInt::cmp(a.mag, b.mag);
+        if (c >= 0) return {a.neg, a.mag.sub(b.mag)};
+        return {!a.neg, b.mag.sub(a.mag)};
+    }
+    return {a.neg, a.mag.add(b.mag)};
+}
+
+BigInt BigInt::modInverse(const BigInt& m) const {
+    BigInt old_r = *this, r = m;
+    SBigInt old_s{false, BigInt(static_cast<unsigned long long>(1))}, s{false, BigInt()};
+    while (!r.isZero()) {
+        BigInt qrem;
+        BigInt q = divmod(old_r, r, qrem);
+        old_r = r; r = qrem;
+        SBigInt qs{false, q.mul(s.mag)};
+        qs.neg = s.neg ? !qs.neg : qs.neg;
+        SBigInt temp = sSub(old_s, qs);
+        old_s = s; s = temp;
+    }
+    if (!(old_r.bytes.size() == 1 && static_cast<quint8>(old_r.bytes[0]) == 1)) {
+        return BigInt(); // not invertible
+    }
+    BigInt result = old_s.mag;
+    if (old_s.neg) result = m.sub(result);
+    return result.mod(m);
+}
+
+// Miller-Rabin primality test. Returns true if n is probably prime.
+static bool isProbablyPrime(const BigInt& n, int rounds = 20) {
+    if (n.bitLength() < 2) return false;
+    static const unsigned small[] = {2,3,5,7,11,13,17,19,23,29,31,37};
+    for (unsigned p : small) {
+        BigInt pb(static_cast<unsigned long long>(p));
+        if (BigInt::cmp(n, pb) == 0) return true;
+        BigInt r;
+        BigInt::divmod(n, pb, r);
+        if (r.isZero()) return false;
+    }
+    BigInt one(static_cast<unsigned long long>(1));
+    BigInt two(static_cast<unsigned long long>(2));
+    BigInt nMinus1 = n.sub(one);
+    BigInt d = nMinus1;
+    int rr = 0;
+    while (d.isEven()) {
+        BigInt rem;
+        d = BigInt::divmod(d, two, rem);
+        ++rr;
+    }
+    for (int i = 0; i < rounds; ++i) {
+        BigInt a = BigInt::fromRandom(n.bitLength() - 1);
+        if (BigInt::cmp(a, two) < 0) a = two;
+        BigInt x = a.modPow(d, n);
+        // x == 1 or x == n-1  =>  probably prime, try next witness
+        if (x.bytes.size() == 1 && static_cast<quint8>(x.bytes[0]) == 1) continue;
+        if (BigInt::cmp(x, nMinus1) == 0) continue;
+        bool composite = true;
+        for (int j = 0; j < rr - 1; ++j) {
+            x = x.mul(x).mod(n);
+            if (BigInt::cmp(x, nMinus1) == 0) { composite = false; break; }
+        }
+        if (composite) return false;
+    }
+    return true;
+}
+
+// Generate a random probable prime of the given bit length (top two bits set,
+// odd). Used for RSA p and q.
+static BigInt generatePrime(int bitLength) {
+    const int maxAttempts = bitLength * 20;
+    // Small primes for trial division — filters out ~80% of composites before
+    // the expensive Miller-Rabin modPow, making prime generation practical.
+    static const unsigned small[] = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97};
+    for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+        BigInt candidate = BigInt::fromRandom(bitLength);
+        candidate.setBit(bitLength - 1);
+        candidate.setBit(bitLength - 2);
+        candidate.setBit(0); // odd
+        bool divisible = false;
+        for (unsigned p : small) {
+            BigInt pb(static_cast<unsigned long long>(p));
+            if (BigInt::cmp(candidate, pb) == 0) { divisible = false; break; } // candidate == p
+            BigInt r;
+            BigInt::divmod(candidate, pb, r);
+            if (r.isZero()) { divisible = true; break; }
+        }
+        if (divisible) continue;
+        if (isProbablyPrime(candidate)) return candidate;
+    }
+    qWarning() << "[PlayIntegrity] generatePrime exhausted attempts for bitLength" << bitLength;
+    return BigInt(static_cast<unsigned long long>(0x10001)); // last-resort odd fallback
+}
+
+// ========================================================================
 // RSA CRYPTOGRAPHIC IMPLEMENTATION FOR HARDWARE ATTESTATION
 // ========================================================================
 
@@ -195,98 +507,136 @@ struct RSAKeyPair {
 
 /**
  * @brief Generate RSA key pair with CRT parameters for attestation
+ *
+ * Generates a real RSA key pair: two random probable primes p, q (Miller-Rabin),
+ * n = p*q, and d = e^(-1) mod (p-1)(q-1). All CRT parameters (dp, dq, qinv) are
+ * derived consistently so signatures verify under the public key.
  */
 static RSAKeyPair generateRSAKeyPair(int keySize = 2048) {
     RSAKeyPair keys;
-    
-    // Use predefined primes for consistency (in production, use real random primes)
-    // These are placeholder values - real implementation would use
-    // proper prime generation with Miller-Rabin test
-    
-    QByteArray primeSeed = generateSecureRandomBytes(256);
-    
-    // For hardware attestation, we need proper RSA key generation
-    // Using deterministic primes based on seed for reproducibility
-    keys.n = generateSecureRandomBytes(keySize / 8);
-    keys.e = intToBytes(RSA_E);
-    
-    // Generate proper CRT parameters
-    int halfSize = keySize / 16;
-    keys.p = generateSecureRandomBytes(halfSize);
-    keys.q = generateSecureRandomBytes(halfSize);
-    
-    // Ensure p > q (swap if needed)
-    if (keys.p < keys.q) {
-        qSwap(keys.p, keys.q);
+
+    const int primeBits = keySize / 2;
+    const BigInt e(static_cast<unsigned long long>(RSA_E));
+
+    BigInt p, q, n, phi, d;
+    int attempts = 0;
+    // Loop until we find p, q such that gcd(e, (p-1)(q-1)) == 1 (required so
+    // that d = e^-1 mod phi exists). This holds for the overwhelming majority
+    // of primes, so the loop almost always runs once.
+    while (attempts < 32) {
+        p = generatePrime(primeBits);
+        q = generatePrime(primeBits);
+        if (BigInt::cmp(p, q) == 0) { ++attempts; continue; }       // p == q: reject
+        BigInt one(static_cast<unsigned long long>(1));
+        BigInt pMinus1 = p.sub(one);
+        BigInt qMinus1 = q.sub(one);
+        phi = pMinus1.mul(qMinus1);
+        // d = e^-1 mod phi only exists when gcd(e, phi) == 1. e = 65537 is prime,
+        // so this fails only when (p-1) or (q-1) is a multiple of 65537 — rare
+        // but possible; retry with fresh primes in that case.
+        BigInt g = BigInt::gcd(e, phi);
+        bool gcdIsOne = (g.bytes.size() == 1 && static_cast<quint8>(g.bytes[0]) == 1);
+        if (!gcdIsOne) { ++attempts; continue; }
+        n = p.mul(q);
+        d = e.modInverse(phi);
+        if (d.isZero()) { ++attempts; continue; } // not invertible (shouldn't happen here)
+        break;
     }
-    
-    // Calculate d = e^(-1) mod ((p-1)*(q-1))
-    // This is a simplified version - real implementation needs proper
-    // modular inverse calculation
-    keys.d = generateSecureRandomBytes(halfSize * 2);
-    
-    // CRT parameters
-    keys.dp = generateSecureRandomBytes(halfSize);
-    keys.dq = generateSecureRandomBytes(halfSize);
-    keys.qinv = generateSecureRandomBytes(halfSize);
-    
-    qDebug() << "[PlayIntegrity] Generated RSA key pair, keySize:" << keySize;
-    
+
+    keys.n = n.toBytesBE();
+    keys.e = e.toBytesBE();
+    keys.d = d.toBytesBE();
+    keys.p = p.toBytesBE();
+    keys.q = q.toBytesBE();
+
+    // CRT parameters: dp = d mod (p-1), dq = d mod (q-1), qinv = q^-1 mod p.
+    BigInt one(static_cast<unsigned long long>(1));
+    keys.dp = d.mod(p.sub(one)).toBytesBE();
+    keys.dq = d.mod(q.sub(one)).toBytesBE();
+    // q^-1 mod p — only valid when p > q; ensure that ordering.
+    if (BigInt::cmp(p, q) > 0) {
+        keys.qinv = q.modInverse(p).toBytesBE();
+    } else {
+        // p < q: q^-1 mod p does not exist in the usual sense. Swap p and q so
+        // the invariant p > q holds, then store q^-1 mod p (now valid).
+        keys.p = q.toBytesBE();
+        keys.q = p.toBytesBE();
+        keys.dp = d.mod(q.sub(one)).toBytesBE();
+        keys.dq = d.mod(p.sub(one)).toBytesBE();
+        keys.qinv = p.modInverse(q).toBytesBE();
+    }
+
+    qDebug() << "[PlayIntegrity] Generated RSA key pair, keySize:" << keySize
+             << "n bytes:" << keys.n.size();
+
     return keys;
 }
 
 /**
- * @brief Simple modular exponentiation (for signature verification)
+ * @brief Modular exponentiation: base^exp mod m, using BigInt.
  */
 static QByteArray modPow(const QByteArray& base, const QByteArray& exp, const QByteArray& mod) {
-    // This is a simplified implementation
-    // In production, use a proper big integer library
-    Q_UNUSED(base);
-    Q_UNUSED(exp);
-    Q_UNUSED(mod);
-    
-    // Return mock signature for demonstration
-    return generateSecureRandomBytes(256);
+    BigInt b(base), e(exp), m(mod);
+    return b.modPow(e, m).toBytesBE();
 }
 
 /**
  * @brief PKCS#1 v2.1 RSASSA-PSS signature with SHA-256
+ *
+ * Real RSA-PSS: build the EM with MGF1 masking, then compute the signature
+ * as s = EM^d mod n (private-key operation). The result verifies under the
+ * public key, which is what attestation consumers check.
  */
 static QByteArray rsaSignPSS(const QByteArray& message, const RSAKeyPair& keys) {
     // Hash the message with SHA-256
     QByteArray hash = QCryptographicHash::hash(message, QCryptographicHash::Sha256);
-    
+
     // Generate random salt for PSS padding
     int saltLength = SHA256_DIGEST_LENGTH;
     QByteArray salt = generateSecureRandomBytes(saltLength);
-    
-    // Create PSS padding: DB = PS || 0x01 || salt
-    QByteArray MPrime(8, 0); // Hash of empty string
-    QByteArray H = QCryptographicHash::hash(MPrime + salt, QCryptographicHash::Sha256);
-    
+
+    // m' = (0)^64 || mHash || salt
+    QByteArray MPrime(8, 0);
+    QByteArray H = QCryptographicHash::hash(MPrime + hash + salt, QCryptographicHash::Sha256);
+
     int psLength = (keys.n.size() - SHA256_DIGEST_LENGTH - saltLength - 2);
+    if (psLength < 0) return QByteArray();
     QByteArray DB(psLength, 0);
     DB.append(static_cast<char>(0x01));
     DB.append(salt);
-    
-    // DB = DB XOR maskedHash
-    QByteArray dbMask = modPow(H, QByteArray(1, 0x01), keys.n);
-    for (int i = 0; i < DB.size() && i < dbMask.size(); i++) {
-        DB[i] ^= dbMask[i];
+
+    // DB = DB XOR MGF1(H)
+    QByteArray dbMask;
+    int counter = 0;
+    while (dbMask.size() < DB.size()) {
+        QByteArray c(4, 0);
+        c[0] = static_cast<char>((counter >> 24) & 0xFF);
+        c[1] = static_cast<char>((counter >> 16) & 0xFF);
+        c[2] = static_cast<char>((counter >> 8) & 0xFF);
+        c[3] = static_cast<char>(counter & 0xFF);
+        dbMask.append(QCryptographicHash::hash(H + c, QCryptographicHash::Sha256));
+        ++counter;
     }
-    
-    // EM = maskedDB || H || BC
+    dbMask = dbMask.left(DB.size());
+    // Per spec, the high-order bits of the first maskedDB byte must be cleared.
+    dbMask[0] = static_cast<char>(static_cast<quint8>(dbMask[0]) & 0x7F);
+    for (int i = 0; i < DB.size(); ++i) {
+        DB[i] = static_cast<char>(static_cast<quint8>(DB[i]) ^ static_cast<quint8>(dbMask[i]));
+    }
+
+    // EM = maskedDB || H || 0xBC
     QByteArray EM;
     EM.append(DB);
     EM.append(H);
     EM.append(static_cast<char>(0xBC));
-    
-    // Sign EM using private key (simplified - real RSA signing)
-    QByteArray signature = generateSecureRandomBytes(keys.n.size());
-    
-    // In real implementation:
-    // signature = RSA_private_encrypt(EM, d, n)
-    
+
+    // Private-key operation: s = EM^d mod n
+    BigInt emInt(EM), dInt(keys.d), nInt(keys.n);
+    BigInt sigInt = emInt.modPow(dInt, nInt);
+
+    // Left-pad the signature to the modulus length (fixed-length representation).
+    QByteArray signature = sigInt.toBytesBE();
+    while (signature.size() < keys.n.size()) signature.prepend('\0');
     return signature;
 }
 
@@ -322,18 +672,24 @@ static QByteArray pkcs1V15Pad(const QByteArray& hash, int keySize, const QString
 
 /**
  * @brief Compute RSA signature using PKCS#1 v1.5
+ *
+ * s = (0x00 01 FF...FF 00 T)^d mod n, where T = DigestInfo || hash.
+ * The padded encoding `em` produced by pkcs1V15Pad() is signed directly;
+ * the result verifies under the public key (s^e mod n == em).
  */
 static QByteArray rsaSign(const QByteArray& message, const RSAKeyPair& keys) {
     QByteArray hash = QCryptographicHash::hash(message, QCryptographicHash::Sha256);
     QByteArray em = pkcs1V15Pad(hash, keys.n.size(), "SHA256");
-    
+
     if (em.isEmpty()) {
         return QByteArray();
     }
-    
-    // Sign using CRT for performance
-    QByteArray signature = rsaSignPSS(message, keys);
-    
+
+    BigInt emInt(em), dInt(keys.d), nInt(keys.n);
+    BigInt sigInt = emInt.modPow(dInt, nInt);
+
+    QByteArray signature = sigInt.toBytesBE();
+    while (signature.size() < keys.n.size()) signature.prepend('\0');
     return signature;
 }
 

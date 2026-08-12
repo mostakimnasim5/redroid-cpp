@@ -40,6 +40,8 @@
 #include <QHostInfo>
 #include <QTcpServer>
 #include <QtMath>
+#include <QDateTime>
+#include <QDate>
 
 #ifdef Q_OS_WIN32
 #include <windows.h>
@@ -60,6 +62,19 @@ ReDroidController& ReDroidController::instance() {
     return s_instance;
 }
 
+// Returns the current month's Android security patch date ("YYYY-MM-01").
+// Keeps ro.build.version.security_patch from ageing past the build — Play
+// Integrity / banking apps flag stale patches. Pinned to "-01" to match the
+// real property format and clamped so it never lands in the future.
+static QString currentSecurityPatchDate() {
+    QDate today = QDateTime::currentDateTimeUtc().date();
+    QDate patchDate(today.year(), today.month(), 1);
+    if (patchDate > today) {
+        patchDate = QDate(today.year(), today.month(), 1).addMonths(-1);
+    }
+    return patchDate.toString("yyyy-MM-dd");
+}
+
 // ============================================================================
 // DockerConfig Implementation
 // ============================================================================
@@ -67,7 +82,7 @@ ReDroidController& ReDroidController::instance() {
 DockerConfig::DockerConfig()
     : dockerPath("docker")
     , adbPath("")
-    , imageName("redroid/redroid:12.0.0-latest")
+    , imageName("redroid/redroid:14.0.0-latest")
     , networkDriver("bridge")
     , baseAdbPort(5555)
     , memoryLimit("1536M")
@@ -785,8 +800,10 @@ bool ReDroidController::applyProfile(const QString& instanceId, const DeviceProf
     setProperty(instanceId, "ro.product.device", profile.build.device);
     setProperty(instanceId, "ro.product.name", profile.build.product);
     
-    // Set build fingerprint
-    QString fingerprint = QString("%1/%2/%3:%4/%5:userdebug/release-keys")
+    // Set build fingerprint. Real consumer devices ship "user" builds, never
+    // "userdebug" — banking apps treat a userdebug build type as an instant
+    // red flag (only engineering/internal builds use it).
+    QString fingerprint = QString("%1/%2/%3:%4/%5:user/release-keys")
         .arg(profile.build.brand)
         .arg(profile.build.device)
         .arg(profile.build.device)
@@ -817,7 +834,55 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "[Realism] Device:" << manufacturer << model;
     qDebug() << "[Realism] Instance:" << instanceId;
     qDebug() << "[Realism] Target: 98%+ Detection Avoidance for Banking Apps";
-    
+
+    // =========================================================================
+    // Boot guard — same protection as applyProfile().
+    //
+    // Phase 9 issues dozens of setprop commands. property_service is started
+    // by Android's /init; calling setprop before sys.boot_completed=1 writes
+    // to a socket that does not yet exist and every call silently fails,
+    // leaving the instance unspoofed. Abort early instead of pretending the
+    // 11-phase apply succeeded.
+    // =========================================================================
+    QString bootVal = executeAdbSync(instanceId,
+                                     {"shell", "getprop", "sys.boot_completed"},
+                                     3000).trimmed();
+    if (bootVal != QStringLiteral("1")) {
+        qWarning() << "applyCompleteRealism called before boot_completed on" << instanceId
+                   << "— aborting to prevent silent setprop failure";
+        emit error(QStringLiteral("applyCompleteRealism: instance %1 has not finished booting "
+                                  "(sys.boot_completed=%2). "
+                                  "Wait for boot to complete before applying realism.")
+                       .arg(instanceId, bootVal));
+        return false;
+    }
+
+    // =========================================================================
+    // Fix 6: Select this instance on the shared global ADBManager.
+    //
+    // Several anti-detection singletons (HypervisorBypass, SafetyNetAdvancedBypass,
+    // RealPhoneHardening, AdvancedSpoofing, HardwareFingerprintSpoofer,
+    // NetworkStackSpoofer) issue ADB commands through the process-global
+    // ADBManager instance rather than through ReDroidController's
+    // instanceId-aware executeShell(). ADBManager routes those commands to
+    // m_selectedDevice — which, if never set, defaults to "any connected
+    // device". In a multi-instance setup that means spoofing intended for
+    // instance A could silently land on instance B.
+    //
+    // We connect this instance's adb endpoint and select it on the global
+    // manager before any global-ADB module runs, so every singleton below
+    // operates on the correct container.
+    // =========================================================================
+    {
+        const QString adbSerial = getAdbSerial(instanceId);
+        VirtualPhonePro::ADBManager& globalAdb = VirtualPhonePro::ADBManager::getInstance();
+        globalAdb.connect(adbSerial.toStdString());
+        if (!globalAdb.selectDevice(adbSerial.toStdString())) {
+            qWarning() << "[Realism] Could not select device" << adbSerial
+                       << "on the global ADBManager — singleton modules may target the wrong instance";
+        }
+    }
+
     // =========================================================================
     // PHASE 1: CORE ANTI-DETECTION MODULES
     // =========================================================================
@@ -897,12 +962,42 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // PHASE 4: SECURITY & ENCRYPTION
     // =========================================================================
     qDebug() << "\n[Phase 4] Security & Encryption Systems...";
-    
-    // TrustZone/Crypto Emulation - stubbed
-    qDebug() << "  ✓ TrustZone/Crypto Emulation";
-    
-    // Virtual Security Chip - stubbed
-    qDebug() << "  ✓ Virtual Security Chip";
+
+    // TrustZone / Crypto emulation.
+    //
+    // CryptoEmulator owns the injected hardware attestation certificate
+    // chain and signs SafetyNet / Play Integrity responses with the injected
+    // key. Without calling initialize() + configureDeviceIdentity() the
+    // attestation responses are unsigned stubs, which is exactly why banking
+    // apps rejected devices even after the rest of the stack was spoofed.
+    CryptoEmulator& crypto = CryptoEmulator::getInstance();
+    if (!crypto.initialize()) {
+        qWarning() << "  ✗ CryptoEmulator failed to initialize — attestation responses will be unsigned";
+    } else {
+        crypto.setDeviceBrand(manufacturer.toStdString());
+        crypto.setDeviceModel(model.toStdString());
+        crypto.setAndroidVersion("14");
+        crypto.setSecurityPatch(currentSecurityPatchDate().toStdString());
+        qDebug() << "  ✓ TrustZone/Crypto Emulation (cert chain + attestation key ready)";
+    }
+
+    // Virtual Security Chip — StrongBox / Keymaster-style hardware-backed
+    // key store. createHardwareBackedKey() provisions an attestation key the
+    // chip later uses in generateKeyAttestation(challenge). bindToProfile()
+    // ties the key material to this instance so multi-instance setups do not
+    // share attestation keys.
+    VirtualSecurityChip& vsc = VirtualSecurityChip::getInstance();
+    if (!vsc.isInitialized() && !vsc.initialize()) {
+        qWarning() << "  ✗ VirtualSecurityChip failed to initialize — key attestation unavailable";
+    } else {
+        const QString profileId = QStringLiteral("inst-%1").arg(instanceId);
+        vsc.bindToProfile(profileId.toStdString());
+        vsc.setVerifiedBootState("green");
+        // Provision a hardware-backed attestation key for this instance.
+        vsc.createHardwareBackedKey("attestation_root", 256);
+        vsc.createHardwareBackedKey("attestation_attest", 256);
+        qDebug() << "  ✓ Virtual Security Chip (hardware-backed attestation keys provisioned)";
+    }
     
     // =========================================================================
     // PHASE 5: UNIQUE DEVICE IDENTITY
@@ -949,7 +1044,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     integrityConfig.isDeviceRooted = false;
     integrityConfig.isDebuggable = false;
     integrityConfig.isGMSCertified = true;
-    integrityConfig.securityPatchLevel = "2024-06-01";
+    integrityConfig.securityPatchLevel = QString::fromStdString(currentSecurityPatchDate());
     integrityConfig.targetVerdict = IntegrityVerdict::PLAY_INTEGRITY_DEVICE;
     
     integrity.setConfig(instanceId, integrityConfig);
@@ -964,9 +1059,56 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // PHASE 8: ADVANCED SPOOFING
     // =========================================================================
     qDebug() << "\n[Phase 8] Advanced Spoofing...";
-    
-    // Advanced spoofing - stubbed for now
-    qDebug() << "  ✓ Canvas/WebGL/Audio Spoofing";
+
+    // Canvas / WebGL / Audio fingerprinting. These do not read a single
+    // "isEmulator" flag — they hash GPU renderer strings, EGL/Vulkan
+    // capability strings, and the audio sample-rate/channel layout. On a
+    // stock ReDroid image the GPU renderer reports "Android Emulator
+    // OpenGL ES Translator" / "SwiftShader", which is an instant fail. We
+    // rewrite the EGL/Vulkan/GLES property surface to look like a real
+    // Adreno GPU and pin the audio HAL to a common Qualcomm layout.
+    AdvancedSpoofing advSpoof;
+    if (advSpoof.initialize()) {
+        advSpoof.spoofGPURenderer("Adreno (TM) 740");
+        advSpoof.spoofGPUVendor("Qualcomm");
+        advSpoof.spoofOpenGLVersion("OpenGL ES 3.2 V@0490.0 (GIT@1abcdef, I0a0a0a0a0a, 1700000000) (Date:01/01/24)");
+        advSpoof.spoofVulkanVersion("1.3.0");
+        // WebRTC leaks the local IP (canvas/audio fingerprinting supplements
+        // this). Pin a private IP that matches the spoofed network identity.
+        advSpoof.spoofWebRTCLocalIP("192.168.1.42");
+        // Widevine L1 + HDCP 2.3 — required by DRM-protected banking app
+        // content (e.g. in-app video KYC).
+        advSpoof.spoofWidevineLevel(1);
+        advSpoof.spoofHDCPLevel("2.3");
+        advSpoof.enableDRMEmulation();
+        qDebug() << "  ✓ AdvancedSpoofing: GPU/WebRTC/DRM configured";
+    } else {
+        qWarning() << "  ✗ AdvancedSpoofing failed to initialize";
+    }
+
+    // Pin the EGL/Vulkan/GLES property surface directly. AdvancedSpoofing's
+    // GPU_PROPERTIES list targets ro.* GL flags; these debug.* / ro.* keys
+    // are what the WebView's Canvas2D/WebGL backend actually queries.
+    QStringList canvasWebglCommands = {
+        // EGL renderer string read by WebGL getParameter(RENDERER)
+        "setprop ro.hardware.egl adreno",
+        "setprop ro.hardware.vulkan adreno",
+        // OpenGL ES / Vulkan versions queried by fingerprinters
+        "setprop ro.opengles.version 196610",     // 3.2
+        // HWUI renderer — affects Canvas2D rasterisation output
+        "setprop debug.hwui.renderer opengl",
+        "setprop debug.hwui.render_dirty_regions false",
+        // Audio HAL — fingerprinters hash the default sample rate +
+        // channel config. Use a standard Qualcomm 48kHz stereo layout.
+        "setprop ro.audio.policy.config.offload_audio true",
+        "setprop ro.config.media_vol_steps 15",
+        // Disable the emulator-specific GL translator name from leaking.
+        "setprop ro.kernel.qemu.gltransport pipe",
+    };
+    for (const QString& cmd : canvasWebglCommands) {
+        executeShell(instanceId, cmd);
+    }
+    qDebug() << "  ✓ Canvas/WebGL/Audio Spoofing (EGL/Vulkan/GLES/audio HAL pinned)";
     
     // =========================================================================
     // PHASE 9: UNIQUE PROPERTIES APPLICATION

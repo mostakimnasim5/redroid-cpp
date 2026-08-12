@@ -14,7 +14,7 @@
 
 services:
   android-emulator:
-    image: redroid/redroid:12.0.0-latest
+    image: redroid/redroid:14.0.0-latest
     container_name: ${CONTAINER_NAME:-redroid-test}
     hostname: ${CONTAINER_NAME:-redroid-test}
     privileged: true
