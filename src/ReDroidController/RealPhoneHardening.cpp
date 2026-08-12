@@ -385,7 +385,7 @@ bool RealPhoneHardening::bypassQEMUDetection() {
     adb.setProperty("ro.hardware", "qcom");
     adb.setProperty("ro.arch", "arm64");
     
-    adb.executeShellCommand("getprop | grep qemu | while read line; do resetprop ${line%%:*} ''; done");
+    adb.executeShellCommand("getprop | grep qemu | while read line; do setprop ${line%%:*} '' 2>/dev/null; done");
     
     return true;
 }
@@ -445,7 +445,7 @@ bool RealPhoneHardening::bypassVirtualBoxDetection() {
     auto& adb = ADBManager::getInstance();
     
     adb.setProperty("ro.vbox.app.mode", "0");
-    adb.executeShellCommand("getprop | grep vbox | while read line; do resetprop ${line%%:*} ''; done");
+    adb.executeShellCommand("getprop | grep vbox | while read line; do setprop ${line%%:*} '' 2>/dev/null; done");
     
     return true;
 }
