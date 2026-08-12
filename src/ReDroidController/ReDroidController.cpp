@@ -38,6 +38,7 @@
 #include <QUuid>
 #include <QThread>
 #include <QHostInfo>
+#include <QTcpServer>
 #include <QtMath>
 
 #ifdef Q_OS_WIN32
@@ -246,6 +247,11 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // allocateAdbPort also locks m_instancesMutex
     // Calling it inside the lock below would cause a deadlock (non-recursive mutex)
     int adbPort = allocateAdbPort();
+    if (adbPort < 0) {
+        qCritical() << "startInstance: no free ADB port available";
+        emit error(QStringLiteral("Cannot start instance — no free ADB port in range 5556-65535"));
+        return false;
+    }
     
     QMutexLocker locker(&m_instancesMutex);
     
@@ -288,19 +294,44 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // Privileged mode (required for Android)
     args << "--privileged";
 
-    // Binder devices - required for ReDroid to boot Android
-    // Available after WSL2 custom kernel installation
-    auto addDeviceIfExists = [&](const QString& hostPath, const QString& containerPath) {
-        QFileInfo fi(hostPath);
-        if (fi.exists() || fi.isSymLink()) {
-            args << "--device" << QString("%1:%2").arg(hostPath).arg(containerPath);
-        }
+    // =========================================================================
+    // Binder isolation — one binderfs mount namespace per instance
+    //
+    // Flat --device /dev/binder:/dev/binder gives every container the same
+    // binder context; Android IPC between instances leaks across boundaries.
+    //
+    // Correct approach: mount binderfs inside the container so each instance
+    // gets its own isolated binder context.  We pass --privileged (already
+    // set above) which allows the container's init to mount binderfs itself,
+    // which is exactly what ReDroid's /init does when it detects no pre-bound
+    // binder device.  We only fall back to host --device passthrough when the
+    // host kernel does NOT have binderfs (older WSL2 kernels).
+    // =========================================================================
+    auto hostHasBinderfs = []() -> bool {
+        // Check if the host kernel has binderfs compiled in
+        return QFileInfo::exists("/dev/binderfs") ||
+               QFileInfo::exists("/sys/fs/binder");
     };
-    addDeviceIfExists("/dev/binder",    "/dev/binder");
-    addDeviceIfExists("/dev/vndbinder", "/dev/vndbinder");
-    addDeviceIfExists("/dev/hwbinder",  "/dev/hwbinder");
-    // binderfs alternative path
-    addDeviceIfExists("/dev/binderfs/binder", "/dev/binder");
+
+    if (hostHasBinderfs()) {
+        // Let ReDroid's /init mount its own binderfs — no --device needed.
+        // The container gets an isolated binder namespace automatically.
+        // Requires: --privileged (already set) + kernel binderfs support.
+        qDebug() << "binderfs available — container will mount its own binder namespace";
+    } else {
+        // Older WSL2 kernel: fall back to host binder device passthrough.
+        // All instances share the host binder context — acceptable for
+        // single-instance use, problematic for multiple concurrent instances.
+        qWarning() << "binderfs not available — falling back to host /dev/binder passthrough";
+        auto addDeviceIfExists = [&](const QString& hostPath, const QString& containerPath) {
+            if (QFileInfo::exists(hostPath) || QFileInfo(hostPath).isSymLink()) {
+                args << "--device" << QString("%1:%2").arg(hostPath, containerPath);
+            }
+        };
+        addDeviceIfExists("/dev/binder",    "/dev/binder");
+        addDeviceIfExists("/dev/vndbinder", "/dev/vndbinder");
+        addDeviceIfExists("/dev/hwbinder",  "/dev/hwbinder");
+    }
 
     // Memory limit
     args << "-m" << m_config.memoryLimit;
@@ -1196,28 +1227,44 @@ QString ReDroidController::getContainerName(const QString& instanceId) const {
 
 int ReDroidController::allocateAdbPort() {
     QMutexLocker locker(&m_instancesMutex);
-    
-    // Find an unused port
-    while (true) {
-        bool used = false;
-        for (const InstanceInfo& info : m_instances.values()) {
-            if (info.adbPort == m_nextAdbPort) {
-                used = true;
-                break;
-            }
+
+    // Build a set of ports already tracked in-memory (fast O(1) lookup).
+    QSet<int> usedInMemory;
+    for (const InstanceInfo& info : m_instances.values())
+        usedInMemory.insert(info.adbPort);
+
+    // Try up to the entire valid port range once.
+    const int startPort = m_nextAdbPort;
+    int candidate = startPort;
+
+    auto portAvailable = [&](int port) -> bool {
+        // 1. In-memory check — catches ports used by this app session.
+        if (usedInMemory.contains(port))
+            return false;
+
+        // 2. Socket-level bind check — catches ports occupied by previous
+        //    crashed sessions, other Docker containers, or any OS process.
+        //    QTcpServer::listen() on 127.0.0.1 atomically tests whether
+        //    the port is free; we close immediately after the test.
+        QTcpServer probe;
+        if (!probe.listen(QHostAddress::LocalHost, static_cast<quint16>(port)))
+            return false;   // bind failed — port in use
+        probe.close();
+        return true;
+    };
+
+    do {
+        if (portAvailable(candidate)) {
+            m_nextAdbPort = candidate + 1;
+            if (m_nextAdbPort > 65535) m_nextAdbPort = 5556;
+            return candidate;
         }
-        
-        if (!used) {
-            return m_nextAdbPort++;
-        }
-        
-        m_nextAdbPort++;
-        
-        // Reset if we hit the limit
-        if (m_nextAdbPort > 65535) {
-            m_nextAdbPort = 5555;
-        }
-    }
+        if (++candidate > 65535) candidate = 5556;
+    } while (candidate != startPort);
+
+    // Exhausted entire range — should never happen in practice.
+    qCritical() << "allocateAdbPort: no free port found in range 5556-65535";
+    return -1;
 }
 
 QString ReDroidController::convertToWSL2Path(const QString& windowsPath) const {
