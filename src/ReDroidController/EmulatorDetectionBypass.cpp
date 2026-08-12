@@ -267,11 +267,11 @@ BypassResult EmulatorDetectionBypass::bypassCPUSignature(const QString& instance
     
     // Set CPU model to appear as real hardware
     QStringList cpuCommands = {
-        QString("resetprop ro.hardware %1").arg(config.cpuModel),
-        QString("resetprop ro.product.board %1").arg(config.cpuModel),
-        QString("resetprop ro.mediatek.platform %1").arg(config.socModel),
-        "resetprop ro.arch arm64",
-        "resetprop ro.cpu.abi arm64-v8a"
+        QString("setprop ro.hardware %1").arg(config.cpuModel),
+        QString("setprop ro.product.board %1").arg(config.cpuModel),
+        QString("setprop ro.mediatek.platform %1").arg(config.socModel),
+        "setprop ro.arch arm64",
+        "setprop ro.cpu.abi arm64-v8a"
     };
     
     for (const QString& cmd : cpuCommands) {
@@ -297,21 +297,21 @@ BypassResult EmulatorDetectionBypass::bypassGenericEmulator(const QString& insta
     // Generic emulator bypass
     QStringList commands = {
         // Hide generic emulator markers
-        "resetprop ro.emulator false",
-        "resetprop ro.product.type phone",
-        "resetprop ro.build.characteristics default",
+        "setprop ro.emulator false",
+        "setprop ro.product.type phone",
+        "setprop ro.build.characteristics default",
         
         // Set as physical device
-        "resetprop ro.device.form FACTORY",
-        "resetprop ro.product.first_api_level 33",
+        "setprop ro.device.form FACTORY",
+        "setprop ro.product.first_api_level 33",
         
         // Hide emulator build tags
-        "resetprop ro.build.tags release-keys",
-        "resetprop ro.build.type user",
+        "setprop ro.build.tags release-keys",
+        "setprop ro.build.type user",
         
         // Set proper device type
-        "resetprop ro.product.device.type phone",
-        "resetprop ro.product.model.sm-s928b"
+        "setprop ro.product.device.type phone",
+        "setprop ro.product.model.sm-s928b"
     };
     
     for (const QString& cmd : commands) {
@@ -346,8 +346,8 @@ BypassResult EmulatorDetectionBypass::bypassRootDetection(const QString& instanc
         "rm -f /system/app/Superuser.apk",
         
         // Set system properties
-        "resetprop ro.build.tags release-keys",
-        "resetprop ro.secure 1"
+        "setprop ro.build.tags release-keys",
+        "setprop ro.secure 1"
     };
     
     for (const QString& cmd : commands) {
@@ -406,10 +406,10 @@ BypassResult EmulatorDetectionBypass::bypassDebugDetection(const QString& instan
     ReDroidController& controller = ReDroidController::instance();
     
     QStringList commands = {
-        "resetprop ro.debuggable 0",
-        "resetprop debug.atrace.tags.enableflags 0",
-        "resetprop persist.sys.debug.atrace 0",
-        "resetprop service.adb.root 0",
+        "setprop ro.debuggable 0",
+        "setprop debug.atrace.tags.enableflags 0",
+        "setprop persist.sys.debug.atrace 0",
+        "setprop service.adb.root 0",
         "setprop security.perf_harden 1"
     };
     
@@ -431,9 +431,9 @@ BypassResult EmulatorDetectionBypass::bypassSELinuxDetection(const QString& inst
     ReDroidController& controller = ReDroidController::instance();
     
     QStringList commands = {
-        "resetprop ro.build.selinux.enforce 0",
-        "resetprop ro.build.selinux.disable 1",
-        "resetprop ro.kernel.selinux disabled",
+        "setprop ro.build.selinux.enforce 0",
+        "setprop ro.build.selinux.disable 1",
+        "setprop ro.kernel.selinux disabled",
         "setenforce 0"
     };
     
@@ -508,7 +508,7 @@ bool EmulatorDetectionBypass::hideProperties(const QString& instanceId) {
     
     for (const QString& prop : config.hideProperties) {
         // Use resetprop to delete property
-        controller.executeShell(instanceId, QString("resetprop %1").arg(prop));
+        controller.executeShell(instanceId, QString("setprop %1").arg(prop));
     }
     
     return true;
@@ -519,7 +519,7 @@ bool EmulatorDetectionBypass::setDeviceProperties(const QString& instanceId) {
     ReDroidController& controller = ReDroidController::instance();
     
     for (auto it = config.overrideProperties.begin(); it != config.overrideProperties.end(); ++it) {
-        QString cmd = QString("resetprop %1 %2").arg(it.key()).arg(it.value());
+        QString cmd = QString("setprop %1 %2").arg(it.key()).arg(it.value());
         controller.executeShell(instanceId, cmd);
     }
     
@@ -528,14 +528,14 @@ bool EmulatorDetectionBypass::setDeviceProperties(const QString& instanceId) {
 
 bool EmulatorDetectionBypass::overrideProperty(const QString& instanceId, const QString& prop, const QString& value) {
     ReDroidController& controller = ReDroidController::instance();
-    QString cmd = QString("resetprop %1 %2").arg(prop).arg(value);
+    QString cmd = QString("setprop %1 %2").arg(prop).arg(value);
     controller.executeShell(instanceId, cmd);
     return true;
 }
 
 bool EmulatorDetectionBypass::deleteProperty(const QString& instanceId, const QString& prop) {
     ReDroidController& controller = ReDroidController::instance();
-    QString cmd = QString("resetprop --delete %1").arg(prop);
+    QString cmd = QString("setprop %1").arg(prop);
     QString result = controller.executeShell(instanceId, cmd);
     return result.isEmpty() || result.contains("deleted");
 }
@@ -558,13 +558,13 @@ bool EmulatorDetectionBypass::configureCPU(const QString& instanceId, const QStr
     ReDroidController& controller = ReDroidController::instance();
     
     QStringList commands = {
-        QString("resetprop ro.hardware %1").arg(cpuModel),
-        QString("resetprop ro.product.board %1").arg(cpuModel),
-        QString("resetprop ro.mediatek.platform %1").arg(cpuModel),
-        "resetprop ro.arch arm64",
-        "resetprop ro.cpu.abi arm64-v8a",
-        "resetprop ro.product.cpu.abi arm64-v8a",
-        "resetprop ro.product.cpu.abilist arm64-v8a,armeabi-v7a,armeabi"
+        QString("setprop ro.hardware %1").arg(cpuModel),
+        QString("setprop ro.product.board %1").arg(cpuModel),
+        QString("setprop ro.mediatek.platform %1").arg(cpuModel),
+        "setprop ro.arch arm64",
+        "setprop ro.cpu.abi arm64-v8a",
+        "setprop ro.product.cpu.abi arm64-v8a",
+        "setprop ro.product.cpu.abilist arm64-v8a,armeabi-v7a,armeabi"
     };
     
     for (const QString& cmd : commands) {
@@ -579,9 +579,9 @@ bool EmulatorDetectionBypass::configureGPU(const QString& instanceId, const QStr
     ReDroidController& controller = ReDroidController::instance();
     
     QStringList commands = {
-        QString("resetprop ro.hardware.gpu %1").arg(gpuModel),
-        QString("resetprop ro.gpu.model %1").arg(gpuModel),
-        "resetprop ro.opengles.version 196609"
+        QString("setprop ro.hardware.gpu %1").arg(gpuModel),
+        QString("setprop ro.gpu.model %1").arg(gpuModel),
+        "setprop ro.opengles.version 196609"
     };
     
     for (const QString& cmd : commands) {
@@ -597,15 +597,15 @@ bool EmulatorDetectionBypass::hideVirtualizationSignatures(const QString& instan
     
     QStringList commands = {
         // Hide container/virtualization
-        "resetprop ro.build.type user",
-        "resetprop ro.hardware.virtual false",
-        "resetprop ro.hardware.kvm 0",
-        "resetprop ro.virtio.enabled false",
+        "setprop ro.build.type user",
+        "setprop ro.hardware.virtual false",
+        "setprop ro.hardware.kvm 0",
+        "setprop ro.virtio.enabled false",
         
         // Set as real device
-        "resetprop ro.product.device mt6885",
-        "resetprop ro.product.model.sm-s928b",
-        "resetprop ro.product.manufacturer samsung"
+        "setprop ro.product.device mt6885",
+        "setprop ro.product.model.sm-s928b",
+        "setprop ro.product.manufacturer samsung"
     };
     
     for (const QString& cmd : commands) {
@@ -621,20 +621,20 @@ bool EmulatorDetectionBypass::configureHardwareVirt(const QString& instanceId) {
     // Configure for KVM
     QStringList commands = {
         // Enable hardware virtualization
-        "resetprop ro.hardware.virtual true",
-        "resetprop ro.hardware.kvm 1",
+        "setprop ro.hardware.virtual true",
+        "setprop ro.hardware.kvm 1",
         
         // Set proper device type
-        "resetprop ro.device.form FACTORY",
-        "resetprop ro.product.type phone",
+        "setprop ro.device.form FACTORY",
+        "setprop ro.product.type phone",
         
         // Hardware properties
-        "resetprop ro.hardware.gpu virgl",
-        "resetprop ro.hardware.audio primary",
+        "setprop ro.hardware.gpu virgl",
+        "setprop ro.hardware.audio primary",
         
         // VirtIO
-        "resetprop ro.virtio.enabled true",
-        "resetprop ro.virtio.gpu.enabled true"
+        "setprop ro.virtio.enabled true",
+        "setprop ro.virtio.gpu.enabled true"
     };
     
     for (const QString& cmd : commands) {
@@ -653,10 +653,10 @@ bool EmulatorDetectionBypass::disableSELinuxDetection(const QString& instanceId)
     ReDroidController& controller = ReDroidController::instance();
     
     QStringList commands = {
-        "resetprop ro.build.selinux.enforce 0",
-        "resetprop ro.build.selinux.disable 1",
-        "resetprop ro.selinux.enforce 0",
-        "resetprop security.selinux.enforce 0",
+        "setprop ro.build.selinux.enforce 0",
+        "setprop ro.build.selinux.disable 1",
+        "setprop ro.selinux.enforce 0",
+        "setprop security.selinux.enforce 0",
         "setenforce 0"
     };
     
@@ -671,11 +671,11 @@ bool EmulatorDetectionBypass::setVerifiedBoot(const QString& instanceId, const Q
     ReDroidController& controller = ReDroidController::instance();
     
     QStringList commands = {
-        QString("resetprop ro.boot.verifiedbootstate %1").arg(state),
-        QString("resetprop ro.verity.mode %1").arg(state == "green" ? "enforcing" : "disabled"),
-        QString("resetprop ro.verifiedbootstate %1").arg(state),
-        QString("resetprop ro.boot.veritymode %1").arg(state == "green" ? "enforcing" : "disabled"),
-        QString("resetprop ro.bootloader.locked %1").arg(state == "green" ? "true" : "false")
+        QString("setprop ro.boot.verifiedbootstate %1").arg(state),
+        QString("setprop ro.verity.mode %1").arg(state == "green" ? "enforcing" : "disabled"),
+        QString("setprop ro.verifiedbootstate %1").arg(state),
+        QString("setprop ro.boot.veritymode %1").arg(state == "green" ? "enforcing" : "disabled"),
+        QString("setprop ro.bootloader.locked %1").arg(state == "green" ? "true" : "false")
     };
     
     for (const QString& cmd : commands) {
@@ -690,11 +690,11 @@ bool EmulatorDetectionBypass::hideDebugFlags(const QString& instanceId) {
     ReDroidController& controller = ReDroidController::instance();
     
     QStringList commands = {
-        "resetprop ro.debuggable 0",
-        "resetprop debug.atrace.tags.enableflags 0",
-        "resetprop persist.sys.debug.atrace 0",
-        "resetprop service.adb.root 0",
-        "resetprop security.perf_harden 1"
+        "setprop ro.debuggable 0",
+        "setprop debug.atrace.tags.enableflags 0",
+        "setprop persist.sys.debug.atrace 0",
+        "setprop service.adb.root 0",
+        "setprop security.perf_harden 1"
     };
     
     for (const QString& cmd : commands) {
@@ -709,19 +709,19 @@ bool EmulatorDetectionBypass::configureSystemSecurity(const QString& instanceId)
     
     QStringList commands = {
         // Security
-        "resetprop ro.build.tags release-keys",
-        "resetprop ro.build.type user",
-        "resetprop ro.secure 1",
+        "setprop ro.build.tags release-keys",
+        "setprop ro.build.type user",
+        "setprop ro.secure 1",
         
         // Hide unknown sources
         "settings put global install_non_market_apps 0",
         
         // System integrity
-        "resetprop ro.config.system_integrity.enabled true",
-        "resetprop ro.config.system_integrity.no_verify false",
+        "setprop ro.config.system_integrity.enabled true",
+        "setprop ro.config.system_integrity.no_verify false",
         
         // Device flags
-        "resetprop ro.device.flags 0"
+        "setprop ro.device.flags 0"
     };
     
     for (const QString& cmd : commands) {
