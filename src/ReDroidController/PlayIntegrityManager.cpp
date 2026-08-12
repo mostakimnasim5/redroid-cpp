@@ -1024,14 +1024,14 @@ bool PlayIntegrityManager::bypassEmulatorDetection(const QString& instanceId) {
     QStringList removeCommands = {
         // Hide QEMU detection
         "settings delete global/qemu_adb_enabled",
-        "resetprop -v ro.kernel.qemu 0",
-        "resetprop -v ro.boot.qemu 0",
-        "resetprop -vro.bootloader.flash.locked 1",
+        "setprop -v ro.kernel.qemu 0",
+        "setprop -v ro.boot.qemu 0",
+        "setprop -vro.bootloader.flash.locked 1",
         
         // Hide Goldfish (Android emulator)
-        "resetprop -v ro.hardware goldfish",
-        "resetprop -v ro.hardware.audio.primary goldfish",
-        "resetprop -v ro.opengles.version 131072",
+        "setprop -v ro.hardware goldfish",
+        "setprop -v ro.hardware.audio.primary goldfish",
+        "setprop -v ro.opengles.version 131072",
         
         // Remove emulator files
         "rm -f /system/lib/libc_qemud.so",
@@ -1048,13 +1048,13 @@ bool PlayIntegrityManager::bypassEmulatorDetection(const QString& instanceId) {
     // Replace with device properties
     QStringList replaceCommands = {
         // Hide QEMU properties
-        "resetprop ro.kernel.qemu 0",
-        "resetprop ro.boot.qemu 0",
+        "setprop ro.kernel.qemu 0",
+        "setprop ro.boot.qemu 0",
         
         // Set real hardware
-        "resetprop ro.hardware mt6885",
-        "resetprop ro.product.board mtk6885",
-        "resetprop ro.mediatek.platform MT6885",
+        "setprop ro.hardware mt6885",
+        "setprop ro.product.board mtk6885",
+        "setprop ro.mediatek.platform MT6885",
         
         // Hide emulator files by creating placeholders
         "touch /dev/qemu_pipe",
@@ -1145,23 +1145,23 @@ bool PlayIntegrityManager::hideVirtualizationArtifacts(const QString& instanceId
     // Hide container/virtualization detection
     QStringList hideCommands = {
         // Hide container
-        "resetprop ro.build.type user",
+        "setprop ro.build.type user",
         
         // Hide KVM
-        "resetprop ro.hardware.virtual false",
-        "resetprop ro.hardware.kvm 0",
+        "setprop ro.hardware.virtual false",
+        "setprop ro.hardware.kvm 0",
         
         // Hide VirtIO
-        "resetprop ro.virtio.enabled false",
+        "setprop ro.virtio.enabled false",
         
         // Set real device type
-        "resetprop ro.product.device mt6885",
-        "resetprop ro.product.model.sm-s928b",
-        "resetprop ro.product.manufacturer samsung",
+        "setprop ro.product.device mt6885",
+        "setprop ro.product.model.sm-s928b",
+        "setprop ro.product.manufacturer samsung",
         
         // Hide systemd container
-        "resetprop init.svc.console started",
-        "resetprop init.svc.debuggerd running"
+        "setprop init.svc.console started",
+        "setprop init.svc.debuggerd running"
     };
     
     for (const QString& cmd : hideCommands) {
