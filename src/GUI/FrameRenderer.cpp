@@ -222,21 +222,19 @@ void FrameRenderer::keyReleaseEvent(QKeyEvent* e) {
 void FrameRenderer::sendTouch(float ax, float ay, quint8 action, quint32 id) {
     if (!m_adb) return;
     QByteArray msg = buildTouchMsg(ax, ay, action, id);
-    // Send via the scrcpy control channel (shell stream kept open by PhoneWindow)
-    Q_UNUSED(msg) // PhoneWindow passes msg to the control socket directly
-    // TODO: wire up via AdbSocketClient::openShellStream control channel
+    m_adb->sendControlMsg(msg);
 }
 
 void FrameRenderer::sendScroll(float ax, float ay, float hScroll, float vScroll) {
     if (!m_adb) return;
     QByteArray msg = buildScrollMsg(ax, ay, hScroll, vScroll);
-    Q_UNUSED(msg)
+    m_adb->sendControlMsg(msg);
 }
 
 void FrameRenderer::sendKeycode(quint32 keycode, quint32 action, quint32 meta) {
     if (!m_adb) return;
     QByteArray msg = buildKeyMsg(keycode, action, meta);
-    Q_UNUSED(msg)
+    m_adb->sendControlMsg(msg);
 }
 
 QByteArray FrameRenderer::buildTouchMsg(float ax, float ay,

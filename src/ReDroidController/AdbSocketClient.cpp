@@ -98,8 +98,7 @@ bool AdbSocketClient::doHandshake() {
 QByteArray AdbSocketClient::shell(const QString& command, int timeoutMs) {
     quint32 lid = nextLocalId();
     QByteArray result;
-    bool done = false;
-    QMutex mx;
+    QEventLoop loop;
 
     {
         QMutexLocker lk(&m_channelMutex);
@@ -108,23 +107,17 @@ QByteArray AdbSocketClient::shell(const QString& command, int timeoutMs) {
         ch.remoteId = 0;
         ch.open     = false;
         ch.onData   = [&](const QByteArray& d) { result.append(d); };
-        ch.onClose  = [&]() { QMutexLocker l2(&mx); done = true; };
+        ch.onClose  = [&]() { loop.quit(); };
         m_channels[lid] = ch;
     }
 
-    QByteArray svc = "shell:" + command.toUtf8();
-    sendMessage(A_OPEN, lid, 0, svc);
-
-    QEventLoop loop;
     QTimer timer;
     timer.setSingleShot(true);
     connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-
-    // Poll until channel closes or timeout
     timer.start(timeoutMs);
-    while (!done && timer.isActive()) {
-        loop.processEvents(QEventLoop::AllEvents, 50);
-    }
+
+    sendMessage(A_OPEN, lid, 0, ("shell:" + command).toUtf8());
+    loop.exec(); // blocks safely — no processEvents() re-entrancy
 
     {
         QMutexLocker lk(&m_channelMutex);
@@ -135,10 +128,18 @@ QByteArray AdbSocketClient::shell(const QString& command, int timeoutMs) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // push() — push bytes to a remote path via ADB SYNC protocol
+//
+// Race-condition fix: readyRead is temporarily disconnected while we use the
+// blocking readMessage() path. Without this, onSocketReadyRead() can consume
+// the OKAY bytes before readMessage() sees them, causing an infinite hang.
 // ─────────────────────────────────────────────────────────────────────────────
 bool AdbSocketClient::push(const QByteArray& data,
                            const QString& remotePath,
                            quint32 mode) {
+    // ── Suspend async dispatch so blocking readMessage() owns the socket ──────
+    QObject::disconnect(m_socket, &QTcpSocket::readyRead,
+                        this, &AdbSocketClient::onSocketReadyRead);
+
     quint32 lid = nextLocalId();
     {
         QMutexLocker lk(&m_channelMutex);
@@ -151,20 +152,35 @@ bool AdbSocketClient::push(const QByteArray& data,
 
     sendMessage(A_OPEN, lid, 0, QByteArrayLiteral("sync:"));
 
-    // Wait for OKAY
+    // Wait for OKAY and capture the remote ID it carries
+    quint32 remoteId = 0;
     AdbMessage reply;
-    for (int i = 0; i < 20; ++i) {
-        if (readMessage(reply, 500) && reply.command == A_OKAY) break;
+    for (int i = 0; i < 30; ++i) {
+        if (readMessage(reply, 500) && reply.command == A_OKAY) {
+            remoteId = reply.arg0;
+            QMutexLocker lk(&m_channelMutex);
+            m_channels[lid].remoteId = remoteId;
+            m_channels[lid].open     = true;
+            break;
+        }
     }
 
-    bool ok = syncSend(lid, data, remotePath, mode);
-    syncQuit(lid);
+    bool ok = false;
+    if (remoteId != 0) {
+        ok = syncSend(lid, data, remotePath, mode);
+        syncQuit(lid);
+    }
 
-    sendMessage(A_CLSE, lid, m_channels.value(lid).remoteId);
+    sendMessage(A_CLSE, lid, remoteId);
     {
         QMutexLocker lk(&m_channelMutex);
         m_channels.remove(lid);
     }
+
+    // ── Re-enable async dispatch ───────────────────────────────────────────────
+    connect(m_socket, &QTcpSocket::readyRead,
+            this, &AdbSocketClient::onSocketReadyRead);
+
     return ok;
 }
 
@@ -323,7 +339,6 @@ void AdbSocketClient::onSocketError(QAbstractSocket::SocketError) {
 quint32 AdbSocketClient::nextLocalId() {
     return m_nextId.fetch_add(1, std::memory_order_relaxed);
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SYNC SEND — push file data through an open sync: channel
 // ─────────────────────────────────────────────────────────────────────────────
@@ -372,6 +387,56 @@ bool AdbSocketClient::syncQuit(quint32 lid) {
     quint32 rid = m_channels.value(lid).remoteId;
     sendMessage(A_WRTE, lid, rid, QByteArrayLiteral("QUIT\x00\x00\x00\x00"));
     return true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fix 1: scrcpy control channel — dedicated TCP socket for input dispatch
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool AdbSocketClient::openControlChannel(const QString& host, quint16 controlPort) {
+    QMutexLocker lk(&m_controlMutex);
+
+    if (m_controlSocket &&
+        m_controlSocket->state() == QAbstractSocket::ConnectedState)
+        return true;
+
+    if (!m_controlSocket)
+        m_controlSocket = new QTcpSocket();   // no parent — managed manually
+
+    m_controlSocket->connectToHost(host, controlPort);
+    if (!m_controlSocket->waitForConnected(5000)) {
+        qWarning() << "[ControlChannel] Connect failed:"
+                   << m_controlSocket->errorString();
+        return false;
+    }
+
+    // scrcpy control socket handshake: send 1 dummy byte
+    m_controlSocket->write(QByteArray(1, '\x00'));
+    m_controlSocket->flush();
+
+    qDebug() << "[ControlChannel] Connected" << host << controlPort;
+    return true;
+}
+
+void AdbSocketClient::closeControlChannel() {
+    QMutexLocker lk(&m_controlMutex);
+    if (m_controlSocket) {
+        m_controlSocket->disconnectFromHost();
+        delete m_controlSocket;
+        m_controlSocket = nullptr;
+    }
+}
+
+bool AdbSocketClient::sendControlMsg(const QByteArray& msg) {
+    QMutexLocker lk(&m_controlMutex);
+    if (!m_controlSocket ||
+        m_controlSocket->state() != QAbstractSocket::ConnectedState) {
+        qWarning() << "[ControlChannel] Not connected — input dropped";
+        return false;
+    }
+    qint64 n = m_controlSocket->write(msg);
+    m_controlSocket->flush();
+    return n == msg.size();
 }
 
 } // namespace VirtualPhonePro

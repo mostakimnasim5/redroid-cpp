@@ -94,6 +94,16 @@ public:
     /** Close a channel opened with openShellStream(). */
     void closeChannel(quint32 localId);
 
+    /** Open the scrcpy control channel (TCP port inside container).
+     *  Must be called after the video channel is up.
+     *  All input messages (touch/scroll/key) are sent through this socket. */
+    bool openControlChannel(const QString& host, quint16 controlPort);
+    void closeControlChannel();
+
+    /** Send a raw scrcpy control-protocol message synchronously.
+     *  Thread-safe — can be called from the render thread. */
+    bool sendControlMsg(const QByteArray& msg);
+
 signals:
     void connected();
     void disconnected();
@@ -127,6 +137,8 @@ private:
     bool      syncQuit(quint32 channelLocalId);
 
     QTcpSocket*                m_socket;
+    QTcpSocket*                m_controlSocket = nullptr; // scrcpy control channel
+    QMutex                     m_controlMutex;            // guards m_controlSocket writes
     std::atomic<bool>          m_connected{false};
     std::atomic<quint32>       m_nextId{1};
 
