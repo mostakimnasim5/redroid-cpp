@@ -129,7 +129,29 @@ if(BUILD_QT6_GUI)
     set(QT_MIN_VERSION "6.5.0")
     
     # Find Qt6 - works on both Linux and Windows CI (install-qt-action sets CMAKE_PREFIX_PATH)
-    find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent REQUIRED)
+    find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent OpenGL REQUIRED)
+
+    # ── FFmpeg (libavcodec + libswscale) ──────────────────────────────────────
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(FFMPEG IMPORTED_TARGET
+            libavcodec libavutil libswscale)
+    endif()
+    if(NOT FFMPEG_FOUND)
+        # Fallback: manual search (Windows vcpkg / conda-forge layout)
+        find_library(AVCODEC_LIB  avcodec)
+        find_library(AVUTIL_LIB   avutil)
+        find_library(SWSCALE_LIB  swscale)
+        if(AVCODEC_LIB AND AVUTIL_LIB AND SWSCALE_LIB)
+            set(FFMPEG_FOUND TRUE)
+        else()
+            message(WARNING
+                "FFmpeg not found — MediaStreamDecoder will not compile.\n"
+                "Install ffmpeg dev libraries:\n"
+                "  Ubuntu: sudo apt install libavcodec-dev libavutil-dev libswscale-dev\n"
+                "  Windows vcpkg: vcpkg install ffmpeg:x64-windows")
+        endif()
+    endif()
 
     # Linux requires OpenGL and EGL for Qt6Gui
     if(LINUX)
@@ -237,9 +259,14 @@ if(BUILD_QT6_GUI)
 
         # Requirements installer (WSL2 + Docker Desktop)
         src/ReDroidController/RequirementsManager.cpp
-        
+
+        # Native ADB + streaming pipeline (no external exe required)
+        src/ReDroidController/AdbSocketClient.cpp
+        src/ReDroidController/MediaStreamDecoder.cpp
+
         # GUI Windows
         src/GUI/PhoneWindow.cpp
+        src/GUI/FrameRenderer.cpp
         src/GUI/DashboardWindow.cpp
         src/GUI/AntiDetectionPanel.cpp
         src/GUI/LoginWindow.cpp
@@ -375,9 +402,21 @@ if(BUILD_QT6_GUI)
         Qt6::Widgets
         Qt6::Network
         Qt6::Concurrent
+        Qt6::OpenGL
         Threads::Threads
     )
-    
+
+    # FFmpeg libraries (native H.264 decoding, no external exe needed)
+    if(FFMPEG_FOUND)
+        if(TARGET PkgConfig::FFMPEG)
+            target_link_libraries(ReDroidCPP PRIVATE PkgConfig::FFMPEG)
+        else()
+            target_link_libraries(ReDroidCPP PRIVATE
+                ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWSCALE_LIB})
+        endif()
+        target_compile_definitions(ReDroidCPP PRIVATE VPP_FFMPEG_AVAILABLE)
+    endif()
+
     # Linux-specific libraries
     if(LINUX)
         target_link_libraries(ReDroidCPP PRIVATE
