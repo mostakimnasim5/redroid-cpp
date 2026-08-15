@@ -192,16 +192,21 @@ if(BUILD_QT6_GUI)
 
             # BtbN archives extract to a single top-level directory whose
             # name embeds the track (master-latest / n7.1-latest / ...).
-            # Prefer the known master-latest name, then fall back to a
-            # recursive glob so any future track rename still resolves.
+            # FetchContent may also flatten the archive straight into
+            # SOURCE_DIR (observed on Windows), so the glob can be empty.
+            # Resolve the extracted root only when a subdir actually exists;
+            # otherwise fall back to SOURCE_DIR itself (the find_* calls
+            # below already list it, so detection still works).
             file(GLOB FFMPEG_TOP_DIRS LIST_DIRECTORIES TRUE
                 "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared"
                 "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared"
                 "${FFMPEG_PREBUILT_DIR}/ffmpeg-n*-win64-lgpl-shared-*"
                 "${FFMPEG_PREBUILT_DIR}/ffmpeg-n*-linux64-lgpl-shared-*"
             )
-            list(GET FFMPEG_TOP_DIRS 0 FFMPEG_EXTRACTED_ROOT)
-            if(NOT FFMPEG_EXTRACTED_ROOT)
+            list(LENGTH FFMPEG_TOP_DIRS _FFMPEG_TOP_COUNT)
+            if(_FFMPEG_TOP_COUNT GREATER 0)
+                list(GET FFMPEG_TOP_DIRS 0 FFMPEG_EXTRACTED_ROOT)
+            else()
                 set(FFMPEG_EXTRACTED_ROOT "${FFMPEG_PREBUILT_DIR}")
             endif()
 
