@@ -219,7 +219,7 @@ void FrameRenderer::keyReleaseEvent(QKeyEvent* e) {
 // scrcpy control-channel message builders
 // Reference: https://github.com/Genymobile/scrcpy/blob/master/app/src/control_msg.c
 // ─────────────────────────────────────────────────────────────────────────────
-void FrameRenderer::sendTouch(float ax, float ay, quint8 action, quint32 id) {
+void FrameRenderer::sendTouch(float ax, float ay, quint8 action, quint64 id) {
     if (!m_adb) return;
     QByteArray msg = buildTouchMsg(ax, ay, action, id);
     m_adb->sendControlMsg(msg);
@@ -238,31 +238,43 @@ void FrameRenderer::sendKeycode(quint32 keycode, quint32 action, quint32 meta) {
 }
 
 QByteArray FrameRenderer::buildTouchMsg(float ax, float ay,
-                                        quint8 action, quint32 id) const {
-    // scrcpy inject-touch: 1 + 1 + 4 + 4 + 4 + 2 + 2 + 2 + 4 = 28 bytes
+                                        quint8 action, quint64 id) const {
+    // scrcpy inject-touch v2: 28 bytes total
+    // [0]    type        (1B)
+    // [1]    action      (1B)  0=DOWN 1=UP 2=MOVE
+    // [2-9]  pointerId   (8B, big-endian uint64)
+    // [10-13] x          (4B, big-endian uint32)
+    // [14-17] y          (4B, big-endian uint32)
+    // [18-19] screenW    (2B, big-endian uint16)
+    // [20-21] screenH    (2B, big-endian uint16)
+    // [22-23] pressure   (2B, big-endian uint16, 0x0000–0xFFFF)
+    // [24-27] actionBtn  (4B, big-endian uint32)
     QByteArray msg(28, '\0');
     auto* p = reinterpret_cast<quint8*>(msg.data());
+
     p[0] = static_cast<quint8>(ScrcpyControlMsg::InjectTouch);
     p[1] = action;
-    // pointer id (8 bytes, big-endian)
-    quint64 pid = qToBigEndian<quint64>(id);
-    memcpy(p + 2, &pid, 8);
-    // position
+
+    // pointerId: widen quint32 → quint64 (no data loss, avoids UB)
+    quint64 pid64 = qToBigEndian<quint64>(static_cast<quint64>(id));
+    memcpy(p + 2, &pid64, 8);
+
     auto bx = qToBigEndian<quint32>(static_cast<quint32>(ax));
     auto by = qToBigEndian<quint32>(static_cast<quint32>(ay));
     memcpy(p + 10, &bx, 4);
     memcpy(p + 14, &by, 4);
-    // screen size
+
     auto bw = qToBigEndian<quint16>(static_cast<quint16>(m_androidRes.width()));
     auto bh = qToBigEndian<quint16>(static_cast<quint16>(m_androidRes.height()));
     memcpy(p + 18, &bw, 2);
     memcpy(p + 20, &bh, 2);
-    // pressure (fixed-point 0–0xFFFF = 0.0–1.0)
-    auto pressure = qToBigEndian<quint16>(0xFFFF); // full pressure
+
+    auto pressure = qToBigEndian<quint16>(0xFFFFu); // max pressure
     memcpy(p + 22, &pressure, 2);
-    // action button (AMOTION_EVENT_BUTTON_PRIMARY = 1)
-    auto btn = qToBigEndian<quint32>(1u);
+
+    auto btn = qToBigEndian<quint32>(1u); // AMOTION_EVENT_BUTTON_PRIMARY
     memcpy(p + 24, &btn, 4);
+
     return msg;
 }
 

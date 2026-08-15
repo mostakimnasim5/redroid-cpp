@@ -885,98 +885,213 @@ void PhoneWindow::setupConnections() {
 // Screen Mirror Methods
 // ========================================================================
 
-// ========================================================================
-// Screen Mirror - scrcpy embedded (30-60 FPS)
-// Fallback: ADB screencap (~5 FPS) if scrcpy not found
-// ========================================================================
+// ============================================================================
+// Native Streaming Pipeline — no scrcpy.exe or adb.exe required
+//
+// Startup sequence:
+//   1. AdbSocketClient connects to container:5555 (native ADB protocol)
+//   2. pushScrcpyServer() uploads scrcpy-server.jar via SYNC SEND
+//   3. startScrcpyServerProcess() runs it via ADB shell
+//   4. forward() sets up local ports for video (27183) and control (27184)
+//   5. QTcpSocket connects to those forwarded ports
+//   6. MediaStreamDecoder begins H.264 decoding
+//   7. FrameRenderer replaces m_screenDisplay, renders at 60 FPS
+//   8. AdbSocketClient opens control channel for input dispatch
+// ============================================================================
 
 void PhoneWindow::startScreenMirror() {
     if (m_screenMirrorActive) return;
     m_screenMirrorActive = true;
     m_frameCount = 0;
 
-    // Try scrcpy first (30-60 FPS)
-    if (tryStartScrcpy()) {
-        qDebug() << "[ScreenMirror] scrcpy started - 30-60 FPS mode";
+    if (startNativePipeline()) {
+        qDebug() << "[Pipeline] Native 60-FPS pipeline started";
         return;
     }
 
-    // Fallback: ADB screencap (~5 FPS)
-    qDebug() << "[ScreenMirror] scrcpy not found - fallback to screencap";
+    // Fallback: screencap ~5 FPS (no ffmpeg or connection available)
+    qWarning() << "[Pipeline] Falling back to screencap (5 FPS)";
     m_screenTimer = new QTimer(this);
     connect(m_screenTimer, &QTimer::timeout, this, &PhoneWindow::updateScreen);
-    m_screenTimer->start(100);
+    m_screenTimer->start(200);
 }
 
-bool PhoneWindow::tryStartScrcpy() {
-    // Find scrcpy.exe next to our exe
-    QString appDir = QCoreApplication::applicationDirPath();
-    QString scrcpyPath = appDir + "/scrcpy.exe";
+bool PhoneWindow::startNativePipeline() {
+    QString host = "127.0.0.1";
+    quint16 adbPort = static_cast<quint16>(
+        ReDroidController::instance()
+            .listInstances()
+            .value(m_instanceId).adbPort);
 
-    if (!QFile::exists(scrcpyPath)) {
+    if (adbPort == 0) {
+        qWarning() << "[Pipeline] No ADB port for instance" << m_instanceId;
         return false;
     }
 
-    QString serial = getAdbSerial();
-    if (serial.isEmpty()) return false;
-
-    // Unique window title so we can find and embed it
-    m_scrcpyWindowTitle = QString("scrcpy-vpp-%1").arg(m_instanceId);
-
-    QStringList args = {
-        "--serial", serial,
-        "--window-title", m_scrcpyWindowTitle,
-        "--no-audio",
-        "--turn-screen-off",
-        "--stay-awake",
-        "--disable-screensaver",
-        "--window-borderless",
-        "--max-fps", "60",
-        "--bit-rate", "4M",
-        "--max-size", "720"
-    };
-
-    m_scrcpyProcess = new QProcess(this);
-    m_scrcpyProcess->start(scrcpyPath, args);
-
-    if (!m_scrcpyProcess->waitForStarted(3000)) {
-        m_scrcpyProcess->deleteLater();
-        m_scrcpyProcess = nullptr;
+    // ── Step 1: ADB connection ────────────────────────────────────────────────
+    m_adbClient = new AdbSocketClient(this);
+    if (!m_adbClient->connectToDevice(host, adbPort)) {
+        qWarning() << "[Pipeline] ADB connect failed on port" << adbPort;
+        delete m_adbClient; m_adbClient = nullptr;
         return false;
     }
 
-    // Wait for scrcpy window to appear, then embed it
-    QTimer::singleShot(1500, this, &PhoneWindow::embedScrcpyWindow);
+    // ── Step 2: Push scrcpy-server.jar ───────────────────────────────────────
+    if (!pushScrcpyServer()) {
+        qWarning() << "[Pipeline] scrcpy-server push failed";
+        delete m_adbClient; m_adbClient = nullptr;
+        return false;
+    }
+
+    // ── Step 3: Start scrcpy server inside the container ─────────────────────
+    if (!startScrcpyServerProcess()) {
+        qWarning() << "[Pipeline] scrcpy-server launch failed";
+        delete m_adbClient; m_adbClient = nullptr;
+        return false;
+    }
+
+    // ── Step 4: Forward video + control ports ─────────────────────────────────
+    m_adbClient->forward(SCRCPY_VIDEO_PORT,   1234); // scrcpy default video port
+    m_adbClient->forward(SCRCPY_CONTROL_PORT, 1235); // scrcpy default control port
+    QThread::msleep(500); // let socat relay settle
+
+    // ── Step 5: Connect video socket ──────────────────────────────────────────
+    auto* videoSocket = new QTcpSocket(this);
+    videoSocket->connectToHost(host, SCRCPY_VIDEO_PORT);
+    if (!videoSocket->waitForConnected(5000)) {
+        qWarning() << "[Pipeline] Video socket connect failed";
+        delete videoSocket;
+        delete m_adbClient; m_adbClient = nullptr;
+        return false;
+    }
+
+    // ── Step 6: Start decoder ────────────────────────────────────────────────
+    m_decoder = new MediaStreamDecoder(this);
+    m_decoder->setTargetFps(60);
+    if (!m_decoder->start(videoSocket)) {
+        qWarning() << "[Pipeline] Decoder init failed";
+        delete m_decoder;   m_decoder   = nullptr;
+        delete m_adbClient; m_adbClient = nullptr;
+        return false;
+    }
+
+    // ── Step 7: Replace m_screenDisplay with FrameRenderer ───────────────────
+    // m_screenDisplay (QLabel) is a child of m_screenContainer.
+    // We remove it from the layout and install FrameRenderer in the same slot.
+    m_screenDisplay->hide();
+
+    m_renderer = new FrameRenderer(m_screenContainer);
+    m_renderer->setFixedSize(m_screenContainer->size());
+    m_renderer->setDecoder(m_decoder);
+    m_renderer->setFps(60);
+    m_renderer->show();
+
+    connect(m_renderer, &FrameRenderer::fpsChanged, this, [this](float fps) {
+        m_fpsLabel->setText(QString("FPS: %1").arg(qRound(fps)));
+    });
+    connect(m_renderer, &FrameRenderer::firstFrameShown, this, [this]() {
+        m_connectionStatus->setText("● Connected  60 FPS");
+        m_connectionStatus->setStyleSheet("color: #00ff88; font-size: 11px;");
+    });
+
+    m_renderer->startRendering();
+
+    // ── Step 8: Open control channel for input dispatch ───────────────────────
+    if (m_adbClient->openControlChannel(host, SCRCPY_CONTROL_PORT)) {
+        m_renderer->setAdbClient(m_adbClient, SCRCPY_CONTROL_PORT);
+        qDebug() << "[Pipeline] Control channel open — touch/key input active";
+    } else {
+        qWarning() << "[Pipeline] Control channel failed — input disabled";
+    }
+
     return true;
 }
 
-void PhoneWindow::embedScrcpyWindow() {
-    // Note: scrcpy runs as a separate window on all platforms
-    // For embedded display, use screencap-based screen mirroring instead
-    qDebug() << "[ScreenMirror] scrcpy running in separate window";
-    
-    // Use fallback screencap for display
-    if (!m_scrcpyProcess || m_scrcpyProcess->state() != QProcess::Running) {
-        qWarning() << "[ScreenMirror] scrcpy not running, starting screencap fallback";
-        m_screenTimer = new QTimer(this);
-        connect(m_screenTimer, &QTimer::timeout, this, &PhoneWindow::updateScreen);
-        m_screenTimer->start(100);
-        return;
+bool PhoneWindow::pushScrcpyServer() {
+    // scrcpy-server.jar must be bundled next to the app exe.
+    // Build system copies it there via CMake install() rule.
+    QString jarPath = QCoreApplication::applicationDirPath() + "/scrcpy-server";
+    QFile jarFile(jarPath);
+
+    // Try .jar extension as fallback
+    if (!jarFile.exists())
+        jarFile.setFileName(jarPath + ".jar");
+
+    if (!jarFile.exists()) {
+        qWarning() << "[Pipeline] scrcpy-server not found at" << jarPath;
+        return false;
     }
-    
-    m_scrcpyEmbedded = true;
-    qDebug() << "[ScreenMirror] screen mirroring active";
+
+    if (!jarFile.open(QIODevice::ReadOnly)) {
+        qWarning() << "[Pipeline] Could not read scrcpy-server";
+        return false;
+    }
+
+    QByteArray jarData = jarFile.readAll();
+    jarFile.close();
+
+    // Push to standard scrcpy location in the container
+    bool ok = m_adbClient->push(jarData,
+                                "/data/local/tmp/scrcpy-server.jar",
+                                0644);
+    if (ok) qDebug() << "[Pipeline] scrcpy-server pushed ("
+                     << jarData.size() << "bytes)";
+    return ok;
 }
 
+bool PhoneWindow::startScrcpyServerProcess() {
+    // scrcpy server startup command (scrcpy v2 syntax)
+    QString cmd = QString(
+        "CLASSPATH=/data/local/tmp/scrcpy-server.jar "
+        "app_process / com.genymobile.scrcpy.Server %1 "
+        "tunnel_forward=true video_bit_rate=8000000 "
+        "max_fps=60 send_frame_meta=true control=true "
+        "audio=false >/dev/null 2>&1 &"
+    ).arg("2.7"); // scrcpy server protocol version
+
+    // Fire-and-forget — server runs in background
+    m_adbClient->openShellStream(cmd, nullptr, nullptr);
+
+    // Give the server time to bind its ports
+    QThread::msleep(1000);
+    return true;
+}
+
+void PhoneWindow::stopNativePipeline() {
+    if (m_renderer) {
+        m_renderer->stopRendering();
+        delete m_renderer;
+        m_renderer = nullptr;
+        m_screenDisplay->show(); // restore QLabel placeholder
+    }
+    if (m_decoder) {
+        m_decoder->stop();
+        delete m_decoder;
+        m_decoder = nullptr;
+    }
+    if (m_adbClient) {
+        m_adbClient->closeControlChannel();
+        // Kill the scrcpy server in the container
+        m_adbClient->shell(
+            "pkill -f 'com.genymobile.scrcpy.Server' 2>/dev/null", 3000);
+        m_adbClient->disconnect();
+        delete m_adbClient;
+        m_adbClient = nullptr;
+    }
+}
+
+// Legacy scrcpy.exe methods — now dead paths, kept to avoid linker errors
+bool PhoneWindow::tryStartScrcpy()       { return false; }
+void PhoneWindow::embedScrcpyWindow()    {}
 void PhoneWindow::stopScrcpy() {
-    m_scrcpyEmbedded = false;
     if (m_scrcpyProcess) {
         m_scrcpyProcess->terminate();
-        m_scrcpyProcess->waitForFinished(2000);
-        m_scrcpyProcess->kill();
+        if (!m_scrcpyProcess->waitForFinished(2000))
+            m_scrcpyProcess->kill();
         m_scrcpyProcess->deleteLater();
         m_scrcpyProcess = nullptr;
     }
+    m_scrcpyEmbedded = false;
 }
 
 void PhoneWindow::stopScreenMirror() {

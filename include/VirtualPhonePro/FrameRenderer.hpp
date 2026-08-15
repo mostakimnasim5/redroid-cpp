@@ -107,11 +107,11 @@ private:
     // ── Input dispatch ────────────────────────────────────────────────────────
     QPointF mapToAndroid(const QPointF& widgetPos) const;
 
-    void sendTouch(float ax, float ay, quint8 action, quint32 pointerId = 0);
+    void sendTouch(float ax, float ay, quint8 action, quint64 pointerId = 0);
     void sendScroll(float ax, float ay, float hScroll, float vScroll);
     void sendKeycode(quint32 keycode, quint32 action, quint32 metaState = 0);
 
-    QByteArray buildTouchMsg (float ax, float ay, quint8 action, quint32 id) const;
+    QByteArray buildTouchMsg (float ax, float ay, quint8 action, quint64 id) const;
     QByteArray buildScrollMsg(float ax, float ay, float hScroll, float vScroll) const;
     QByteArray buildKeyMsg   (quint32 keycode, quint32 action, quint32 meta) const;
 
