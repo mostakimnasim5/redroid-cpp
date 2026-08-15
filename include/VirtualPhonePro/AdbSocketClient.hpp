@@ -100,8 +100,12 @@ public:
     bool openControlChannel(const QString& host, quint16 controlPort);
     void closeControlChannel();
 
-    /** Send a raw scrcpy control-protocol message synchronously.
-     *  Thread-safe — can be called from the render thread. */
+    /** Adopt a pre-accepted QTcpSocket as the control channel.
+     *  Used when the scrcpy server connects TO US (tunnel_forward=false)
+     *  so no outbound connect is needed. Takes ownership of the socket. */
+    void adoptControlSocket(QTcpSocket* socket);
+
+    /** Send a raw scrcpy control-protocol message synchronously. */
     bool sendControlMsg(const QByteArray& msg);
 
 signals:

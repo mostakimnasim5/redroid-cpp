@@ -918,10 +918,12 @@ void PhoneWindow::startScreenMirror() {
 
 bool PhoneWindow::startNativePipeline() {
     QString host = "127.0.0.1";
-    quint16 adbPort = static_cast<quint16>(
-        ReDroidController::instance()
-            .listInstances()
-            .value(m_instanceId).adbPort);
+
+    // getInstanceInfo() returns InstanceInfo directly by instanceId key.
+    // listInstances() returns QList<InstanceInfo> which has no .value(QString).
+    InstanceInfo info = ReDroidController::instance()
+                            .getInstanceInfo(m_instanceId);
+    quint16 adbPort = static_cast<quint16>(info.adbPort);
 
     if (adbPort == 0) {
         qWarning() << "[Pipeline] No ADB port for instance" << m_instanceId;
@@ -943,27 +945,89 @@ bool PhoneWindow::startNativePipeline() {
         return false;
     }
 
-    // ── Step 3: Start scrcpy server inside the container ─────────────────────
-    if (!startScrcpyServerProcess()) {
-        qWarning() << "[Pipeline] scrcpy-server launch failed";
+    // ── Step 3: Start scrcpy server (tunnel_forward=false mode) ──────────────
+    // In this mode the scrcpy server connects OUT to us rather than us
+    // connecting in — no nc/socat/port-forward relay required.
+    // We pre-bind local QTcpServer listeners BEFORE launching the server
+    // so the server's connect() finds them immediately.
+
+    // Bind video listener
+    QTcpServer videoServer;
+    if (!videoServer.listen(QHostAddress::LocalHost, SCRCPY_VIDEO_PORT)) {
+        // Port may be in use — try an ephemeral port
+        if (!videoServer.listen(QHostAddress::LocalHost, 0)) {
+            qWarning() << "[Pipeline] Could not bind video listener:"
+                       << videoServer.errorString();
+            delete m_adbClient; m_adbClient = nullptr;
+            return false;
+        }
+    }
+    const quint16 videoPort = videoServer.serverPort();
+
+    // Bind control listener
+    QTcpServer controlServer;
+    if (!controlServer.listen(QHostAddress::LocalHost, SCRCPY_CONTROL_PORT)) {
+        if (!controlServer.listen(QHostAddress::LocalHost, 0)) {
+            qWarning() << "[Pipeline] Could not bind control listener:"
+                       << controlServer.errorString();
+            delete m_adbClient; m_adbClient = nullptr;
+            return false;
+        }
+    }
+    const quint16 controlPort = controlServer.serverPort();
+
+    qDebug() << "[Pipeline] Listening — video:" << videoPort
+             << "control:" << controlPort;
+
+    // Launch scrcpy server inside the container.
+    // tunnel_forward=false → server dials out to tunnel_host:tunnel_port.
+    // We pass the host machine's IP as seen from inside the container.
+    // In ReDroid (Docker bridge), the host is reachable via host.docker.internal
+    // or the default gateway (172.17.0.1 on most Docker setups).
+    QString tunnelHost = "host.docker.internal";
+    QString serverCmd = QString(
+        "CLASSPATH=/data/local/tmp/scrcpy-server.jar "
+        "app_process / com.genymobile.scrcpy.Server 2.7 "
+        "tunnel_forward=false "
+        "tunnel_host=%1 tunnel_port=%2 "
+        "video_bit_rate=8000000 max_fps=60 "
+        "send_frame_meta=true control=true "
+        "audio=false cleanup=true >/dev/null 2>&1 &"
+    ).arg(tunnelHost).arg(videoPort);
+
+    m_adbClient->openShellStream(serverCmd, nullptr, nullptr);
+
+    // ── Step 4: Accept video connection from scrcpy server ────────────────────
+    // scrcpy server opens the video socket first, then the control socket.
+    QTcpSocket* videoSocket = nullptr;
+    if (videoServer.waitForNewConnection(8000)) {
+        videoSocket = videoServer.nextPendingConnection();
+        videoSocket->setParent(this);
+    }
+    videoServer.close(); // done listening
+
+    if (!videoSocket) {
+        qWarning() << "[Pipeline] scrcpy server did not connect (video timeout)";
+        controlServer.close();
         delete m_adbClient; m_adbClient = nullptr;
         return false;
     }
 
-    // ── Step 4: Forward video + control ports ─────────────────────────────────
-    m_adbClient->forward(SCRCPY_VIDEO_PORT,   1234); // scrcpy default video port
-    m_adbClient->forward(SCRCPY_CONTROL_PORT, 1235); // scrcpy default control port
-    QThread::msleep(500); // let socat relay settle
+    // ── Step 5: Accept control connection ────────────────────────────────────
+    QTcpSocket* controlSocket = nullptr;
+    if (controlServer.waitForNewConnection(5000)) {
+        controlSocket = controlServer.nextPendingConnection();
+        controlSocket->setParent(this);
+    }
+    controlServer.close();
 
-    // ── Step 5: Connect video socket ──────────────────────────────────────────
-    auto* videoSocket = new QTcpSocket(this);
-    videoSocket->connectToHost(host, SCRCPY_VIDEO_PORT);
-    if (!videoSocket->waitForConnected(5000)) {
-        qWarning() << "[Pipeline] Video socket connect failed";
-        delete videoSocket;
+    if (!controlSocket) {
+        qWarning() << "[Pipeline] scrcpy server did not connect (control timeout)";
         delete m_adbClient; m_adbClient = nullptr;
         return false;
     }
+
+    qDebug() << "[Pipeline] scrcpy server connected — video + control sockets ready";
 
     // ── Step 6: Start decoder ────────────────────────────────────────────────
     m_decoder = new MediaStreamDecoder(this);
@@ -996,13 +1060,12 @@ bool PhoneWindow::startNativePipeline() {
 
     m_renderer->startRendering();
 
-    // ── Step 8: Open control channel for input dispatch ───────────────────────
-    if (m_adbClient->openControlChannel(host, SCRCPY_CONTROL_PORT)) {
-        m_renderer->setAdbClient(m_adbClient, SCRCPY_CONTROL_PORT);
-        qDebug() << "[Pipeline] Control channel open — touch/key input active";
-    } else {
-        qWarning() << "[Pipeline] Control channel failed — input disabled";
-    }
+    // ── Step 8: Wire control socket for input dispatch ────────────────────────
+    // controlSocket was already accepted from scrcpy server's outbound connect.
+    // We pass it directly to AdbSocketClient which wraps it in sendControlMsg().
+    m_adbClient->adoptControlSocket(controlSocket);
+    m_renderer->setAdbClient(m_adbClient, 0 /* port unused — socket pre-adopted */);
+    qDebug() << "[Pipeline] Control channel ready — touch/key input active";
 
     return true;
 }

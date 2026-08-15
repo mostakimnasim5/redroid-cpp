@@ -48,6 +48,11 @@
 
 #include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/DeviceProfile.hpp"
+#include "VirtualPhonePro/AdbSocketClient.hpp"
+#include "VirtualPhonePro/MediaStreamDecoder.hpp"
+#include "VirtualPhonePro/FrameRenderer.hpp"
+#include <QTcpServer>
+#include <QTcpSocket>
 
 namespace VirtualPhonePro {
 
@@ -259,6 +264,21 @@ private:
     void embedScrcpyWindow();
     void stopScrcpy();
     
+    // ====================================================================
+    // NATIVE STREAMING PIPELINE (no external exe)
+    // ====================================================================
+    AdbSocketClient*    m_adbClient     = nullptr;
+    MediaStreamDecoder* m_decoder       = nullptr;
+    FrameRenderer*      m_renderer      = nullptr;
+
+    static constexpr quint16 SCRCPY_VIDEO_PORT   = 27183; // local forwarded port
+    static constexpr quint16 SCRCPY_CONTROL_PORT = 27184; // local forwarded port
+
+    bool startNativePipeline();
+    void stopNativePipeline();
+    bool pushScrcpyServer();
+    bool startScrcpyServerProcess();
+
     // ====================================================================
     // MEMBER VARIABLES
     // ====================================================================

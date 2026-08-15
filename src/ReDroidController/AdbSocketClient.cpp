@@ -401,7 +401,7 @@ bool AdbSocketClient::openControlChannel(const QString& host, quint16 controlPor
         return true;
 
     if (!m_controlSocket)
-        m_controlSocket = new QTcpSocket();   // no parent — managed manually
+        m_controlSocket = new QTcpSocket();
 
     m_controlSocket->connectToHost(host, controlPort);
     if (!m_controlSocket->waitForConnected(5000)) {
@@ -416,6 +416,18 @@ bool AdbSocketClient::openControlChannel(const QString& host, quint16 controlPor
 
     qDebug() << "[ControlChannel] Connected" << host << controlPort;
     return true;
+}
+
+void AdbSocketClient::adoptControlSocket(QTcpSocket* socket) {
+    // Called when scrcpy server connects TO US (tunnel_forward=false).
+    // The socket is already connected — no handshake byte needed.
+    QMutexLocker lk(&m_controlMutex);
+    if (m_controlSocket) {
+        m_controlSocket->disconnectFromHost();
+        delete m_controlSocket;
+    }
+    m_controlSocket = socket;
+    qDebug() << "[ControlChannel] Adopted pre-connected socket";
 }
 
 void AdbSocketClient::closeControlChannel() {
