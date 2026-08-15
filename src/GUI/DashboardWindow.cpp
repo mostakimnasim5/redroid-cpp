@@ -1041,6 +1041,8 @@ void DashboardWindow::onBatchLaunchClicked() {
 
     prog->exec();
 }
+
+void DashboardWindow::createPhoneCard(const QString& instanceId) {
     PhoneCard* card = new PhoneCard(instanceId, m_scrollContent);
     
     // Load profile if exists

@@ -17,7 +17,13 @@ static constexpr int SCRCPY_HDR = 12;
 MediaStreamDecoder::MediaStreamDecoder(QObject* parent)
     : QObject(parent)
 {
-    avcodec_register_all(); // no-op on newer FFmpeg, harmless
+    // avcodec_register_all() was deprecated in FFmpeg 4.0 and removed in
+    // later releases (the BtbN master-latest build we download is FFmpeg 7+).
+    // Modern FFmpeg auto-registers codecs at build time, so the call is
+    // unnecessary; guard it for old FFmpeg only.
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 9, 100)
+    avcodec_register_all();
+#endif
 }
 
 MediaStreamDecoder::~MediaStreamDecoder() {

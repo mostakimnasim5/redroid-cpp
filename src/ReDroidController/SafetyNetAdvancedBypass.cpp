@@ -6,6 +6,8 @@
 #include "VirtualPhonePro/CryptoEmulator.hpp"
 #include "VirtualPhonePro/DeviceIDGenerator.hpp"
 #include <sstream>
+#include <iomanip>
+#include <ctime>
 #include <random>
 #include <QString>
 #include <QStringList>
@@ -21,6 +23,24 @@ namespace VirtualPhonePro {
 // Per-instance registry
 static QMutex s_safetyMutex;
 static QHash<QString, SafetyNetAdvancedBypass*> s_safetyRegistry;
+
+// Current month's Android security patch date, clamped to never land in the
+// future (a stale patch date is a hard red flag for Play Integrity / banking
+// apps). Mirrors the helper in DeviceProfileGenerator.cpp (kept file-local so
+// there is no shared header dependency).
+static std::string currentSecurityPatchDate() {
+    std::time_t now = std::time(nullptr);
+    std::tm* lt = std::gmtime(&now);
+    int year = lt->tm_year + 1900;
+    int month = lt->tm_mon + 1;
+    if (lt->tm_mday <= 1) {
+        if (month == 1) { year -= 1; month = 12; }
+        else { month -= 1; }
+    }
+    std::ostringstream ss;
+    ss << year << "-" << std::setw(2) << std::setfill('0') << month << "-01";
+    return ss.str();
+}
 
 SafetyNetAdvancedBypass& SafetyNetAdvancedBypass::getInstance() {
     static SafetyNetAdvancedBypass instance;

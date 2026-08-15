@@ -28,6 +28,10 @@ enum class ADBConnectionState {
 class ADBManager {
 public:
     static ADBManager& getInstance();
+    // Per-instance ADB managers. Each redroid container gets its own ADBManager
+    // pre-bound to its serial so commands never collide across instances.
+    static ADBManager& getInstanceFor(const std::string& adbSerial);
+    static void        removeInstance(const std::string& adbSerial);
     ADBManager();
     ~ADBManager();
     

@@ -119,6 +119,9 @@ private:
     qint64      m_pendingPts  = -1;
     int         m_pendingSize = 0;
     bool        m_headerRead  = false;
+
+    // Decoded frame counter (used to emit firstFrameDecoded once)
+    quint64     m_frameCount  = 0;
 };
 
 } // namespace VirtualPhonePro

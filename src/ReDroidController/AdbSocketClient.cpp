@@ -3,6 +3,7 @@
 #include <QTimer>
 #include <QDataStream>
 #include <QDebug>
+#include <QDateTime>
 #include <QtEndian>
 
 namespace VirtualPhonePro {

@@ -69,7 +69,7 @@ HardwareSecurityState HardwareAttestation::getSecurityState(const QString& insta
     defaultState.isHDCPCompliant = true;
     defaultState.teeVendor = "QSEE";
     defaultState.teeVersion = "4.1";
-    defaultState.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM").toStdString();
+    defaultState.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM");
     defaultState.socManufacturer = "Qualcomm";
     defaultState.socModel = "Snapdragon";
     
@@ -429,7 +429,7 @@ bool HardwareAttestation::resetSecurity(const QString& instanceId) {
     defaultState.isHDCPCompliant = true;
     defaultState.teeVendor = "QSEE";
     defaultState.teeVersion = "4.1";
-    defaultState.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM").toStdString();
+    defaultState.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM");
     defaultState.socManufacturer = "Qualcomm";
     defaultState.socModel = "Snapdragon 8 Gen 3";
     defaultState.hardwareVendor = "Samsung";
@@ -554,7 +554,7 @@ HardwareSecurityState HardwareAttestation::getDeviceDefaults(const QString& manu
     state.isEncryptionEnabled = true;
     state.isEncryptionSupported = true;
     state.isHDCPCompliant = true;
-    state.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM").toStdString();
+    state.teePatchLevel = QDate::currentDate().addMonths(-1).toString("yyyy-MM");
     
     return state;
 }

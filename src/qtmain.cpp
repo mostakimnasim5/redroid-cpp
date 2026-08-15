@@ -489,7 +489,7 @@ int main(int argc, char *argv[]) {
         
         // Auto-start saved instances after dashboard is shown
         QTimer::singleShot(1000, [&, dashboard]() {
-            if (dockerResult.success) {
+            if (sysReport.canRun) {
                 qDebug() << "[Startup] Restoring auto-start instances...";
                 
                 // Show auto-start dialog
