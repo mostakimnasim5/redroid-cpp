@@ -53,6 +53,44 @@ jobs:
       - name: Run tests
         run: cd build && ctest --output-on-failure || true
 
+      - name: Bundle scrcpy-server (Linux)
+        run: |
+          # Fetch latest scrcpy release tag
+          SCRCPY_VERSION=$(curl -s \
+            https://api.github.com/repos/Genymobile/scrcpy/releases/latest \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])" \
+            2>/dev/null || echo "v4.1")
+          echo "scrcpy version: $SCRCPY_VERSION"
+
+          # Download linux release zip
+          SCRCPY_URL="https://github.com/Genymobile/scrcpy/releases/download/${SCRCPY_VERSION}/scrcpy-linux-x86_64-${SCRCPY_VERSION}.tar.gz"
+          curl -fsSL "$SCRCPY_URL" -o /tmp/scrcpy.tar.gz || {
+            echo "Linux tarball not found, trying zip..."
+            SCRCPY_URL="https://github.com/Genymobile/scrcpy/releases/download/${SCRCPY_VERSION}/scrcpy-linux-x86_64-${SCRCPY_VERSION}.zip"
+            curl -fsSL "$SCRCPY_URL" -o /tmp/scrcpy.zip
+            mkdir -p /tmp/scrcpy
+            unzip -q /tmp/scrcpy.zip -d /tmp/scrcpy
+            # Copy scrcpy-server to build output
+            SSERVER=$(find /tmp/scrcpy -name "scrcpy-server" -type f | head -1)
+            if [ -n "$SSERVER" ]; then
+              cp "$SSERVER" build/bin/scrcpy-server
+              echo "[OK] scrcpy-server bundled from zip ($SCRCPY_VERSION)"
+            else
+              echo "[WARN] scrcpy-server not found in zip"
+            fi
+            exit 0
+          }
+          mkdir -p /tmp/scrcpy
+          tar -xzf /tmp/scrcpy.tar.gz -C /tmp/scrcpy
+          SSERVER=$(find /tmp/scrcpy -name "scrcpy-server" -type f | head -1)
+          if [ -n "$SSERVER" ]; then
+            cp "$SSERVER" build/bin/scrcpy-server
+            chmod +x build/bin/scrcpy-server
+            echo "[OK] scrcpy-server bundled ($SCRCPY_VERSION)"
+          else
+            echo "[WARN] scrcpy-server not found in tarball"
+          fi
+
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         if: success()
