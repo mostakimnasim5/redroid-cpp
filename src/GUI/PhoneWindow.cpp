@@ -984,7 +984,42 @@ bool PhoneWindow::startNativePipeline() {
     // We pass the host machine's IP as seen from inside the container.
     // In ReDroid (Docker bridge), the host is reachable via host.docker.internal
     // or the default gateway (172.17.0.1 on most Docker setups).
+    // Determine tunnel host — the address of this machine as seen from
+    // inside the Docker container.
+    // Windows/macOS Docker Desktop: host.docker.internal always works.
+    // Linux Docker (bridge mode): host.docker.internal is not added by
+    // default; we fall back to the default gateway (172.17.0.1 or the
+    // actual bridge IP read from /proc/net/route).
     QString tunnelHost = "host.docker.internal";
+
+#ifdef Q_OS_LINUX
+    // Read the default gateway from /proc/net/route
+    // Field 2 (hex, little-endian) is the gateway address.
+    QFile routeFile("/proc/net/route");
+    if (routeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        routeFile.readLine(); // skip header
+        while (!routeFile.atEnd()) {
+            QList<QByteArray> fields = routeFile.readLine().split('\t');
+            if (fields.size() >= 3) {
+                bool ok = false;
+                quint32 gwHex = fields[2].trimmed().toUInt(&ok, 16);
+                if (ok && gwHex != 0) {
+                    // Convert little-endian hex to dotted IP
+                    quint8 a = gwHex & 0xFF;
+                    quint8 b = (gwHex >> 8) & 0xFF;
+                    quint8 c = (gwHex >> 16) & 0xFF;
+                    quint8 d = (gwHex >> 24) & 0xFF;
+                    tunnelHost = QString("%1.%2.%3.%4").arg(a).arg(b).arg(c).arg(d);
+                    qDebug() << "[Pipeline] Linux Docker gateway:" << tunnelHost;
+                    break;
+                }
+            }
+        }
+        routeFile.close();
+    }
+    if (tunnelHost == "host.docker.internal")
+        tunnelHost = "172.17.0.1"; // Docker bridge default fallback
+#endif
     QString serverCmd = QString(
         "CLASSPATH=/data/local/tmp/scrcpy-server.jar "
         "app_process / com.genymobile.scrcpy.Server 2.7 "
