@@ -129,7 +129,7 @@ if(BUILD_QT6_GUI)
     set(QT_MIN_VERSION "6.5.0")
     
     # Find Qt6 - works on both Linux and Windows CI (install-qt-action sets CMAKE_PREFIX_PATH)
-    find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent OpenGL REQUIRED)
+    find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent OpenGL OpenGLWidgets REQUIRED)
 
     # ── FFmpeg (libavcodec + libavutil + libswscale) ──────────────────────────
     # Strategy:
@@ -160,15 +160,27 @@ if(BUILD_QT6_GUI)
         include(FetchContent)
 
         if(WIN32)
-            # BtbN Windows builds: static libs + headers, no runtime DLL needed
+            # BtbN Windows builds: shared libs + headers + MSVC import libs.
+            # We pin to the "master-latest" track because the older
+            # "n7.1-latest-win64-lgpl-shared-7.1.zip" asset was removed from
+            # BtbN's rolling release (HTTP 404). URL_HASH is intentionally
+            # omitted: BtbN's "latest" tag is a rolling daily release whose
+            # file content (and therefore hash) changes every day, so a
+            # pinned hash would break within 24h. CMake accepts a download
+            # with no hash (it skips verification). An empty "SHA256=" value
+            # is NOT valid and aborts configuration, hence the omission.
+            #
+            # Archive layout: ffmpeg-master-latest-win64-lgpl-shared/
+            #                  ├─ include/libavcodec/avcodec.h
+            #                  ├─ lib/avcodec.lib   (MSVC import lib)
+            #                  └─ bin/avcodec-*.dll
             FetchContent_Declare(ffmpeg_prebuilt
-                URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1.zip"
-                URL_HASH SHA256= # intentionally empty — allow any hash on first run
+                URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip"
                 DOWNLOAD_EXTRACT_TIMESTAMP TRUE
             )
         elseif(LINUX)
             FetchContent_Declare(ffmpeg_prebuilt
-                URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1.tar.xz"
+                URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl-shared.tar.xz"
                 DOWNLOAD_EXTRACT_TIMESTAMP TRUE
             )
         endif()
@@ -178,25 +190,52 @@ if(BUILD_QT6_GUI)
             set(FFMPEG_PREBUILT_DIR "${ffmpeg_prebuilt_SOURCE_DIR}")
             message(STATUS "FFmpeg pre-built source dir: ${FFMPEG_PREBUILT_DIR}")
 
+            # BtbN archives extract to a single top-level directory whose
+            # name embeds the track (master-latest / n7.1-latest / ...).
+            # Prefer the known master-latest name, then fall back to a
+            # recursive glob so any future track rename still resolves.
+            file(GLOB FFMPEG_TOP_DIRS LIST_DIRECTORIES TRUE
+                "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared"
+                "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared"
+                "${FFMPEG_PREBUILT_DIR}/ffmpeg-n*-win64-lgpl-shared-*"
+                "${FFMPEG_PREBUILT_DIR}/ffmpeg-n*-linux64-lgpl-shared-*"
+            )
+            list(GET FFMPEG_TOP_DIRS 0 FFMPEG_EXTRACTED_ROOT)
+            if(NOT FFMPEG_EXTRACTED_ROOT)
+                set(FFMPEG_EXTRACTED_ROOT "${FFMPEG_PREBUILT_DIR}")
+            endif()
+
             # Locate the include and lib directories inside the downloaded archive
             find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
-                PATHS "${FFMPEG_PREBUILT_DIR}/include"
+                PATHS "${FFMPEG_EXTRACTED_ROOT}/include"
+                      "${FFMPEG_PREBUILT_DIR}/include"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared/include"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared/include"
                       "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/include"
                       "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/include"
                 NO_DEFAULT_PATH)
 
             find_library(AVCODEC_LIB avcodec
-                PATHS "${FFMPEG_PREBUILT_DIR}/lib"
+                PATHS "${FFMPEG_EXTRACTED_ROOT}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared/lib"
                       "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
                       "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
                 NO_DEFAULT_PATH)
             find_library(AVUTIL_LIB avutil
-                PATHS "${FFMPEG_PREBUILT_DIR}/lib"
+                PATHS "${FFMPEG_EXTRACTED_ROOT}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared/lib"
                       "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
                       "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
                 NO_DEFAULT_PATH)
             find_library(SWSCALE_LIB swscale
-                PATHS "${FFMPEG_PREBUILT_DIR}/lib"
+                PATHS "${FFMPEG_EXTRACTED_ROOT}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared/lib"
                       "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
                       "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
                 NO_DEFAULT_PATH)
@@ -465,6 +504,7 @@ if(BUILD_QT6_GUI)
         Qt6::Network
         Qt6::Concurrent
         Qt6::OpenGL
+        Qt6::OpenGLWidgets
         Threads::Threads
     )
 
