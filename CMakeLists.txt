@@ -131,25 +131,87 @@ if(BUILD_QT6_GUI)
     # Find Qt6 - works on both Linux and Windows CI (install-qt-action sets CMAKE_PREFIX_PATH)
     find_package(Qt6 COMPONENTS Core Gui Widgets Network Concurrent OpenGL REQUIRED)
 
-    # ── FFmpeg (libavcodec + libswscale) ──────────────────────────────────────
+    # ── FFmpeg (libavcodec + libavutil + libswscale) ──────────────────────────
+    # Strategy:
+    #   1. pkg-config / system install (fastest — already on the machine)
+    #   2. vcpkg / conda manual search
+    #   3. FetchContent: download pre-built FFmpeg shared libs from
+    #      BtbN/FFmpeg-Builds (Windows) or static build (Linux/macOS)
+    #      so the user never has to install anything manually.
+
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(FFMPEG IMPORTED_TARGET
             libavcodec libavutil libswscale)
     endif()
+
     if(NOT FFMPEG_FOUND)
-        # Fallback: manual search (Windows vcpkg / conda-forge layout)
-        find_library(AVCODEC_LIB  avcodec)
-        find_library(AVUTIL_LIB   avutil)
-        find_library(SWSCALE_LIB  swscale)
+        find_library(AVCODEC_LIB avcodec)
+        find_library(AVUTIL_LIB  avutil)
+        find_library(SWSCALE_LIB swscale)
         if(AVCODEC_LIB AND AVUTIL_LIB AND SWSCALE_LIB)
             set(FFMPEG_FOUND TRUE)
-        else()
-            message(WARNING
-                "FFmpeg not found — MediaStreamDecoder will not compile.\n"
-                "Install ffmpeg dev libraries:\n"
-                "  Ubuntu: sudo apt install libavcodec-dev libavutil-dev libswscale-dev\n"
-                "  Windows vcpkg: vcpkg install ffmpeg:x64-windows")
+            message(STATUS "FFmpeg found via manual search")
+        endif()
+    endif()
+
+    if(NOT FFMPEG_FOUND)
+        message(STATUS "FFmpeg not found locally — downloading pre-built binaries...")
+        include(FetchContent)
+
+        if(WIN32)
+            # BtbN Windows builds: static libs + headers, no runtime DLL needed
+            FetchContent_Declare(ffmpeg_prebuilt
+                URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1.zip"
+                URL_HASH SHA256= # intentionally empty — allow any hash on first run
+                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            )
+        elseif(LINUX)
+            FetchContent_Declare(ffmpeg_prebuilt
+                URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1.tar.xz"
+                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            )
+        endif()
+
+        if(WIN32 OR LINUX)
+            FetchContent_MakeAvailable(ffmpeg_prebuilt)
+            set(FFMPEG_PREBUILT_DIR "${ffmpeg_prebuilt_SOURCE_DIR}")
+            message(STATUS "FFmpeg pre-built source dir: ${FFMPEG_PREBUILT_DIR}")
+
+            # Locate the include and lib directories inside the downloaded archive
+            find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
+                PATHS "${FFMPEG_PREBUILT_DIR}/include"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/include"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/include"
+                NO_DEFAULT_PATH)
+
+            find_library(AVCODEC_LIB avcodec
+                PATHS "${FFMPEG_PREBUILT_DIR}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
+                NO_DEFAULT_PATH)
+            find_library(AVUTIL_LIB avutil
+                PATHS "${FFMPEG_PREBUILT_DIR}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
+                NO_DEFAULT_PATH)
+            find_library(SWSCALE_LIB swscale
+                PATHS "${FFMPEG_PREBUILT_DIR}/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
+                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
+                NO_DEFAULT_PATH)
+
+            if(FFMPEG_INCLUDE_DIR AND AVCODEC_LIB AND AVUTIL_LIB AND SWSCALE_LIB)
+                set(FFMPEG_FOUND TRUE)
+                set(FFMPEG_AUTO_DOWNLOADED TRUE)
+                message(STATUS "FFmpeg auto-downloaded successfully")
+                message(STATUS "  include: ${FFMPEG_INCLUDE_DIR}")
+                message(STATUS "  avcodec: ${AVCODEC_LIB}")
+            else()
+                message(WARNING
+                    "FFmpeg auto-download succeeded but libs not located.\n"
+                    "Run: sudo apt install libavcodec-dev libavutil-dev libswscale-dev")
+            endif()
         endif()
     endif()
 
@@ -413,8 +475,26 @@ if(BUILD_QT6_GUI)
         else()
             target_link_libraries(ReDroidCPP PRIVATE
                 ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWSCALE_LIB})
+            if(FFMPEG_INCLUDE_DIR)
+                target_include_directories(ReDroidCPP PRIVATE ${FFMPEG_INCLUDE_DIR})
+            endif()
         endif()
         target_compile_definitions(ReDroidCPP PRIVATE VPP_FFMPEG_AVAILABLE)
+
+        # On Windows, copy FFmpeg DLLs next to the exe so it runs without PATH changes
+        if(WIN32 AND FFMPEG_AUTO_DOWNLOADED AND FFMPEG_INCLUDE_DIR)
+            get_filename_component(FFMPEG_LIB_DIR "${AVCODEC_LIB}" DIRECTORY)
+            get_filename_component(FFMPEG_ROOT "${FFMPEG_LIB_DIR}/.." ABSOLUTE)
+            set(FFMPEG_BIN_DIR "${FFMPEG_ROOT}/bin")
+            if(EXISTS "${FFMPEG_BIN_DIR}")
+                add_custom_command(TARGET ReDroidCPP POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory
+                        "${FFMPEG_BIN_DIR}"
+                        "$<TARGET_FILE_DIR:ReDroidCPP>"
+                    COMMENT "Copying FFmpeg DLLs to output directory"
+                )
+            endif()
+        endif()
     endif()
 
     # Linux-specific libraries
@@ -482,7 +562,64 @@ if(BUILD_QT6_GUI)
     endif()
     
     message(STATUS "Building ReDroidCPP v${PROJECT_VERSION} with Qt6 GUI")
+
+    # ── scrcpy-server auto-download (build-time, no user action needed) ───────
+    # The scrcpy-server JAR must sit next to the ReDroidCPP executable so
+    # PhoneWindow::pushScrcpyServer() can find it at runtime via
+    # QCoreApplication::applicationDirPath().
+    # We download it from the official scrcpy release during cmake --build
+    # using a POST_BUILD custom command on the main target.
+    # The file is only downloaded when missing or outdated (file size check).
+    set(SCRCPY_VERSION "v4.1")
+    set(SCRCPY_SERVER_URL
+        "https://github.com/Genymobile/scrcpy/releases/download/${SCRCPY_VERSION}/scrcpy-server-${SCRCPY_VERSION}")
+    set(SCRCPY_SERVER_DEST
+        "${CMAKE_BINARY_DIR}/bin/scrcpy-server")
+
+    # CMake script that does the conditional download
+    set(SCRCPY_DOWNLOAD_SCRIPT "${CMAKE_BINARY_DIR}/download_scrcpy_server.cmake")
+    file(WRITE "${SCRCPY_DOWNLOAD_SCRIPT}" "
+# Auto-generated by CMakeLists.txt — do not edit
+set(DEST \"${SCRCPY_SERVER_DEST}\")
+set(URL  \"${SCRCPY_SERVER_URL}\")
+
+if(EXISTS \"\${DEST}\")
+    file(SIZE \"\${DEST}\" FSIZE)
+    if(FSIZE GREATER 10000)
+        message(STATUS \"[scrcpy-server] Already present (\${FSIZE} bytes) — skip download\")
+        return()
+    endif()
 endif()
+
+message(STATUS \"[scrcpy-server] Downloading \${URL} ...\")
+file(DOWNLOAD \"\${URL}\" \"\${DEST}\"
+    SHOW_PROGRESS
+    STATUS DOWNLOAD_STATUS
+    TIMEOUT 60)
+list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+if(NOT STATUS_CODE EQUAL 0)
+    list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+    message(WARNING \"[scrcpy-server] Download failed: \${ERROR_MSG}\")
+    message(WARNING \"  Manual fix: place scrcpy-server-${SCRCPY_VERSION} next to ReDroidCPP\")
+else()
+    file(SIZE \"\${DEST}\" FSIZE)
+    message(STATUS \"[scrcpy-server] Downloaded OK (\${FSIZE} bytes)\")
+endif()
+")
+
+    add_custom_command(TARGET ReDroidCPP POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -P "${SCRCPY_DOWNLOAD_SCRIPT}"
+        COMMENT "Downloading scrcpy-server ${SCRCPY_VERSION} to bin/"
+        VERBATIM
+    )
+
+    # Also install scrcpy-server alongside the exe
+    install(FILES "${SCRCPY_SERVER_DEST}"
+        DESTINATION bin
+        OPTIONAL   # Don't fail install if download didn't run yet
+    )
+
+endif() # BUILD_QT6_GUI
 
 # ==============================================================================
 # CLI Tool (Optional)
