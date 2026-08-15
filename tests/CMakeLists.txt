@@ -89,6 +89,7 @@ set(REDROID_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/ReDroidController/Logger.cpp
     ${CMAKE_SOURCE_DIR}/src/ReDroidController/TestingFramework.cpp
     ${CMAKE_SOURCE_DIR}/src/ReDroidController/SecurityMitigationManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/Android/LocaleTimezoneManager.cpp
     ${CMAKE_SOURCE_DIR}/src/Data/TACDatabase.cpp
     ${CMAKE_SOURCE_DIR}/src/ReDroidController/openssl_stub.cpp
 )
@@ -143,6 +144,7 @@ add_executable(Test_UniqueDeviceGenerator
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/APIServer.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/AppCloner.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TestingFramework.hpp
+    ${CMAKE_SOURCE_DIR}/include/Android/LocaleTimezoneManager.h
 )
 
 target_link_libraries(Test_UniqueDeviceGenerator PRIVATE

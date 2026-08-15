@@ -191,7 +191,9 @@ bool LocaleTimezoneManager::queryGeolocation(const QString& instanceId) {
     QUrl url(GEO_API_URL + proxy.host);
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::UserAgentHeader, "VirtualPhonePro/2.0");
-    request.setTimeout(GEO_QUERY_TIMEOUT_MS);
+    // Qt6: QNetworkRequest has no setTimeout(); setTransferTimeout() is the
+    // supported API (added in Qt 5.15 / present in all Qt6 releases).
+    request.setTransferTimeout(GEO_QUERY_TIMEOUT_MS);
     
     QNetworkReply* reply = m_networkManager->get(request);
     
@@ -594,7 +596,8 @@ QString LocaleTimezoneManager::getCountryFromCoordinates(double lat, double lon)
 
 LocaleConfig LocaleTimezoneManager::getLocaleForCountry(const QString& countryCode) const {
     LocaleConfig locale;
-    locale.countryCode = countryCode;
+    // LocaleConfig has no countryCode field; 'region' holds the ISO 3166-1
+    // alpha-2 country code (set on the next line).
     locale.language = "en";
     locale.region = countryCode;
     
