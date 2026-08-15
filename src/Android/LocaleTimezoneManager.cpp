@@ -200,7 +200,11 @@ bool LocaleTimezoneManager::queryGeolocation(const QString& instanceId) {
     // Store instance ID for callback
     reply->setProperty("instanceId", instanceId);
     
-    connect(reply, &QNetworkReply::finished, this, &LocaleTimezoneManager::onGeoQueryFinished);
+    // QNetworkReply::finished carries no arguments; onGeoQueryFinished needs
+    // the reply, so bridge them with a lambda that captures reply.
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        onGeoQueryFinished(reply);
+    });
     
     return true;
 }
