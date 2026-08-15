@@ -52,6 +52,28 @@ root/emulator checks, TLS fingerprinting, canvas/WebGL fingerprinting, etc.
 - Branches: `main` (HEAD), `fix/static-msvc-runtime`, `fix/windows-msvc-build`, `refactor/pure-redroid`
 - Shallow clone — run `git fetch --unshallow` if full history needed
 
+## CI (Build and Test workflow on push to main)
+- Jobs: Windows (VS 2022), Linux (Ubuntu 22.04), Security Scan, Code Quality.
+- Linux CI uses Qt 6.7.3; Windows CI uses Qt 6.8.2. FFmpeg = downloaded master-latest (7+).
+- "Build project" step = `cmake --build`. Poll via GitHub Actions API + GITHUB_TOKEN.
+- To fetch logs: `GET /repos/{o}/{r}/actions/jobs/{job_id}/logs` (returns a combined blob; grep it).
+- ninja stops on the first failing translation unit, so Linux often shows far fewer errors
+  than Windows even when the same latent bugs exist — always fix for BOTH platforms.
+
+## Critical Build Lessons (learned fixing the 2026-08 CI failure)
+1. **AUTOMOC requires Q_OBJECT headers to be explicitly listed in the target's source/header set.**
+   A header merely #included by a .cpp is NOT reliably scanned. Symptom: LNK2001 on
+   `metaObject`/`qt_metacall`/`qt_metacast`/`staticMetaObject` + the class's signals.
+   When adding a Q_OBJECT class: add the .cpp to REDROID_SOURCES AND the .hpp to REDROID_HEADERS.
+2. **When adding a .cpp that ReDroidController uses**, also add it to `REDROID_TEST_SOURCES`
+   + the test target's AUTOMOC header list in tests/CMakeLists.txt (the test links ReDroidController.obj).
+3. **Qt6 API changes**: `QNetworkRequest::setTimeout()` is gone → `setTransferTimeout()`.
+4. **Qt6 connect(PMF,PMF)** asserts slot-arg-count <= signal-arg-count (was a soft warning in Qt5).
+   Bridge a 0-arg signal to an N-arg slot with a lambda capturing the needed object.
+5. **QString ← std::string** has no implicit conversion; don't assign `.toStdString()` to a QString.
+6. **`avcodec_register_all()` was removed in FFmpeg 4.0+** — guard with `LIBAVCODEC_VERSION_INT < 0x380964` (58.9.100).
+7. Declared-but-unimplemented methods link-fail (LNK2001) on the function name — grep the .cpp for `::methodName` to confirm no body exists before implementing.
+
 ## Conventions
 - Namespace: `VirtualPhonePro` (core) / `FirebaseHelper`
 - Dual header convention: many classes have both `.h` and `.hpp` wrappers
