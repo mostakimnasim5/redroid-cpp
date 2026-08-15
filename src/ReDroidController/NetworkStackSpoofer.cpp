@@ -392,6 +392,26 @@ NetworkSpoofResult2 NetworkStackSpoofer::setSamsungMAC() {
     return spoofMACAddress("48:74:40:XX:XX:XX");
 }
 
+NetworkSpoofResult2 NetworkStackSpoofer::spoofInterfaceName() {
+    NetworkSpoofResult2 result = {false, "", "", {}};
+
+    auto& adb = ADBManager::getInstance();
+
+    // Real Android exposes the data interface as wlan0; containers/emulators
+    // often expose eth0, which is a network-layer fingerprint. Rewrite the
+    // prop that reports the active interface so telemetry reads wlan0.
+    adb.setProperty("net.wlan0.interface", "wlan0");
+    adb.executeShellCommand("setprop net.interface.wlan0 wlan0");
+
+    m_modifiedSettings["interface_name"] = "wlan0";
+
+    result.success = true;
+    result.message = "Interface name spoofed: wlan0";
+    result.details["interface"] = "wlan0";
+
+    return result;
+}
+
 NetworkSpoofResult2 NetworkStackSpoofer::spoofMobileOperator(const std::string& name) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     

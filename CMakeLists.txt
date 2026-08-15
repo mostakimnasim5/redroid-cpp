@@ -355,8 +355,11 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/FindMyDeviceManager.cpp
         src/ReDroidController/Logger.cpp
         src/ReDroidController/TestingFramework.cpp
+
+        # Android locale/proxy manager (used by ReDroidController)
+        src/Android/LocaleTimezoneManager.cpp
         src/ReDroidController/SecurityMitigationManager.cpp
-        
+
         # Data Layer
         src/Data/TACDatabase.cpp
         
@@ -451,6 +454,12 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/AdvancedRealisticSimulation.h
         include/VirtualPhonePro/NetworkConfig.h
         include/Data/TACDatabase.h
+        # Q_OBJECT headers that AUTOMOC must process (declared in the target
+        # source list so the moc_*.cpp outputs are generated and linked).
+        include/VirtualPhonePro/AdbSocketClient.hpp
+        include/VirtualPhonePro/MediaStreamDecoder.hpp
+        include/VirtualPhonePro/FrameRenderer.hpp
+        include/Android/LocaleTimezoneManager.h
         src/GUI/PhoneWindow.h
         src/GUI/PhoneWindow.cpp
         src/GUI/DashboardWindow.h
