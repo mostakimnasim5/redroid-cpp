@@ -372,7 +372,7 @@ jobs:
               "avcodec-63.dll",
               "swscale-10.dll",
               "avformat-61.dll",
-              "swresample-5.dll",
+              "swresample-7.dll",
               "avfilter-10.dll"
             )
 
