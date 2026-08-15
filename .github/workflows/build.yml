@@ -324,6 +324,81 @@ jobs:
           }
 
           # ---------------------------------------------------------------
+          # STEP 4c: Download and bundle FFmpeg DLLs
+          # Required: swscale-10.dll, avcodec-63.dll, avutil-61.dll
+          # ---------------------------------------------------------------
+          Write-Host "Downloading FFmpeg shared DLLs..."
+          $ffmpegDir = "$env:TEMP\ffmpeg"
+          $ffmpegZip = "$env:TEMP\ffmpeg.zip"
+
+          try {
+            # Fetch latest FFmpeg build from BtbN
+            $ffmpegApi = Invoke-RestMethod `
+              -Uri "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest" `
+              -Headers @{ "User-Agent" = "redroid-cpp-ci" } `
+              -TimeoutSec 30
+
+            # Pick win64 lgpl shared build
+            $ffmpegAsset = $ffmpegApi.assets | Where-Object {
+              $_.name -like "*win64-lgpl-shared*" -and $_.name -like "*.zip"
+            } | Select-Object -First 1
+
+            if ($ffmpegAsset) {
+              $ffmpegUrl = $ffmpegAsset.browser_download_url
+              Write-Host "  FFmpeg: $($ffmpegAsset.name)"
+            } else {
+              throw "No matching FFmpeg asset found"
+            }
+          } catch {
+            # Fallback to known-good FFmpeg 7.1 build
+            $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1.zip"
+            Write-Warning "  GitHub API unavailable, using fallback URL"
+          }
+
+          try {
+            Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegZip -TimeoutSec 120
+            Expand-Archive -Path $ffmpegZip -DestinationPath $ffmpegDir -Force
+
+            # FFmpeg DLLs are inside a subfolder like ffmpeg-n7.1-win64/bin/
+            $ffmpegBin = Get-ChildItem -Path $ffmpegDir -Filter "*.dll" -Recurse |
+                         Select-Object -First 1 |
+                         ForEach-Object { $_.DirectoryName }
+
+            Write-Host "  FFmpeg bin dir: $ffmpegBin"
+
+            # Copy only required DLLs (exact names from error messages)
+            $requiredDlls = @(
+              "avutil-61.dll",
+              "avcodec-63.dll",
+              "swscale-10.dll",
+              "avformat-61.dll",
+              "swresample-5.dll",
+              "avfilter-10.dll"
+            )
+
+            foreach ($dll in $requiredDlls) {
+              $src = Join-Path $ffmpegBin $dll
+              if (Test-Path $src) {
+                Copy-Item $src "$deployDir\$dll" -Force
+                Write-Host "  [OK] $dll"
+              } else {
+                # Search recursively if not in expected bin dir
+                $found = Get-ChildItem -Path $ffmpegDir -Filter $dll -Recurse |
+                         Select-Object -First 1
+                if ($found) {
+                  Copy-Item $found.FullName "$deployDir\$dll" -Force
+                  Write-Host "  [OK] $dll (found at $($found.FullName))"
+                } else {
+                  Write-Warning "  [SKIP] $dll not found in FFmpeg package"
+                }
+              }
+            }
+          } catch {
+            Write-Warning "  [SKIP] FFmpeg download failed: $_"
+            Write-Warning "  Video features may not work without FFmpeg DLLs"
+          }
+
+          # ---------------------------------------------------------------
           # STEP 5: Final verification - FAIL build if anything missing
           # ---------------------------------------------------------------
           Write-Host ""
@@ -335,7 +410,10 @@ jobs:
             "Qt6Network.dll",
             "Qt6OpenGL.dll",
             "platforms\qwindows.dll",
-            "qt.conf"
+            "qt.conf",
+            "avutil-61.dll",
+            "avcodec-63.dll",
+            "swscale-10.dll"
           )
           $failed = $false
           foreach ($item in $required) {
