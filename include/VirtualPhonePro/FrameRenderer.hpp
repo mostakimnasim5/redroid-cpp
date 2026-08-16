@@ -142,6 +142,11 @@ private:
     QSize                    m_texSize;
     bool                     m_glReady = false;
 
+    // Gesture serialisation — prevents two QtConcurrent gesture threads
+    // from interleaving DOWN/MOVE/UP events (protocol violation on Android).
+    // Initialised to 1 so the first gesture starts immediately.
+    QSemaphore  m_gestureSemaphore{1};
+
     // Pending frame from decoder
     QImage  m_pendingFrame;
     QMutex  m_frameMutex;
@@ -153,8 +158,9 @@ private:
 
     // Press tracking for tap vs drag vs long-press classification
     QPointF m_lastPressPos;
-    qint64  m_pressTime    = 0;
-    qint64  m_lastMoveTime = 0;
+    qint64  m_pressTime     = 0;
+    qint64  m_lastMoveTime  = 0;
+    qint64  m_downTimestamp = 0;  // actual HTE timestamp of the DOWN point
 
     // FPS measurement
     std::atomic<float>  m_measuredFps{0.f};
