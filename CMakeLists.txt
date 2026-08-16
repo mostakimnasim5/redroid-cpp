@@ -626,8 +626,7 @@ if(BUILD_QT6_GUI)
     # The file is only downloaded when missing or outdated (file size check).
     set(SCRCPY_VERSION "v4.1")
     set(SCRCPY_SERVER_URL
-        "https://github.com/Genymobile/scrcpy/releases/download/${SCRCPY_VERSION}/scrcpy-server-${SCRCPY_VERSION}")
-    set(SCRCPY_SERVER_DEST
+        "https://github.com/Genymobile/scrcpy/releases/download/${SCRCPY_VERSION}/scrcpy-server-${SCRCPY_VERSION}")    set(SCRCPY_SERVER_DEST
         "${CMAKE_BINARY_DIR}/bin/scrcpy-server")
 
     # CMake script that does the conditional download

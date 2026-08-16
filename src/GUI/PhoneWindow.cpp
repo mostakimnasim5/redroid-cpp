@@ -1020,15 +1020,21 @@ bool PhoneWindow::startNativePipeline() {
     if (tunnelHost == "host.docker.internal")
         tunnelHost = "172.17.0.1"; // Docker bridge default fallback
 #endif
+    // scrcpy-server version MUST match the server JAR bundled in applicationDirPath().
+    // The CMake POST_BUILD step downloads v4.1; if the bundled file ever changes,
+    // update this constant to match. Mismatch causes the server to reject the
+    // connection immediately with a version error.
+    static const QString SCRCPY_SERVER_VERSION = "4.1";
+
     QString serverCmd = QString(
         "CLASSPATH=/data/local/tmp/scrcpy-server.jar "
-        "app_process / com.genymobile.scrcpy.Server 2.7 "
+        "app_process / com.genymobile.scrcpy.Server %1 "
         "tunnel_forward=false "
-        "tunnel_host=%1 tunnel_port=%2 "
+        "tunnel_host=%2 tunnel_port=%3 "
         "video_bit_rate=8000000 max_fps=60 "
         "send_frame_meta=true control=true "
         "audio=false cleanup=true >/dev/null 2>&1 &"
-    ).arg(tunnelHost).arg(videoPort);
+    ).arg(SCRCPY_SERVER_VERSION).arg(tunnelHost).arg(videoPort);
 
     m_adbClient->openShellStream(serverCmd, nullptr, nullptr);
 
@@ -1141,11 +1147,11 @@ bool PhoneWindow::startScrcpyServerProcess() {
     // scrcpy server startup command (scrcpy v2 syntax)
     QString cmd = QString(
         "CLASSPATH=/data/local/tmp/scrcpy-server.jar "
-        "app_process / com.genymobile.scrcpy.Server %1 "
+        "app_process / com.genymobile.scrcpy.Server 4.1 "
         "tunnel_forward=true video_bit_rate=8000000 "
         "max_fps=60 send_frame_meta=true control=true "
         "audio=false >/dev/null 2>&1 &"
-    ).arg("2.7"); // scrcpy server protocol version
+    );
 
     // Fire-and-forget — server runs in background
     m_adbClient->openShellStream(cmd, nullptr, nullptr);
