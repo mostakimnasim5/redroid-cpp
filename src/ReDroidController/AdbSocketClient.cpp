@@ -53,6 +53,20 @@ AdbSocketClient::~AdbSocketClient() {
     disconnect();
 }
 
+// ── VPP instanceId → AdbSocketClient registry ────────────────────────────────
+static QMutex                          s_vppRegistryMutex;
+static QHash<QString, AdbSocketClient*> s_vppRegistry;
+
+void AdbSocketClient::registerForInstance(const QString& vppInstanceId) {
+    QMutexLocker lk(&s_vppRegistryMutex);
+    s_vppRegistry[vppInstanceId] = this;
+}
+
+AdbSocketClient* AdbSocketClient::instanceFor(const QString& vppInstanceId) {
+    QMutexLocker lk(&s_vppRegistryMutex);
+    return s_vppRegistry.value(vppInstanceId, nullptr);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // connectToDevice — TCP connect + ADB CNXN handshake
 // ─────────────────────────────────────────────────────────────────────────────

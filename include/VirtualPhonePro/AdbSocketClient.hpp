@@ -63,6 +63,14 @@ public:
     explicit AdbSocketClient(QObject* parent = nullptr);
     ~AdbSocketClient();
 
+    // ── VPP instanceId → AdbSocketClient registry ─────────────────────────────
+    /** Register this client against a VPP instanceId so HyperRealisticTouchEmulator
+     *  can look it up without passing AdbSocketClient* through every call stack. */
+    void registerForInstance(const QString& vppInstanceId);
+
+    /** Returns the AdbSocketClient registered for vppInstanceId, or nullptr. */
+    static AdbSocketClient* instanceFor(const QString& vppInstanceId);
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     bool connectToDevice(const QString& host, quint16 port = 5555);
     void disconnect();

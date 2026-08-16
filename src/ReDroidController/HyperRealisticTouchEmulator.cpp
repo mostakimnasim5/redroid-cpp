@@ -417,30 +417,65 @@ QVector<TouchPoint> HyperRealisticTouchEmulator::generateDrag(float startX, floa
     return points;
 }
 
-bool HyperRealisticTouchEmulator::executeGesture(const QString& instanceId, const QVector<TouchPoint>& points) {
-    ReDroidController& ctrl = ReDroidController::instance();
-    
-    // Send touch events via ADB
-    for (const TouchPoint& point : points) {
-        QString action;
-        switch (point.action) {
-            case TouchAction::DOWN: action = "down"; break;
-            case TouchAction::MOVE: action = "move"; break;
-            case TouchAction::UP: action = "up"; break;
-            case TouchAction::CANCEL: action = "cancel"; break;
+bool HyperRealisticTouchEmulator::executeGesture(
+        const QString& instanceId,
+        const QVector<TouchPoint>& points) {
+    if (points.isEmpty()) return false;
+
+    // Use the per-instance AdbSocketClient control channel — this sends
+    // binary scrcpy InjectTouch messages with full pressure, size, and
+    // timing information, instead of the slow ADB shell round-trip.
+    AdbSocketClient* adb = AdbSocketClient::instanceFor(instanceId);
+    if (!adb) return false;
+
+    qint64 prevTimestamp = points.first().timestamp;
+
+    for (const TouchPoint& pt : points) {
+        // Honour the inter-event timing from the gesture generator
+        qint64 delayMs = pt.timestamp - prevTimestamp;
+        if (delayMs > 0 && delayMs < 500)
+            QThread::msleep(static_cast<unsigned long>(delayMs));
+        prevTimestamp = pt.timestamp;
+
+        // Convert TouchAction → scrcpy AMOTION_EVENT_ACTION
+        quint8 action = 0;
+        switch (pt.action) {
+            case TouchAction::DOWN:   action = 0; break; // ACTION_DOWN
+            case TouchAction::MOVE:   action = 2; break; // ACTION_MOVE
+            case TouchAction::UP:     action = 1; break; // ACTION_UP
+            case TouchAction::CANCEL: action = 3; break; // ACTION_CANCEL
         }
-        
-        // ADB touch command
-        QString cmd = QString("input touchscreen tap %1 %2")
-                         .arg(static_cast<int>(point.x))
-                         .arg(static_cast<int>(point.y));
-        
-        ctrl.executeShell(instanceId, cmd);
-        
-        // Small delay between events
-        QThread::msleep(5);
+
+        // Build scrcpy InjectTouch message (28 bytes, big-endian)
+        // Matches FrameRenderer::buildTouchMsg() format exactly.
+        QByteArray msg(28, '\0');
+        auto* p = reinterpret_cast<quint8*>(msg.data());
+        p[0] = 2; // TYPE_INJECT_TOUCH_EVENT
+        p[1] = action;
+        // pointerId (8 bytes)
+        quint64 pid = qToBigEndian<quint64>(static_cast<quint64>(pt.id));
+        memcpy(p + 2, &pid, 8);
+        // x, y (4 bytes each)
+        quint32 bx = qToBigEndian<quint32>(static_cast<quint32>(pt.x));
+        quint32 by = qToBigEndian<quint32>(static_cast<quint32>(pt.y));
+        memcpy(p + 10, &bx, 4);
+        memcpy(p + 14, &by, 4);
+        // screen width, height (2 bytes each)
+        quint16 bw = qToBigEndian<quint16>(static_cast<quint16>(m_screenWidth));
+        quint16 bh = qToBigEndian<quint16>(static_cast<quint16>(m_screenHeight));
+        memcpy(p + 18, &bw, 2);
+        memcpy(p + 20, &bh, 2);
+        // pressure (0x0000–0xFFFF fixed-point 0.0–1.0)
+        quint16 bp = qToBigEndian<quint16>(
+            static_cast<quint16>(qBound(0.0f, pt.pressure, 1.0f) * 0xFFFF));
+        memcpy(p + 22, &bp, 2);
+        // actionButton
+        quint32 btn = qToBigEndian<quint32>(
+            (pt.action == TouchAction::DOWN || pt.action == TouchAction::MOVE) ? 1u : 0u);
+        memcpy(p + 24, &btn, 4);
+
+        adb->sendControlMsg(msg);
     }
-    
     return true;
 }
 

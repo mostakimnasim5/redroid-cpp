@@ -25,9 +25,11 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QTouchEvent>
+#include <QtConcurrent>
 #include <memory>
 #include <atomic>
 #include <functional>
+#include "VirtualPhonePro/HyperRealisticTouchEmulator.hpp"
 
 namespace VirtualPhonePro {
 
@@ -59,9 +61,16 @@ public:
 
     // ── Wiring ────────────────────────────────────────────────────────────────
 
+    /** Set the VPP instanceId — used to look up HyperRealisticTouchEmulator. */
+    void setInstanceId(const QString& instanceId);
+
     /** Provide the decoder and the ADB client used for input dispatch. */
     void setDecoder(MediaStreamDecoder* decoder);
     void setAdbClient(AdbSocketClient* adb, quint16 controlPort);
+
+    /** Configure the human touch emulator profile (default: NATURAL). */
+    void setTouchProfile(VirtualPhonePro::TouchProfile profile);
+    void setTouchCharacteristics(const VirtualPhonePro::TouchCharacteristics& chars);
 
     /** Target render rate (1-60 Hz). */
     void setFps(int fps);
@@ -86,6 +95,8 @@ protected:
     void initializeGL()    override;
     void resizeGL(int w, int h) override;
     void paintGL()         override;
+
+    void dispatchTouchSequence(const QVector<VirtualPhonePro::TouchPoint>& points);
 
     // ── Input events ──────────────────────────────────────────────────────────
     void mousePressEvent  (QMouseEvent*  e) override;
@@ -138,6 +149,12 @@ private:
 
     // Android coordinate mapping
     QSize   m_androidRes{1080, 1920};
+    QString m_instanceId;
+
+    // Press tracking for tap vs drag vs long-press classification
+    QPointF m_lastPressPos;
+    qint64  m_pressTime    = 0;
+    qint64  m_lastMoveTime = 0;
 
     // FPS measurement
     std::atomic<float>  m_measuredFps{0.f};

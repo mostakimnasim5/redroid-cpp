@@ -932,6 +932,8 @@ bool PhoneWindow::startNativePipeline() {
 
     // ── Step 1: ADB connection ────────────────────────────────────────────────
     m_adbClient = new AdbSocketClient(this);
+    // Register so HyperRealisticTouchEmulator::executeGesture() can look this up
+    m_adbClient->registerForInstance(m_instanceId);
     if (!m_adbClient->connectToDevice(host, adbPort)) {
         qWarning() << "[Pipeline] ADB connect failed on port" << adbPort;
         delete m_adbClient; m_adbClient = nullptr;
@@ -1088,6 +1090,7 @@ bool PhoneWindow::startNativePipeline() {
     m_renderer = new FrameRenderer(m_screenContainer);
     m_renderer->setFixedSize(m_screenContainer->size());
     m_renderer->setDecoder(m_decoder);
+    m_renderer->setInstanceId(m_instanceId);  // wires HyperRealisticTouchEmulator
     m_renderer->setFps(60);
     m_renderer->show();
 
