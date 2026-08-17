@@ -21,6 +21,16 @@
 #include "VirtualPhonePro/GoogleFacebookSpoofer.hpp"
 #include "VirtualPhonePro/TLSFingerprint.hpp"
 
+// ── Previously unwired modules — now wired ───────────────────────────────────
+#include "VirtualPhonePro/FridaXposedDetector.hpp"
+#include "VirtualPhonePro/DeepDeviceSpoofer.hpp"
+#include "VirtualPhonePro/SELinuxManager.hpp"
+#include "VirtualPhonePro/SecurityMitigationManager.hpp"
+#include "VirtualPhonePro/HardwareAttestation.hpp"
+#include "VirtualPhonePro/SensorSimulator.hpp"
+#include "VirtualPhonePro/BatteryPowerManager.hpp"
+#include "VirtualPhonePro/ScreenStateManager.hpp"
+
 #include <QCoreApplication>
 #include <QRandomGenerator>
 #include <QDir>
@@ -1063,6 +1073,52 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // PHASE 1: CORE ANTI-DETECTION MODULES
     // =========================================================================
     qDebug() << "\n[Phase 1] Initializing Core Anti-Detection Modules...";
+
+    // ── Frida / Xposed bypass (banking app #1 detection vector) ──────────────
+    {
+        FridaXposedDetector& frida = FridaXposedDetector::instance();
+        frida.initialize(instanceId);
+        frida.enableFridaBypass(instanceId);
+        frida.enableXposedBypass(instanceId);
+        frida.applyAllBypasses(instanceId);
+        qDebug() << "  ✓ Frida/Xposed bypass applied";
+    }
+
+    // ── Deep /proc filesystem spoofing ───────────────────────────────────────
+    {
+        DeepDeviceSpoofer& deep = DeepDeviceSpoofer::instance();
+        deep.spoofProcVersion(instanceId);
+        deep.spoofProcCmdline(instanceId);
+        deep.spoofProcFilesystem(instanceId);
+        deep.spoofProcCpuinfo(instanceId);
+        deep.spoofProcMeminfo(instanceId);
+        deep.spoofProcUptime(instanceId);
+        deep.spoofProcInterrupts(instanceId);
+        deep.spoofProcDiskstats(instanceId);
+        qDebug() << "  ✓ /proc filesystem spoofing applied";
+    }
+
+    // ── SELinux enforcement masking ───────────────────────────────────────────
+    {
+        SELinuxManager& selinux = SELinuxManager::instance();
+        selinux.applyEnforcementMasking(instanceId);
+        selinux.setSELinuxState(instanceId, SELinuxState::Enforcing);
+        qDebug() << "  ✓ SELinux masking applied";
+    }
+
+    // ── Security mitigation + kernel spoof ───────────────────────────────────
+    {
+        SecurityMitigationManager& secMgr = SecurityMitigationManager::instance();
+        secMgr.initialize(instanceId);
+        secMgr.sanitizeProcVersion(instanceId);
+        secMgr.sanitizeProcCmdline(instanceId);
+        secMgr.sanitizeKernelSysctl(instanceId);
+        secMgr.applyMitigations(instanceId);
+        if (secMgr.isDetectionRiskPresent(instanceId))
+            qWarning() << "  ⚠ Detection risk still present after mitigation";
+        else
+            qDebug() << "  ✓ Security mitigation complete";
+    }
     
     // 1. Timing Attack Prevention
     TimingAttackPrevention& timing = TimingAttackPrevention::instance();
@@ -1174,6 +1230,15 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // =========================================================================
     qDebug() << "\n[Phase 4] Security & Encryption Systems...";
 
+    // ── Hardware Attestation (TEE/Keystore simulation) ────────────────────────
+    {
+        HardwareAttestation& attest = HardwareAttestation::instance();
+        attest.generateAttestationKey(instanceId, AttestationKeyType::RSA_2048);
+        attest.applyAllSpoofing(instanceId);
+        attest.applyToInstance(instanceId);
+        qDebug() << "  ✓ Hardware attestation (TEE/Keystore) applied";
+    }
+
     // TrustZone / Crypto emulation.
     //
     // CryptoEmulator owns the injected hardware attestation certificate
@@ -1230,6 +1295,46 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // PHASE 6: ANDROID REALISM & EMULATOR BYPASS
     // =========================================================================
     qDebug() << "\n[Phase 6] Android Realism & Emulator Bypass...";
+
+    // ── Sensor simulation (GPS, accelerometer) ────────────────────────────────
+    {
+        SensorSimulator& sensors = SensorSimulator::instance();
+        // Default to New York area — realistic location for a US device.
+        // If proxy country was set, IPTimezoneConverter already applied locale;
+        // GPS should ideally match that locale but defaults are safe.
+        sensors.setGPSLocation(instanceId, 40.7128f, -74.0060f, 15.0f);
+        sensors.setAccelerometer(instanceId, 0.02f, 0.01f, 9.81f);
+        qDebug() << "  ✓ Sensor simulation (GPS + accelerometer) active";
+    }
+
+    // ── Realistic battery state ───────────────────────────────────────────────
+    {
+        BatteryPowerManager& battery = BatteryPowerManager::instance();
+        BatteryState bs;
+        bs.level       = 72 + QRandomGenerator::global()->bounded(20); // 72-91%
+        bs.isCharging  = false;
+        bs.health      = BatteryHealth::Good;
+        bs.plugState   = BatteryPlugState::Unplugged;
+        bs.temperature = 280 + QRandomGenerator::global()->bounded(50); // 28-33°C (×10)
+        battery.setBatteryState(instanceId, bs);
+        battery.applyToInstance(instanceId);
+        qDebug() << "  ✓ Battery state:" << bs.level << "% (unplugged)";
+    }
+
+    // ── Screen state ──────────────────────────────────────────────────────────
+    {
+        ScreenStateManager& screen = ScreenStateManager::instance();
+        ScreenInfo si;
+        si.width            = 1080;
+        si.height           = 2400;
+        si.densityDpi       = 420;
+        si.isAutoBrightness = true;
+        si.isOn             = true;
+        screen.setScreenInfo(instanceId, si);
+        screen.applyToInstance(instanceId);
+        screen.simulateUserActivity(instanceId);
+        qDebug() << "  ✓ Screen state applied (1080x2400 @ 420dpi)";
+    }
     
     AndroidRealismEngine& engine = AndroidRealismEngine::instance();
     engine.initialize(instanceId, manufacturer, model);
