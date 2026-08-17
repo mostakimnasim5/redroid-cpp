@@ -30,6 +30,11 @@
 #include "VirtualPhonePro/SensorSimulator.hpp"
 #include "VirtualPhonePro/BatteryPowerManager.hpp"
 #include "VirtualPhonePro/ScreenStateManager.hpp"
+#include "VirtualPhonePro/AdvancedAntiDetection.hpp"
+#include "VirtualPhonePro/OEMDeepSpoofing.hpp"
+#include "VirtualPhonePro/PersistentIdentityManager.hpp"
+#include "VirtualPhonePro/CarrierNetworkSimulator.hpp"
+#include "VirtualPhonePro/SystemAppSimulator.hpp"
 
 #include <QCoreApplication>
 #include <QRandomGenerator>
@@ -1074,13 +1079,12 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // =========================================================================
     qDebug() << "\n[Phase 1] Initializing Core Anti-Detection Modules...";
 
-    // ── Frida / Xposed bypass (banking app #1 detection vector) ──────────────
+    // ── Frida / Xposed bypass ─────────────────────────────────────────────────
     {
         FridaXposedDetector& frida = FridaXposedDetector::instance();
+        // initialize() internally calls applyAllBypasses() — do NOT call it
+        // again afterwards or every bypass runs twice (double apply).
         frida.initialize(instanceId);
-        frida.enableFridaBypass(instanceId);
-        frida.enableXposedBypass(instanceId);
-        frida.applyAllBypasses(instanceId);
         qDebug() << "  ✓ Frida/Xposed bypass applied";
     }
 
@@ -1102,7 +1106,8 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     {
         SELinuxManager& selinux = SELinuxManager::instance();
         selinux.applyEnforcementMasking(instanceId);
-        selinux.setSELinuxState(instanceId, SELinuxState::Enforcing);
+        // Use ENFORCING (upper-case) — enum defined as SELinuxState::ENFORCING
+        selinux.setSELinuxState(instanceId, SELinuxState::ENFORCING);
         qDebug() << "  ✓ SELinux masking applied";
     }
 
@@ -1119,7 +1124,17 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         else
             qDebug() << "  ✓ Security mitigation complete";
     }
-    
+
+    // ── Advanced Anti-Detection Engine (behavioral + hardware + graphics) ─────
+    {
+        // UltraAntiDetectionEngine aggregates BehavioralAnalysisPrevention,
+        // AdvancedHardwareEmulator, and AdvancedGraphicsSpoofing
+        UltraAntiDetectionEngine& ultra = UltraAntiDetectionEngine::instance();
+        ultra.initialize(instanceId);
+        ultra.applyAllBypasses(instanceId);
+        qDebug() << "  ✓ Ultra anti-detection engine (behavioral + hardware + graphics)";
+    }
+
     // 1. Timing Attack Prevention
     TimingAttackPrevention& timing = TimingAttackPrevention::instance();
     DeviceTimingSeed timingSeed = timing.createDeviceSeed(instanceId);
@@ -1288,8 +1303,23 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     QString uniqueWifiMac = deviceGen.generateUniqueMAC();
     QString uniqueBluetoothMac = deviceGen.generateUniqueMAC();
     QString uniqueICCID = deviceGen.generateUniqueICCID();
-    QString uniqueIMSI = deviceGen.generateUniqueIMSI("470", "01"); // mcc, mnc
+    QString uniqueIMSI = deviceGen.generateUniqueIMSI("470", "01");
     qDebug() << "  ✓ Unique Identity Generated";
+
+    // ── Persistent Identity — survive reboots ─────────────────────────────────
+    // Without this, every container restart generates new IDs — apps that
+    // track AndroidId / GAID detect the anomaly and flag the account.
+    {
+        PersistentIdentityManager& pim = PersistentIdentityManager::instance();
+        pim.initialize(instanceId);
+        // Seed with the IDs generated above — PIM persists them to disk
+        // and restores them on subsequent startInstance() calls.
+        pim.setAndroidId(instanceId, uniqueAndroidId);
+        pim.setGSFId(instanceId, uniqueGSFId);
+        pim.generateAllIdentities(instanceId); // fills any gaps (GAID, boot token…)
+        pim.applyAllIdentities(instanceId);
+        qDebug() << "  ✓ Persistent identity committed (AndroidId/GSFId/GAID stable across reboots)";
+    }
     
     // =========================================================================
     // PHASE 6: ANDROID REALISM & EMULATOR BYPASS
@@ -1311,11 +1341,11 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     {
         BatteryPowerManager& battery = BatteryPowerManager::instance();
         BatteryState bs;
-        bs.level       = 72 + QRandomGenerator::global()->bounded(20); // 72-91%
+        bs.level       = 72 + QRandomGenerator::global()->bounded(20);
         bs.isCharging  = false;
-        bs.health      = BatteryHealth::Good;
-        bs.plugState   = BatteryPlugState::Unplugged;
-        bs.temperature = 280 + QRandomGenerator::global()->bounded(50); // 28-33°C (×10)
+        bs.health      = BatteryHealth::GOOD;
+        bs.plugState   = BatteryPlugState::UNPLUGGED;
+        bs.temperature = 280 + QRandomGenerator::global()->bounded(50);
         battery.setBatteryState(instanceId, bs);
         battery.applyToInstance(instanceId);
         qDebug() << "  ✓ Battery state:" << bs.level << "% (unplugged)";
@@ -1324,7 +1354,9 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // ── Screen state ──────────────────────────────────────────────────────────
     {
         ScreenStateManager& screen = ScreenStateManager::instance();
-        ScreenInfo si;
+        // Qualify ScreenInfo with its namespace to avoid collision with
+        // VirtualPhonePro::ScreenMirror::ScreenInfo (same name, different struct)
+        VirtualPhonePro::ScreenStateManager::ScreenInfo si;
         si.width            = 1080;
         si.height           = 2400;
         si.densityDpi       = 420;
@@ -1454,35 +1486,76 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         executeShell(instanceId, cmd);
     }
     qDebug() << "  ✓ Unique Properties Applied";
-    
+
+    // ── OEM Deep Spoofing (Samsung Knox, GMS, manufacturer-specific props) ────
+    {
+        OEMDeepSpoofing& oem = OEMDeepSpoofing::instance();
+        // Samsung is the most common target for banking apps — use Samsung by default.
+        // applyAllOEM() picks the right OEM based on the manufacturer string.
+        oem.applyAllOEM(instanceId, manufacturer);
+        // Samsung-specific: enable Knox state and full GMS stack
+        if (manufacturer.contains("samsung", Qt::CaseInsensitive)) {
+            oem.enableKnox(instanceId);
+            oem.enableFullGMS(instanceId);
+        }
+        oem.applyToInstance(instanceId);
+        qDebug() << "  ✓ OEM deep spoofing applied (" << manufacturer << ")";
+    }
+
     // =========================================================================
     // PHASE 10: SIMULATION SYSTEMS
     // =========================================================================
     qDebug() << "\n[Phase 10] Configuring Simulation Systems...";
-    
+
     BatteryDrainConfig batteryConfig;
     batteryConfig.initialLevel = 70 + (timingSeed.baseSeed % 30);
     batteryConfig.avgTemp = 28.0f + (timingSeed.baseSeed % 15);
     timing.initializeBattery(instanceId, batteryConfig);
-    
+
     phoneHardening.setBatteryState(85, "Discharging", "USB");
     phoneHardening.setBatteryTemperature("32");
-    
+
     TouchPressureConfig pressureConfig;
     pressureConfig.avgPressure = 0.4f + (timingSeed.baseSeed % 100) / 200.0f;
     timing.setTouchPressureConfig(instanceId, pressureConfig);
-    
+
     SensorNoiseConfig sensorConfig;
     sensorConfig.accelerometerNoise = 0.02f;
     sensorConfig.gyroscopeNoise = 0.01f;
     sensorConfig.gpsNoise = 1.0f;
     timing.setSensorNoiseConfig(instanceId, sensorConfig);
-    
+
     NetworkJitterConfig networkConfig;
     networkConfig.baseLatency = 30.0f + (timingSeed.baseSeed % 100);
     networkConfig.jitterStdDev = 10.0f;
     timing.setNetworkJitterConfig(instanceId, networkConfig);
     qDebug() << "  ✓ Simulation Systems Configured";
+
+    // ── Carrier Network Simulator ─────────────────────────────────────────────
+    {
+        CarrierNetworkSimulator& carrier = CarrierNetworkSimulator::instance();
+        // Default T-Mobile US; matches the device profile's locale from proxy IP.
+        carrier.configureCarrier(instanceId, "T-Mobile", "US");
+        carrier.setNetworkType(instanceId, NetworkType::LTE_4G);
+        SignalStrength sig;
+        sig.rsrp = -85 - (QRandomGenerator::global()->bounded(20)); // -85 to -105 dBm
+        sig.rsrq = -10 - (QRandomGenerator::global()->bounded(5));
+        carrier.setSignalStrength(instanceId, sig);
+        carrier.setMobileDataEnabled(instanceId, true);
+        carrier.applyToInstance(instanceId);
+        qDebug() << "  ✓ Carrier network simulated (T-Mobile US LTE)";
+    }
+
+    // ── System App Simulator (carrier bloatware) ──────────────────────────────
+    {
+        SystemAppSimulator& sysApps = SystemAppSimulator::instance();
+        // Install realistic T-Mobile carrier bloatware that every real
+        // T-Mobile Samsung device ships with. Apps that check for
+        // pre-installed carrier apps as a "real device" signal pass here.
+        sysApps.configureForCarrier(instanceId, CarrierProvider::T_MOBILE);
+        sysApps.applyToInstance(instanceId);
+        qDebug() << "  ✓ System/carrier apps simulated (T-Mobile bloatware)";
+    }
     
     // =========================================================================
     // PHASE 11: REALISTIC PROFILE
