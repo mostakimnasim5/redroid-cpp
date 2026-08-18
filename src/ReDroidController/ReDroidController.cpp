@@ -35,6 +35,12 @@
 #include "VirtualPhonePro/PersistentIdentityManager.hpp"
 #include "VirtualPhonePro/CarrierNetworkSimulator.hpp"
 #include "VirtualPhonePro/SystemAppSimulator.hpp"
+#include "VirtualPhonePro/DeviceIntegrityManager.hpp"
+#include "VirtualPhonePro/HALSimulation.hpp"
+#include "VirtualPhonePro/SSLCertificateManager.hpp"
+#include "VirtualPhonePro/NetworkRealismEnhancer.hpp"
+#include "VirtualPhonePro/DeviceBehaviorManager.hpp"
+#include "VirtualPhonePro/AdvancedRealisticSimulation.hpp"
 
 #include <QCoreApplication>
 #include <QRandomGenerator>
@@ -1254,6 +1260,25 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         qDebug() << "  ✓ Hardware attestation (TEE/Keystore) applied";
     }
 
+    // ── Device Integrity (Verified Boot GREEN + CERTIFIED level) ─────────────
+    {
+        DeviceIntegrityManager& dim = DeviceIntegrityManager::instance();
+        dim.configureForLevel(instanceId, IntegrityLevel::CERTIFIED);
+        dim.setVerifiedBootState(instanceId, VerifiedBootState::GREEN);
+        dim.enableVerifiedBoot(instanceId);
+        dim.applyToInstance(instanceId);
+        qDebug() << "  ✓ Device integrity: CERTIFIED / Verified Boot GREEN";
+    }
+
+    // ── SSL Certificate Manager (major CA roots) ──────────────────────────────
+    {
+        SSLCertificateManager& ssl = SSLCertificateManager::instance();
+        ssl.configure(instanceId);
+        ssl.loadAllMajorCAs(instanceId);   // Google, DigiCert, Comodo, etc.
+        ssl.applyToInstance(instanceId);
+        qDebug() << "  ✓ SSL CA certificates installed";
+    }
+
     // TrustZone / Crypto emulation.
     //
     // CryptoEmulator owns the injected hardware attestation certificate
@@ -1366,6 +1391,19 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         screen.applyToInstance(instanceId);
         screen.simulateUserActivity(instanceId);
         qDebug() << "  ✓ Screen state applied (1080x2400 @ 420dpi)";
+    }
+
+    // ── HAL Simulation (camera, fingerprint, audio) ───────────────────────────
+    {
+        HALSimulation& hal = HALSimulation::instance();
+        // Samsung Galaxy S24 Ultra camera config
+        hal.configureBackCamera(instanceId,  200, "Samsung HM3");  // 200MP main
+        hal.configureFrontCamera(instanceId, 12,  "Samsung 3J1");  // 12MP selfie
+        hal.enableCamera(instanceId, CameraFacing::BACK);
+        hal.enableCamera(instanceId, CameraFacing::FRONT);
+        hal.configureFingerprint(instanceId, true); // fingerprint enrolled
+        hal.applyToInstance(instanceId);
+        qDebug() << "  ✓ HAL: camera (200MP+12MP) + fingerprint enrolled";
     }
     
     AndroidRealismEngine& engine = AndroidRealismEngine::instance();
@@ -1556,13 +1594,51 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         sysApps.applyToInstance(instanceId);
         qDebug() << "  ✓ System/carrier apps simulated (T-Mobile bloatware)";
     }
+
+    // ── Network Realism Enhancer (SIM bands, VoLTE, WiFi calling) ────────────
+    {
+        NetworkRealismEnhancer& netReal = NetworkRealismEnhancer::instance();
+        // T-Mobile US bands: B2, B4, B12, B66, n41 (5G)
+        NetworkBandConfig bands;
+        bands.lteBands   = {2, 4, 12, 66};
+        bands.nr5gBands  = {41};
+        bands.wcdmaBands = {2, 4};
+        netReal.configureSingleSIM(instanceId, "310260", "T-Mobile");
+        netReal.configureNetworkBands(instanceId, bands);
+        netReal.enableWiFiCalling(instanceId);
+        netReal.applyToInstance(instanceId);
+        qDebug() << "  ✓ Network realism: T-Mobile bands + VoLTE + WiFi calling";
+    }
+
+    // ── Device Behavior Manager (power profile, adaptive battery) ────────────
+    {
+        DeviceBehaviorManager& behavior = DeviceBehaviorManager::instance();
+        DeviceBehaviorState state;
+        state.powerProfile       = PowerProfile::BALANCED;
+        state.adaptiveBattery    = true;
+        state.batterySaverMode   = false;
+        state.autoSyncEnabled    = true;
+        state.backgroundProcess  = true;
+        behavior.configure(instanceId, state);
+        behavior.enableAdaptiveBattery(instanceId);
+        behavior.setPowerProfile(instanceId, PowerProfile::BALANCED);
+        behavior.applyToInstance(instanceId);
+        qDebug() << "  ✓ Device behavior: BALANCED profile + adaptive battery";
+    }
     
     // =========================================================================
     // PHASE 11: REALISTIC PROFILE
     // =========================================================================
     qDebug() << "\n[Phase 11] Generating Realistic Profile...";
-    
-    // Realistic profile generator - stubbed for now
+
+    // ── Advanced Realistic Simulation (final full-stack realism pass) ─────────
+    {
+        AdvancedRealisticSimulator& sim = AdvancedRealisticSimulator::instance();
+        sim.configureDevice(instanceId, manufacturer, model);
+        sim.applyAllSpoofing(instanceId);
+        qDebug() << "  ✓ Advanced realistic simulation applied";
+    }
+
     qDebug() << "  ✓ Realistic Profile Generated";
     
     // =========================================================================
