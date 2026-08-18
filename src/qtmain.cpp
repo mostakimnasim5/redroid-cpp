@@ -23,6 +23,7 @@
 #include "GUI/DashboardWindow.h"
 #include "GUI/LoginWindow.h"
 #include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/WebhookManager.hpp"
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/FileLogger.hpp"
 
@@ -418,6 +419,33 @@ int main(int argc, char *argv[]) {
                     QString("[OPTIONAL] %1: %2").arg(req.name, req.status));
         }
         qDebug() << "[Startup] All required system checks passed.";
+    }
+
+    // ── WebhookManager — connect to ReDroidController event signals ───────────
+    // WebhookManager sends HTTP notifications on instance start/stop/error
+    // events to any configured webhook URL (set via Settings UI).
+    // No webhook URL configured by default — user opts in via Settings.
+    {
+        using namespace VirtualPhonePro;
+        WebhookManager& wm = WebhookManager::instance();
+        ReDroidController& ctrl = ReDroidController::instance();
+
+        QObject::connect(&ctrl, &ReDroidController::instanceStateChanged,
+            [&wm](const QString& instanceId, InstanceState state) {
+                if (state == InstanceState::Running)
+                    wm.onInstanceStarted(instanceId);
+                else if (state == InstanceState::Stopped)
+                    wm.onInstanceStopped(instanceId);
+            });
+
+        QObject::connect(&ctrl, &ReDroidController::error,
+            [&wm](const QString& msg) {
+                // Error messages don't carry instanceId at the signal level;
+                // pass empty string — WebhookManager filters unknown instances.
+                wm.onInstanceError(QString(), msg);
+            });
+
+        qDebug() << "[Startup] WebhookManager connected to instance events";
     }
     
     // ============================================================================

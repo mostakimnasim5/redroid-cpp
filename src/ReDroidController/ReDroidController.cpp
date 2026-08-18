@@ -41,6 +41,11 @@
 #include "VirtualPhonePro/NetworkRealismEnhancer.hpp"
 #include "VirtualPhonePro/DeviceBehaviorManager.hpp"
 #include "VirtualPhonePro/AdvancedRealisticSimulation.hpp"
+#include "VirtualPhonePro/RealisticDeviceProfile.hpp"
+#include "VirtualPhonePro/FindMyDeviceManager.hpp"
+#include "VirtualPhonePro/NetworkProfileManager.hpp"
+#include "VirtualPhonePro/MagiskPatcher.hpp"
+#include "VirtualPhonePro/WebhookManager.hpp"
 
 #include <QCoreApplication>
 #include <QRandomGenerator>
@@ -1245,6 +1250,25 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     TLSFingerprint& tlsFingerprint = TLSFingerprint::instance();
     tlsFingerprint.initializeWithProfile(TLSProfile::ANDROID_DEFAULT);
     qDebug() << "  ✓ TLS Fingerprint (JA3/JA4)";
+
+    // ── Network Profile Manager (transport hooks + WebRTC leak prevention) ────
+    {
+        NetworkProfileManager& npm = NetworkProfileManager::instance();
+        // generateTransportHookCommands() returns ADB shell commands that
+        // patch the container's iptables and hosts file to prevent TCP/IP
+        // fingerprinting and WebRTC IP leaks.
+        const QString adbSerial = getAdbSerial(instanceId);
+        QStringList transportCmds = npm.generateTransportHookCommands(
+            instanceId, adbSerial);
+        QStringList webrtcCmds = npm.generateWebRTCSetupCommands(
+            instanceId, adbSerial);
+        for (const QString& cmd : transportCmds)
+            executeShell(instanceId, cmd);
+        for (const QString& cmd : webrtcCmds)
+            executeShell(instanceId, cmd);
+        qDebug() << "  ✓ Network transport hooks applied (" << transportCmds.size()
+                 << "rules + " << webrtcCmds.size() << "WebRTC rules)";
+    }
     
     // =========================================================================
     // PHASE 4: SECURITY & ENCRYPTION
@@ -1268,6 +1292,16 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         dim.enableVerifiedBoot(instanceId);
         dim.applyToInstance(instanceId);
         qDebug() << "  ✓ Device integrity: CERTIFIED / Verified Boot GREEN";
+    }
+
+    // ── Magisk integrity bypass module (Play Integrity Fix) ───────────────────
+    // Does NOT require Magisk binary — creates the module directory structure
+    // that Play Integrity checks for to determine integrity level.
+    {
+        MagiskPatcher& magisk = MagiskPatcher::instance();
+        magisk.installIntegrityBypass(instanceId);
+        magisk.patchZygisk(instanceId);
+        qDebug() << "  ✓ Play Integrity Fix module installed";
     }
 
     // ── SSL Certificate Manager (major CA roots) ──────────────────────────────
@@ -1595,6 +1629,22 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         qDebug() << "  ✓ System/carrier apps simulated (T-Mobile bloatware)";
     }
 
+    // ── Find My Device (Google location services simulation) ──────────────────
+    // Real Samsung devices are enrolled in Google's Find My Device.
+    // Apps that check this enrollment as a device legitimacy signal pass here.
+    {
+        FindMyDeviceManager& fmd = FindMyDeviceManager::instance();
+        FindMyDeviceConfig fmdConfig;
+        fmdConfig.deviceName    = model;   // e.g. "SM-S928B"
+        fmdConfig.isEnabled     = true;
+        fmdConfig.isOnline      = true;
+        fmdConfig.lastSyncTime  = QDateTime::currentMSecsSinceEpoch();
+        fmd.configure(instanceId, fmdConfig);
+        fmd.enable(instanceId);
+        fmd.applyToInstance(instanceId);
+        qDebug() << "  ✓ Find My Device: enrolled as" << model;
+    }
+
     // ── Network Realism Enhancer (SIM bands, VoLTE, WiFi calling) ────────────
     {
         NetworkRealismEnhancer& netReal = NetworkRealismEnhancer::instance();
@@ -1637,6 +1687,22 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         sim.configureDevice(instanceId, manufacturer, model);
         sim.applyAllSpoofing(instanceId);
         qDebug() << "  ✓ Advanced realistic simulation applied";
+    }
+
+    // ── Realistic Device Profile — completeness validation ────────────────────
+    // generateCompleteProfile() checks that all required properties have been
+    // set and fills any missing fields. Returns a JSON audit log.
+    {
+        RealisticDeviceProfile& rdp = RealisticDeviceProfile::instance();
+        QJsonObject profileAudit = rdp.generateCompleteProfile(
+            manufacturer, model, "14");
+        QStringList missing = rdp.getMissingFields(profileAudit);
+        if (missing.isEmpty()) {
+            qDebug() << "  ✓ Device profile complete — all" << profileAudit.size()
+                     << "fields populated";
+        } else {
+            qWarning() << "  ⚠ Missing profile fields:" << missing.join(", ");
+        }
     }
 
     qDebug() << "  ✓ Realistic Profile Generated";
