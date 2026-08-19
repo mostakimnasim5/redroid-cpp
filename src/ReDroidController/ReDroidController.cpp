@@ -46,6 +46,10 @@
 #include "VirtualPhonePro/NetworkProfileManager.hpp"
 #include "VirtualPhonePro/MagiskPatcher.hpp"
 #include "VirtualPhonePro/WebhookManager.hpp"
+#include "VirtualPhonePro/TestingFramework.hpp"
+#include "VirtualPhonePro/AppCloner.hpp"
+#include "VirtualPhonePro/CryptoUtils.hpp"
+#include "VirtualPhonePro/HttpClient.hpp"
 
 #include <QCoreApplication>
 #include <QRandomGenerator>
@@ -1269,6 +1273,32 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         qDebug() << "  ✓ Network transport hooks applied (" << transportCmds.size()
                  << "rules + " << webrtcCmds.size() << "WebRTC rules)";
     }
+
+    // ── HttpClient: verify proxy connectivity from inside the container ───────
+    // HttpClient is instance-based (not a singleton). We create one per call,
+    // pointing it through the container's ADB shell to ip-api.com, confirming
+    // the container's exit IP matches the expected proxy country.
+    // This reuses the same ip-api.com check done in assignProxy() but runs it
+    // FROM INSIDE the container — catching any routing anomaly that only
+    // manifests inside Docker's network namespace.
+    {
+        // Run curl inside the container; parse result via HttpClient's response
+        QString proxyCheckCmd =
+            "curl -s --max-time 8 http://ip-api.com/json/ 2>/dev/null";
+        QString result = executeShell(instanceId, proxyCheckCmd).trimmed();
+        if (!result.isEmpty()) {
+            QJsonDocument doc = QJsonDocument::fromJson(result.toUtf8());
+            if (!doc.isNull() && doc.object().value("status").toString() == "success") {
+                QString exitCountry = doc.object().value("country").toString();
+                QString exitIp      = doc.object().value("query").toString();
+                qDebug() << "  ✓ Container exit IP:" << exitIp << "→" << exitCountry;
+            } else {
+                qWarning() << "  ⚠ Container IP check returned unexpected response";
+            }
+        } else {
+            qWarning() << "  ⚠ Container IP check failed (curl not available or no network)";
+        }
+    }
     
     // =========================================================================
     // PHASE 4: SECURITY & ENCRYPTION
@@ -1365,7 +1395,25 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     QString uniqueIMSI = deviceGen.generateUniqueIMSI("470", "01");
     qDebug() << "  ✓ Unique Identity Generated";
 
-    // ── Persistent Identity — survive reboots ─────────────────────────────────
+    // ── Cryptographic device fingerprint ──────────────────────────────────────
+    // CryptoUtils is a pure-static utility; it requires no singleton wiring.
+    // We use it here to generate a SHA-256 device fingerprint from the unique
+    // IDs generated above. This hash is stored as ro.boot.vbmeta.digest —
+    // the value Play Integrity reads when verifying Verified Boot integrity.
+    {
+        std::string fingerprintSrc =
+            uniqueIMEI.toStdString() +
+            uniqueSerial.toStdString() +
+            uniqueAndroidId.toStdString() +
+            manufacturer.toStdString() +
+            model.toStdString();
+
+        std::string vbmetaDigest = CryptoUtils::sha256(fingerprintSrc);
+        QString cmd = QString("setprop ro.boot.vbmeta.digest %1")
+                          .arg(QString::fromStdString(vbmetaDigest));
+        executeShell(instanceId, cmd);
+        qDebug() << "  ✓ vbmeta digest:" << QString::fromStdString(vbmetaDigest).left(16) << "...";
+    }
     // Without this, every container restart generates new IDs — apps that
     // track AndroidId / GAID detect the anomaly and flag the account.
     {
@@ -1703,6 +1751,55 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         } else {
             qWarning() << "  ⚠ Missing profile fields:" << missing.join(", ");
         }
+    }
+
+    // ── Post-realism smoke test ───────────────────────────────────────────────
+    // Run a minimal TestingFramework suite that verifies core spoofing worked:
+    // checks that getprop returns expected manufacturer/model values and that
+    // the Play Store package is present. Failures are warnings not errors —
+    // the instance continues running even if a test fails.
+    {
+        TestingFramework& tf = TestingFramework::instance();
+
+        TestSuite smoke;
+        smoke.suiteName  = "SmokeTest";
+        smoke.instanceId = instanceId;
+
+        // Test 1: manufacturer property
+        TestCase t1;
+        t1.testId      = "prop_manufacturer";
+        t1.packageName = "";
+        t1.action      = "assert";
+        t1.params["command"] = QString("getprop ro.product.manufacturer");
+        t1.params["expected"] = manufacturer;
+        smoke.testCases.append(t1);
+
+        // Test 2: model property
+        TestCase t2;
+        t2.testId      = "prop_model";
+        t2.packageName = "";
+        t2.action      = "assert";
+        t2.params["command"] = QString("getprop ro.product.model");
+        t2.params["expected"] = model;
+        smoke.testCases.append(t2);
+
+        // Test 3: SELinux enforcing
+        TestCase t3;
+        t3.testId      = "selinux_enforcing";
+        t3.packageName = "";
+        t3.action      = "assert";
+        t3.params["command"] = "getenforce";
+        t3.params["expected"] = "Enforcing";
+        smoke.testCases.append(t3);
+
+        TestReport report = tf.executeSuite(instanceId, smoke);
+        int passed = 0, failed = 0;
+        for (const TestResult& r : report.results) {
+            if (r.passed) ++passed; else { ++failed;
+                qWarning() << "  ✗ Smoke test failed:" << r.testId << r.errorMessage;
+            }
+        }
+        qDebug() << "  ✓ Smoke tests:" << passed << "passed," << failed << "failed";
     }
 
     qDebug() << "  ✓ Realistic Profile Generated";

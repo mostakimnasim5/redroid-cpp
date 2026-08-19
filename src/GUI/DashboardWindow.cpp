@@ -25,6 +25,7 @@
 #include <QtConcurrent>
 
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
+#include "VirtualPhonePro/AppCloner.hpp"
 #include "VirtualPhonePro/NetworkConfigManager.hpp"
 #include "SettingsDialog.h"
 
@@ -440,6 +441,22 @@ void PhoneCard::setupUI() {
     );
     connect(m_deleteButton, &QPushButton::clicked, this, &PhoneCard::onDeleteClicked);
     buttonLayout2->addWidget(m_deleteButton);
+
+    // Clone button
+    m_cloneButton = new QPushButton("⧉ Clone", this);
+    m_cloneButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #8e44ad;"
+        "    color: white;"
+        "    border: none;"
+        "    padding: 6px 12px;"
+        "    border-radius: 4px;"
+        "}"
+        "QPushButton:hover { background-color: #9b59b6; }"
+        "QPushButton:disabled { background-color: #555; }"
+    );
+    connect(m_cloneButton, &QPushButton::clicked, this, &PhoneCard::onCloneClicked);
+    buttonLayout2->addWidget(m_cloneButton);
     
     layout->addLayout(buttonLayout2);
 }
@@ -554,9 +571,21 @@ void PhoneCard::onDeleteClicked() {
         QString("Are you sure you want to delete '%1'?").arg(m_instanceId),
         QMessageBox::Yes | QMessageBox::No
     );
-    
     if (reply == QMessageBox::Yes) {
         emit deleteRequested(m_instanceId);
+    }
+}
+
+void PhoneCard::onCloneClicked() {
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, "Clone Instance",
+        QString("Clone '%1' into a new instance with a fresh identity?\n\n"
+                "The new instance will have different IMEI, serial, MAC and AndroidId.")
+            .arg(m_instanceId),
+        QMessageBox::Yes | QMessageBox::No
+    );
+    if (reply == QMessageBox::Yes) {
+        emit cloneRequested(m_instanceId);
     }
 }
 
@@ -1059,6 +1088,7 @@ void DashboardWindow::createPhoneCard(const QString& instanceId) {
     connect(card, &PhoneCard::startRequested, this, &DashboardWindow::onPhoneCardStart);
     connect(card, &PhoneCard::stopRequested, this, &DashboardWindow::onPhoneCardStop);
     connect(card, &PhoneCard::deleteRequested, this, &DashboardWindow::onPhoneCardDelete);
+    connect(card, &PhoneCard::cloneRequested,  this, &DashboardWindow::onPhoneCardClone);
     
     // Add to grid - calculate correct row/col from current card count
     // rowCount()/columnCount() returns TOTAL spans, not next position
@@ -1168,9 +1198,29 @@ void DashboardWindow::onPhoneCardStop(const QString& instanceId) {
 void DashboardWindow::onPhoneCardDelete(const QString& instanceId) {
     ReDroidController& controller = ReDroidController::instance();
     controller.deleteInstance(instanceId);
-    
+
     removePhoneCard(instanceId);
     refreshInstances();
+}
+
+void DashboardWindow::onPhoneCardClone(const QString& instanceId) {
+    // AppCloner creates a new instance with a completely fresh device identity
+    // (IMEI, serial number, MAC address, AndroidId, GAID) while inheriting
+    // the same profile type as the source instance.
+    VirtualPhonePro::AppCloner& cloner = VirtualPhonePro::AppCloner::instance();
+
+    QString newId = cloner.cloneInstance(instanceId);
+    if (newId.isEmpty()) {
+        QMessageBox::warning(this, "Clone Failed",
+            QString("Could not clone '%1'.\n\nCheck the application log for details.")
+                .arg(instanceId));
+        return;
+    }
+
+    refreshInstances();
+    QMessageBox::information(this, "Clone Complete",
+        QString("'%1' cloned successfully.\nNew instance: %2")
+            .arg(instanceId, newId));
 }
 
 void DashboardWindow::onRefreshClicked() {

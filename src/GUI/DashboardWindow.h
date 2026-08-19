@@ -125,22 +125,24 @@ signals:
     void startRequested(const QString& instanceId);
     void stopRequested(const QString& instanceId);
     void deleteRequested(const QString& instanceId);
+    void cloneRequested(const QString& instanceId);
 
 private slots:
     void onOpenClicked();
     void onStartClicked();
     void onStopClicked();
     void onDeleteClicked();
+    void onCloneClicked();
 
 private:
     void updateUI();
     void updateProtectionIcon();
-    
+
     QString m_instanceId;
     InstanceInfo m_info;
     bool m_isProtected;
     DeviceProfile m_profile;
-    
+
     QLabel* m_nameLabel;
     QLabel* m_statusLabel;
     QLabel* m_portLabel;
@@ -151,6 +153,7 @@ private:
     QPushButton* m_startButton;
     QPushButton* m_stopButton;
     QPushButton* m_deleteButton;
+    QPushButton* m_cloneButton;
 };
 
 /**
@@ -172,6 +175,7 @@ private slots:
     void onPhoneCardStart(const QString& instanceId);
     void onPhoneCardStop(const QString& instanceId);
     void onPhoneCardDelete(const QString& instanceId);
+    void onPhoneCardClone(const QString& instanceId);
     void onRefreshClicked();
     void onRefreshScreenshots();
     void updateInstanceCard(const QString& instanceId, InstanceState state);
