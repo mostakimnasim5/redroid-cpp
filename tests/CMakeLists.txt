@@ -21,7 +21,7 @@ enable_testing()
 
 # Windows: Define WIN32_LEAN_AND_MEAN to reduce header size and avoid conflicts
 if(WIN32)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOUSER)
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
 endif()
 
 # Qt6 on Windows needs this for proper linking
