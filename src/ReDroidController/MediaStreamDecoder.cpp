@@ -2,14 +2,31 @@
 #include <QDebug>
 #include <QDateTime>
 
+// FFmpeg headers: only available when CMake found/downloaded FFmpeg
+#ifdef VPP_FFMPEG_AVAILABLE
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 }
+#endif
 
 namespace VirtualPhonePro {
+
+#ifndef VPP_FFMPEG_AVAILABLE
+// ── Stub implementation when FFmpeg is not available ──────────────────────────
+MediaStreamDecoder::MediaStreamDecoder(QObject* parent) : QObject(parent) {
+    qWarning() << "[MediaStreamDecoder] FFmpeg not available - using screencap fallback";
+}
+MediaStreamDecoder::~MediaStreamDecoder() {}
+void MediaStreamDecoder::start(const QString&, quint16) {
+    emit decoderError("FFmpeg not available");
+}
+void MediaStreamDecoder::stop() {}
+bool MediaStreamDecoder::isRunning() const { return false; }
+// End of stub
+#else
 
 // scrcpy video stream header per packet: 8-byte PTS + 4-byte size
 static constexpr int SCRCPY_HDR = 12;
@@ -238,4 +255,5 @@ QSize MediaStreamDecoder::resolution() const {
     return {m_width.load(), m_height.load()};
 }
 
+#endif // VPP_FFMPEG_AVAILABLE
 } // namespace VirtualPhonePro
