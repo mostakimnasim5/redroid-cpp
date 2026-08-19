@@ -15,17 +15,34 @@ extern "C" {
 namespace VirtualPhonePro {
 
 #ifndef VPP_FFMPEG_AVAILABLE
-// ── Stub implementation when FFmpeg is not available ──────────────────────────
+// ── Complete stub: all methods from header, no FFmpeg dependency ──────────────
 MediaStreamDecoder::MediaStreamDecoder(QObject* parent) : QObject(parent) {
-    qWarning() << "[MediaStreamDecoder] FFmpeg not available - using screencap fallback";
+    qWarning() << "[MediaStreamDecoder] FFmpeg not available - screencap fallback active";
 }
-MediaStreamDecoder::~MediaStreamDecoder() {}
-void MediaStreamDecoder::start(const QString&, quint16) {
-    emit decoderError("FFmpeg not available");
+MediaStreamDecoder::~MediaStreamDecoder() { stop(); }
+
+void MediaStreamDecoder::setTargetFps(int) {}
+void MediaStreamDecoder::setQueueDepth(int) {}
+
+bool MediaStreamDecoder::start(QTcpSocket*) {
+    emit decoderError("FFmpeg unavailable - screencap fallback active");
+    return false;
 }
-void MediaStreamDecoder::stop() {}
-bool MediaStreamDecoder::isRunning() const { return false; }
-// End of stub
+void MediaStreamDecoder::stop() { m_running.store(false); }
+
+bool MediaStreamDecoder::tryPopFrame(DecodedFrame&) { return false; }
+bool MediaStreamDecoder::waitForFrame(DecodedFrame&, int) { return false; }
+QSize MediaStreamDecoder::resolution() const { return QSize(0, 0); }
+
+void MediaStreamDecoder::onSocketReadyRead() {}
+
+bool MediaStreamDecoder::initDecoder(int, int) { return false; }
+void MediaStreamDecoder::destroyDecoder() {}
+void MediaStreamDecoder::feedData(const QByteArray&) {}
+void MediaStreamDecoder::decodePacket(AVPacket*) {}
+QImage MediaStreamDecoder::convertFrame(AVFrame*) { return QImage(); }
+void MediaStreamDecoder::parseStreamChunk(const QByteArray&) {}
+// ── End stub ──────────────────────────────────────────────────────────────────
 #else
 
 // scrcpy video stream header per packet: 8-byte PTS + 4-byte size
