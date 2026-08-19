@@ -37,7 +37,8 @@ set(CMAKE_AUTORCC ON)
 
 # Windows: Define WIN32_LEAN_AND_MEAN to reduce header size and avoid conflicts
 if(WIN32)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DNOGDI -DNOUSER -DWIN32)
+    # WIN32_LEAN_AND_MEAN is sufficient - NOGDI/NOUSER break Qt and our WinAPI calls
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32)
 endif()
 
 # Version info
@@ -387,8 +388,7 @@ if(BUILD_QT6_GUI)
         src/GUI/SettingsDialog.cpp
         
         # Utilities
-        src/ReDroidController/FileLogger.cpp
-        src/ReDroidController/ConfigManager.cpp
+
         
         # Main App
         src/qtmain.cpp
@@ -464,23 +464,15 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/FrameRenderer.hpp
         include/Android/LocaleTimezoneManager.h
         src/GUI/PhoneWindow.h
-        src/GUI/PhoneWindow.cpp
         src/GUI/DashboardWindow.h
-        src/GUI/DashboardWindow.cpp
         src/GUI/AntiDetectionPanel.h
-        src/GUI/AntiDetectionPanel.cpp
         src/GUI/LoginWindow.h
-        src/GUI/LoginWindow.cpp
         src/GUI/MainWindow.h
-        src/GUI/MainWindow.cpp
         src/GUI/PhoneSettingsDialog.h
-        src/GUI/PhoneSettingsDialog.cpp
         src/GUI/SettingsDialog.h
-        src/GUI/SettingsDialog.cpp
         include/VirtualPhonePro/FileLogger.hpp
         include/VirtualPhonePro/ConfigManager.hpp
-        src/ReDroidController/FileLogger.cpp
-        src/ReDroidController/ConfigManager.cpp
+
         src/ReDroidController/openssl_stub.h
     )
     
