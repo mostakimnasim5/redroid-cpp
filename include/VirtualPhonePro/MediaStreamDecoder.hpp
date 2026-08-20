@@ -89,7 +89,9 @@ private:
 
     void feedData(const QByteArray& chunk);
     void decodePacket(AVPacket* pkt);
+#ifdef VPP_FFMPEG_AVAILABLE
     QImage convertFrame(AVFrame* frame);
+#endif
 
     // ── scrcpy stream parser ──────────────────────────────────────────────────
     // scrcpy prepends a 12-byte header per frame:
