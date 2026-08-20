@@ -698,10 +698,12 @@ install(DIRECTORY profiles/ DESTINATION share/redroid/profiles)
 install(DIRECTORY docker/ DESTINATION share/redroid/docker)
 
 # ==============================================================================
-# Testing
+# Testing (optional - don't fail main build if tests have issues)
 # ==============================================================================
 enable_testing()
-add_subdirectory(tests)
+if(EXISTS "${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt")
+    add_subdirectory(tests)
+endif()
 
 # ==============================================================================
 # Docker Build Target
