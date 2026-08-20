@@ -40,7 +40,6 @@ bool MediaStreamDecoder::initDecoder(int, int) { return false; }
 void MediaStreamDecoder::destroyDecoder() {}
 void MediaStreamDecoder::feedData(const QByteArray&) {}
 void MediaStreamDecoder::decodePacket(AVPacket*) {}
-QImage MediaStreamDecoder::convertFrame(AVFrame*) { return QImage(); }
 void MediaStreamDecoder::parseStreamChunk(const QByteArray&) {}
 // ── End stub ──────────────────────────────────────────────────────────────────
 #else
