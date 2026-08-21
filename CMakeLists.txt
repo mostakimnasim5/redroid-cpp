@@ -157,108 +157,17 @@ if(BUILD_QT6_GUI)
     endif()
 
     if(NOT FFMPEG_FOUND)
-        message(STATUS "FFmpeg not found locally — downloading pre-built binaries...")
-        include(FetchContent)
-
-        if(WIN32)
-            # BtbN Windows builds: shared libs + headers + MSVC import libs.
-            # We pin to the "master-latest" track because the older
-            # "n7.1-latest-win64-lgpl-shared-7.1.zip" asset was removed from
-            # BtbN's rolling release (HTTP 404). URL_HASH is intentionally
-            # omitted: BtbN's "latest" tag is a rolling daily release whose
-            # file content (and therefore hash) changes every day, so a
-            # pinned hash would break within 24h. CMake accepts a download
-            # with no hash (it skips verification). An empty "SHA256=" value
-            # is NOT valid and aborts configuration, hence the omission.
-            #
-            # Archive layout: ffmpeg-master-latest-win64-lgpl-shared/
-            #                  ├─ include/libavcodec/avcodec.h
-            #                  ├─ lib/avcodec.lib   (MSVC import lib)
-            #                  └─ bin/avcodec-*.dll
-            FetchContent_Declare(ffmpeg_prebuilt
-                URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip"
-                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            )
-        elseif(LINUX)
-            FetchContent_Declare(ffmpeg_prebuilt
-                URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl-shared.tar.xz"
-                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-            )
-        endif()
-
-        if(WIN32 OR LINUX)
-            FetchContent_MakeAvailable(ffmpeg_prebuilt)
-            set(FFMPEG_PREBUILT_DIR "${ffmpeg_prebuilt_SOURCE_DIR}")
-    endif() # end disabled FetchContent block
-            message(STATUS "FFmpeg pre-built source dir: ${FFMPEG_PREBUILT_DIR}")
-
-            # BtbN archives extract to a single top-level directory whose
-            # name embeds the track (master-latest / n7.1-latest / ...).
-            # FetchContent may also flatten the archive straight into
-            # SOURCE_DIR (observed on Windows), so the glob can be empty.
-            # Resolve the extracted root only when a subdir actually exists;
-            # otherwise fall back to SOURCE_DIR itself (the find_* calls
-            # below already list it, so detection still works).
-            file(GLOB FFMPEG_TOP_DIRS LIST_DIRECTORIES TRUE
-                "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared"
-                "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared"
-                "${FFMPEG_PREBUILT_DIR}/ffmpeg-n*-win64-lgpl-shared-*"
-                "${FFMPEG_PREBUILT_DIR}/ffmpeg-n*-linux64-lgpl-shared-*"
-            )
-            list(LENGTH FFMPEG_TOP_DIRS _FFMPEG_TOP_COUNT)
-            if(_FFMPEG_TOP_COUNT GREATER 0)
-                list(GET FFMPEG_TOP_DIRS 0 FFMPEG_EXTRACTED_ROOT)
-            else()
-                set(FFMPEG_EXTRACTED_ROOT "${FFMPEG_PREBUILT_DIR}")
-            endif()
-
-            # Locate the include and lib directories inside the downloaded archive
-            find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
-                PATHS "${FFMPEG_EXTRACTED_ROOT}/include"
-                      "${FFMPEG_PREBUILT_DIR}/include"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared/include"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared/include"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/include"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/include"
-                NO_DEFAULT_PATH)
-
-            find_library(AVCODEC_LIB avcodec
-                PATHS "${FFMPEG_EXTRACTED_ROOT}/lib"
-                      "${FFMPEG_PREBUILT_DIR}/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
-                NO_DEFAULT_PATH)
-            find_library(AVUTIL_LIB avutil
-                PATHS "${FFMPEG_EXTRACTED_ROOT}/lib"
-                      "${FFMPEG_PREBUILT_DIR}/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
-                NO_DEFAULT_PATH)
-            find_library(SWSCALE_LIB swscale
-                PATHS "${FFMPEG_EXTRACTED_ROOT}/lib"
-                      "${FFMPEG_PREBUILT_DIR}/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-win64-lgpl-shared/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-master-latest-linux64-lgpl-shared/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1/lib"
-                      "${FFMPEG_PREBUILT_DIR}/ffmpeg-n7.1-latest-linux64-lgpl-shared-7.1/lib"
-                NO_DEFAULT_PATH)
-
-            if(FFMPEG_INCLUDE_DIR AND AVCODEC_LIB AND AVUTIL_LIB AND SWSCALE_LIB)
-                set(FFMPEG_FOUND TRUE)
-                set(FFMPEG_AUTO_DOWNLOADED TRUE)
-                message(STATUS "FFmpeg auto-downloaded successfully")
-                message(STATUS "  include: ${FFMPEG_INCLUDE_DIR}")
-                message(STATUS "  avcodec: ${AVCODEC_LIB}")
-            else()
-                message(WARNING
-                    "FFmpeg auto-download succeeded but libs not located.\n"
-                    "Run: sudo apt install libavcodec-dev libavutil-dev libswscale-dev")
-            endif()
-        endif()
+        # FFmpeg compile-time headers are OPTIONAL.
+        # All FFmpeg code is guarded with #ifdef VPP_FFMPEG_AVAILABLE.
+        # FFmpeg DLLs are bundled at deploy time by build.yml, not needed here.
+        # Skipping FetchContent to prevent Configure CMake network failures.
+        message(STATUS "FFmpeg not found - stub implementation will be used (no compile-time FFmpeg needed)")
+        set(FFMPEG_FOUND FALSE)
+        set(FFMPEG_INCLUDE_DIR "")
+        set(AVCODEC_LIB "")
+        set(AVUTIL_LIB "")
+        set(SWSCALE_LIB "")
+    endif()
     endif()
 
     # Linux requires OpenGL and EGL for Qt6Gui
