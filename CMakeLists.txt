@@ -189,6 +189,7 @@ if(BUILD_QT6_GUI)
         if(WIN32 OR LINUX)
             FetchContent_MakeAvailable(ffmpeg_prebuilt)
             set(FFMPEG_PREBUILT_DIR "${ffmpeg_prebuilt_SOURCE_DIR}")
+    endif() # end disabled FetchContent block
             message(STATUS "FFmpeg pre-built source dir: ${FFMPEG_PREBUILT_DIR}")
 
             # BtbN archives extract to a single top-level directory whose
