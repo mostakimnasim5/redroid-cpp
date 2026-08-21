@@ -24,6 +24,7 @@
 #include "GUI/LoginWindow.h"
 #include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/WebhookManager.hpp"
+#include "VirtualPhonePro/APIServer.hpp"
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/FileLogger.hpp"
 
@@ -446,6 +447,28 @@ int main(int argc, char *argv[]) {
             });
 
         qDebug() << "[Startup] WebhookManager connected to instance events";
+    }
+
+    // ── APIServer — REST API for remote instance control ──────────────────────
+    // Exposes /instances (list), /instances/:id/start|stop over HTTP.
+    // APIServer internally calls ReDroidController::instance() to serve
+    // requests — no explicit signal wiring needed (pull model).
+    // Default port 8080; warns and skips if port is already bound.
+    {
+        using namespace VirtualPhonePro;
+        APIServer& api = APIServer::instance();
+
+        const quint16 apiPort = 8080;
+        if (api.start(apiPort)) {
+            qDebug() << "[Startup] APIServer listening on port" << apiPort;
+        } else {
+            qWarning() << "[Startup] APIServer could not bind port" << apiPort
+                       << "— remote control unavailable";
+        }
+
+        QObject::connect(&app, &QApplication::aboutToQuit, [&api]() {
+            api.stop();
+        });
     }
     
     // ============================================================================

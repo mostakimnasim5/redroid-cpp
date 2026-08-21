@@ -56,6 +56,7 @@
 
 #include "PhoneWindow.h"
 #include "PhoneSettingsDialog.h"
+#include "AntiDetectionPanel.h"
 
 namespace VirtualPhonePro {
 
@@ -331,6 +332,20 @@ void PhoneWindow::setupToolbar() {
     m_toolbarLayout->addLayout(windowControls);
     m_toolbarLayout->addWidget(m_titleLabel, 1);
     m_toolbarLayout->addWidget(m_instanceLabel);
+
+    // ── Anti-Detection Panel button ───────────────────────────────────────────
+    QPushButton* antiDetBtn = new QPushButton("🛡", m_toolbarWidget);
+    antiDetBtn->setToolTip("Anti-Detection Settings");
+    antiDetBtn->setFixedSize(32, 32);
+    antiDetBtn->setStyleSheet(
+        "QPushButton { background: #2ecc71; color: white; border-radius: 4px; font-size: 14px; }"
+        "QPushButton:hover { background: #27ae60; }");
+    connect(antiDetBtn, &QPushButton::clicked, this, [this]() {
+        AntiDetectionPanel* panel = new AntiDetectionPanel(m_instanceId, this);
+        panel->setAttribute(Qt::WA_DeleteOnClose);
+        panel->exec();
+    });
+    m_toolbarLayout->addWidget(antiDetBtn);
     
     m_mainLayout->addWidget(m_toolbarWidget);
     

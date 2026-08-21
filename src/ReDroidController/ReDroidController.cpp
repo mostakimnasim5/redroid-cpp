@@ -50,6 +50,9 @@
 #include "VirtualPhonePro/AppCloner.hpp"
 #include "VirtualPhonePro/CryptoUtils.hpp"
 #include "VirtualPhonePro/HttpClient.hpp"
+#include "VirtualPhonePro/FileSystemRealism.hpp"
+#include "VirtualPhonePro/FingerprintEngine.hpp"
+#include "VirtualPhonePro/SensorInjector.hpp"
 
 #include <QCoreApplication>
 #include <QRandomGenerator>
@@ -837,6 +840,9 @@ bool ReDroidController::stopInstance(const QString& instanceId, bool force) {
     VirtualPhonePro::SafetyNetAdvancedBypass::removeInstance(instanceId);
     VirtualPhonePro::RealPhoneHardening::removeInstance(instanceId);
 
+    // Stop continuous sensor injection
+    VirtualPhonePro::SensorInjector::instance().stop(instanceId);
+
     // Clean up per-instance ADBManager (frees the -s bound connection)
     if (m_adbSerials.contains(instanceId)) {
         VirtualPhonePro::ADBManager::removeInstance(
@@ -1383,17 +1389,31 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // PHASE 5: UNIQUE DEVICE IDENTITY
     // =========================================================================
     qDebug() << "\n[Phase 5] Generating Unique Device Identity...";
-    
+
+    // ── FingerprintEngine — seed-based deterministic ID generation ────────────
+    // FingerprintEngine generates all IDs from a single master seed so that
+    // every reboot produces the same values (stability across sessions).
+    // This feeds PersistentIdentityManager below.
+    FingerprintEngine& fpe = FingerprintEngine::instance();
+    // Seed = SHA-256 of (instanceId + manufacturer + model) — unique per instance,
+    // stable across restarts of the same instance.
+    QString fpSeed = QString::fromStdString(
+        CryptoUtils::sha256((instanceId + manufacturer + model).toStdString()));
+    fpe.setSeed(fpSeed);
+    fpe.setDefaultConfig(manufacturer, model);
+
     UniqueDeviceGenerator& deviceGen = UniqueDeviceGenerator::instance();
-    QString uniqueIMEI = deviceGen.generateUniqueIMEI();
-    QString uniqueSerial = deviceGen.generateUniqueSerial(manufacturer);
-    QString uniqueAndroidId = deviceGen.generateUniqueAndroidId();
-    QString uniqueGSFId = deviceGen.generateUniqueGSFId();
-    QString uniqueWifiMac = deviceGen.generateUniqueMAC();
-    QString uniqueBluetoothMac = deviceGen.generateUniqueMAC();
-    QString uniqueICCID = deviceGen.generateUniqueICCID();
-    QString uniqueIMSI = deviceGen.generateUniqueIMSI("470", "01");
-    qDebug() << "  ✓ Unique Identity Generated";
+    // Use FingerprintEngine for IDs that require strict format validation;
+    // UniqueDeviceGenerator for the rest.
+    QString uniqueIMEI         = fpe.generateIMEI(fpSeed, "35875107");
+    QString uniqueSerial       = deviceGen.generateUniqueSerial(manufacturer);
+    QString uniqueAndroidId    = fpe.generateAndroidId(fpSeed);
+    QString uniqueGSFId        = deviceGen.generateUniqueGSFId();
+    QString uniqueWifiMac      = fpe.generateMAC(fpSeed, "A4:50:46");  // Samsung OUI
+    QString uniqueBluetoothMac = fpe.generateMAC(fpSeed, "AC:5A:FC");  // Samsung BT OUI
+    QString uniqueICCID        = fpe.generateICCID(fpSeed, "310");
+    QString uniqueIMSI         = fpe.generateIMSI(fpSeed, "310", "260"); // T-Mobile US
+    qDebug() << "  ✓ Unique Identity Generated (seed-based, stable across reboots)";
 
     // ── Cryptographic device fingerprint ──────────────────────────────────────
     // CryptoUtils is a pure-static utility; it requires no singleton wiring.
@@ -1473,6 +1493,39 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         screen.applyToInstance(instanceId);
         screen.simulateUserActivity(instanceId);
         qDebug() << "  ✓ Screen state applied (1080x2400 @ 420dpi)";
+    }
+
+    // ── FileSystemRealism — populate /sdcard with realistic content ───────────
+    // Emulators have empty /sdcard directories. Banking apps and social media
+    // apps check for DCIM, Downloads, Pictures folders and existing media files.
+    // quickPopulate() creates the full folder tree and generates synthetic
+    // JPEG thumbnails and document stubs without requiring real media files.
+    {
+        FileSystemRealism& fs = FileSystemRealism::instance();
+        fs.quickPopulate(instanceId);
+        qDebug() << "  ✓ Filesystem: /sdcard populated (DCIM/Downloads/Pictures)";
+    }
+
+    // ── SensorInjector — continuous realistic sensor data injection ───────────
+    // SensorSimulator (Phase 6) sets initial values via setprop.
+    // SensorInjector runs a background loop that continuously injects
+    // slightly varying GPS, accelerometer, and gyroscope readings so
+    // apps that poll sensors over time see realistic movement patterns
+    // (micro-jitter from hand tremor, location drift) rather than frozen values.
+    {
+        SensorInjector& si = SensorInjector::instance();
+        SensorConfig sc;
+        sc.gpsEnabled           = true;
+        sc.accelerometerEnabled = true;
+        sc.gyroscopeEnabled     = true;
+        sc.lat = 40.7128f;  sc.lon = -74.0060f;  // New York
+        sc.altitudeM = 10.0f;
+        si.configureSensor(instanceId, sc);
+        si.setSensorEnabled(instanceId, SensorType::GPS,           true);
+        si.setSensorEnabled(instanceId, SensorType::ACCELEROMETER, true);
+        si.setSensorEnabled(instanceId, SensorType::GYROSCOPE,     true);
+        si.start(instanceId);  // background injection loop
+        qDebug() << "  ✓ SensorInjector started (GPS + accel + gyro continuous)";
     }
 
     // ── HAL Simulation (camera, fingerprint, audio) ───────────────────────────

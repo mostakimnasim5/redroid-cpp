@@ -1,4 +1,5 @@
 #include "LoginWindow.h"
+#include "../FirebaseHelper.hpp"
 #include <QApplication>
 #include <QStyle>
 #include <QNetworkRequest>
@@ -511,7 +512,14 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     int remainingProfiles = fields.contains("remainingProfiles") ? fields["remainingProfiles"].toObject()["integerValue"].toString().toInt() : 0;
     int totalProfiles = fields.contains("totalProfiles") ? fields["totalProfiles"].toObject()["integerValue"].toString().toInt() : 0;
 
-    // Success! Hide window and emit login success
+    // Success — persist the auth token in FirestoreClient for subsequent
+    // admin API calls (license refresh, usage reporting, remote revocation).
+    {
+        FirestoreClient& fs = FirestoreClient::instance();
+        fs.setAuthToken(uniqueKey);
+    }
+
+    // Hide window and emit login success
     hide();
     emit loginSuccess(userId, uniqueKey, remainingProfiles, totalProfiles);
     
