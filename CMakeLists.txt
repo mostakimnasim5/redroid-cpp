@@ -359,6 +359,9 @@ if(BUILD_QT6_GUI)
 
         # Android locale/proxy manager (used by ReDroidController)
         src/Android/LocaleTimezoneManager.cpp
+    src/Android/FileSystemRealism.cpp
+    src/Android/SensorInjector.cpp
+    src/Database/FingerprintEngine.cpp
         src/ReDroidController/SecurityMitigationManager.cpp
 
         # Data Layer
