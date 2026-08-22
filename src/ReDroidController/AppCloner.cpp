@@ -225,7 +225,6 @@ QJsonObject AppCloner::getAppInfo(const QString& instanceId, const QString& pack
     return info;
 }
 
-} // namespace VirtualPhonePro
 
 bool AppCloner::executeCommand(const QString& instanceId, const QString& command) {
     ReDroidController& ctrl = ReDroidController::instance();
@@ -299,3 +298,4 @@ QString AppCloner::cloneInstance(const QString& instanceId) {
     return newId;
 }
 
+} // namespace VirtualPhonePro

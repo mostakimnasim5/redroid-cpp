@@ -5,6 +5,7 @@
  */
 
 #include "FirebaseHelper.hpp"
+#include <QBuffer>
 #include <QDebug>
 #include <QJsonDocument>
 

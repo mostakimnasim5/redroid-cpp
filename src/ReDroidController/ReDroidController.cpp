@@ -1715,10 +1715,10 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         CarrierNetworkSimulator& carrier = CarrierNetworkSimulator::instance();
         // Default T-Mobile US; matches the device profile's locale from proxy IP.
         carrier.configureCarrier(instanceId, "T-Mobile", "US");
-        carrier.setNetworkType(instanceId, NetworkType::LTE_4G);
+        carrier.setNetworkType(instanceId, NetworkType::LTE);
         SignalStrength sig;
-        sig.rsrp = -85 - (QRandomGenerator::global()->bounded(20)); // -85 to -105 dBm
-        sig.rsrq = -10 - (QRandomGenerator::global()->bounded(5));
+        sig.dBm  = -85 - (QRandomGenerator::global()->bounded(20)); // -85 to -105 dBm
+        sig.level = 3; // good
         carrier.setSignalStrength(instanceId, sig);
         carrier.setMobileDataEnabled(instanceId, true);
         carrier.applyToInstance(instanceId);
@@ -1742,10 +1742,9 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     {
         FindMyDeviceManager& fmd = FindMyDeviceManager::instance();
         FindMyDeviceConfig fmdConfig;
-        fmdConfig.deviceName    = model;   // e.g. "SM-S928B"
-        fmdConfig.isEnabled     = true;
+        fmdConfig.status        = FindMyDeviceStatus::ENABLED;
         fmdConfig.isOnline      = true;
-        fmdConfig.lastSyncTime  = QDateTime::currentMSecsSinceEpoch();
+        fmdConfig.lastSyncTime  = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
         fmd.configure(instanceId, fmdConfig);
         fmd.enable(instanceId);
         fmd.applyToInstance(instanceId);
@@ -1758,8 +1757,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         // T-Mobile US bands: B2, B4, B12, B66, n41 (5G)
         NetworkBandConfig bands;
         bands.lteBands   = {2, 4, 12, 66};
-        bands.nr5gBands  = {41};
-        bands.wcdmaBands = {2, 4};
+        bands.nrBands    = {41};
         netReal.configureSingleSIM(instanceId, "310260", "T-Mobile");
         netReal.configureNetworkBands(instanceId, bands);
         netReal.enableWiFiCalling(instanceId);
@@ -1771,11 +1769,9 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     {
         DeviceBehaviorManager& behavior = DeviceBehaviorManager::instance();
         DeviceBehaviorState state;
-        state.powerProfile       = PowerProfile::BALANCED;
-        state.adaptiveBattery    = true;
-        state.batterySaverMode   = false;
-        state.autoSyncEnabled    = true;
-        state.backgroundProcess  = true;
+        state.instanceId               = instanceId;
+        state.currentPowerProfile      = PowerProfile::BALANCED;
+        state.isAdaptiveBatteryEnabled = true;
         behavior.configure(instanceId, state);
         behavior.enableAdaptiveBattery(instanceId);
         behavior.setPowerProfile(instanceId, PowerProfile::BALANCED);
@@ -1821,12 +1817,12 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         TestingFramework& tf = TestingFramework::instance();
 
         TestSuite smoke;
-        smoke.suiteName  = "SmokeTest";
-        smoke.instanceId = instanceId;
+        smoke.name        = "SmokeTest";
+        smoke.description = "Post-realism verification for " + instanceId;
 
         // Test 1: manufacturer property
         TestCase t1;
-        t1.testId      = "prop_manufacturer";
+        t1.id      = "prop_manufacturer";
         t1.packageName = "";
         t1.action      = "assert";
         t1.params["command"] = QString("getprop ro.product.manufacturer");
@@ -1835,7 +1831,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
 
         // Test 2: model property
         TestCase t2;
-        t2.testId      = "prop_model";
+        t2.id      = "prop_model";
         t2.packageName = "";
         t2.action      = "assert";
         t2.params["command"] = QString("getprop ro.product.model");
@@ -1844,7 +1840,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
 
         // Test 3: SELinux enforcing
         TestCase t3;
-        t3.testId      = "selinux_enforcing";
+        t3.id      = "selinux_enforcing";
         t3.packageName = "";
         t3.action      = "assert";
         t3.params["command"] = "getenforce";

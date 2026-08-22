@@ -1,5 +1,4 @@
 /**
-#include <QIODevice>
  * @file FingerprintEngine.cpp
  * @brief Seed-Based Deterministic Fingerprint Generation Implementation
  */
@@ -11,6 +10,7 @@
 #include <QRandomGenerator>
 #include <QUuid>
 #include <QDataStream>
+#include <QIODevice>
 #include <QJsonObject>
 #include <QDate>
 

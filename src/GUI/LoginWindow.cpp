@@ -515,7 +515,7 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
     // Success — persist the auth token in FirestoreClient for subsequent
     // admin API calls (license refresh, usage reporting, remote revocation).
     {
-        FirestoreClient& fs = FirestoreClient::instance();
+        FirebaseHelper::FirestoreClient& fs = FirebaseHelper::FirestoreClient::instance();
         fs.setAuthToken(uniqueKey);
     }
 

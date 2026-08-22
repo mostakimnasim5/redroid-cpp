@@ -19,7 +19,7 @@ namespace VirtualPhonePro {
 class AppCloner : public QObject {
     Q_OBJECT
 public:
-    explicit AppCloner(QObject* parent);
+    explicit AppCloner(QObject* parent = nullptr);
     ~AppCloner();
     static AppCloner& instance();
     
