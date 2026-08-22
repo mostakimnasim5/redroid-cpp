@@ -149,6 +149,10 @@ add_executable(Test_UniqueDeviceGenerator
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/APIServer.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/AppCloner.hpp
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TestingFramework.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/ConfigManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/FileLogger.hpp
+    ${CMAKE_SOURCE_DIR}/include/Android/SensorInjector.h
+    ${CMAKE_SOURCE_DIR}/include/Android/FileSystemRealism.h
     ${CMAKE_SOURCE_DIR}/include/Android/LocaleTimezoneManager.h
 )
 
