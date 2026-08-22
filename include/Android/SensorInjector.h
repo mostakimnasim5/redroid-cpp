@@ -24,7 +24,7 @@
 namespace VirtualPhonePro {
 
 // Sensor types
-enum class SensorType {
+enum class SensorKind {
     ACCELEROMETER,
     GYROSCOPE,
     MAGNETOMETER,
@@ -38,7 +38,7 @@ enum class SensorType {
 
 // Sensor configuration
 struct SensorConfig {
-    SensorType type;
+    SensorKind type;
     bool enabled;
     bool useGaussianNoise;
     double baseValue[3];              // Base sensor values
@@ -52,7 +52,7 @@ struct SensorConfig {
 
 // Sensor reading
 struct SensorReading {
-    SensorType type;
+    SensorKind type;
     qint64 timestamp;
     qint64 nanoseconds;
     double x, y, z;                   // Primary values
@@ -112,7 +112,7 @@ public:
     /**
      * @brief Enable/disable sensor
      */
-    void setSensorEnabled(const QString& instanceId, SensorType type, bool enabled);
+    void setSensorEnabled(const QString& instanceId, SensorKind type, bool enabled);
     
     /**
      * @brief Set movement pattern
@@ -122,7 +122,7 @@ public:
     /**
      * @brief Set update rate
      */
-    void setUpdateRate(const QString& instanceId, SensorType type, int intervalMs);
+    void setUpdateRate(const QString& instanceId, SensorKind type, int intervalMs);
     
     // =========================================================================
     // Direct Injection
@@ -177,7 +177,7 @@ private:
     
     // Internal methods
     void initializeSensorSystem(const QString& instanceId);
-    SensorReading generateReading(const QString& instanceId, SensorType type);
+    SensorReading generateReading(const QString& instanceId, SensorKind type);
     double generateGaussianNoise(double mean, double stddev);
     double generateUniformNoise(double min, double max);
     
@@ -196,7 +196,7 @@ private:
     struct InstanceState {
         bool isRunning;
         MovementPattern pattern;
-        QMap<SensorType, SensorConfig> sensors;
+        QMap<SensorKind, SensorConfig> sensors;
         QVector<SensorReading> recentReadings;
         QTimer* updateTimer;
         QThread* workerThread;

@@ -111,22 +111,6 @@ public:
      */
     QString cloneInstance(const QString& instanceId);
 
-    /**
-     * @brief Clear app data for a package
-     * @param instanceId Target instance
-     * @param packageName Package name
-     * @return true if successful
-     */
-    bool clearAppData(const QString& instanceId, const QString& packageName);
-
-    /**
-     * @brief Get detailed info about an installed app
-     * @param instanceId Target instance
-     * @param packageName Package name
-     * @return JSON object with app metadata
-     */
-    QJsonObject getAppInfo(const QString& instanceId, const QString& packageName);
-
 private:
     bool executeCommand(const QString& instanceId, const QString& command);
     QString executeCommandSync(const QString& instanceId, const QString& command);

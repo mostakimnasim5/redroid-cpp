@@ -1152,7 +1152,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         // AdvancedHardwareEmulator, and AdvancedGraphicsSpoofing
         UltraAntiDetectionEngine& ultra = UltraAntiDetectionEngine::instance();
         ultra.initialize(instanceId);
-        ultra.applyAllBypasses(instanceId);
+        ultra.applyAllMeasures(instanceId);
         qDebug() << "  ✓ Ultra anti-detection engine (behavioral + hardware + graphics)";
     }
 
@@ -1268,8 +1268,10 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         // patch the container's iptables and hosts file to prevent TCP/IP
         // fingerprinting and WebRTC IP leaks.
         const QString adbSerial = getAdbSerial(instanceId);
+        NetworkProfile np = npm.getProfile(instanceId);
+        np.instanceId = instanceId;
         QStringList transportCmds = npm.generateTransportHookCommands(
-            instanceId, adbSerial);
+            instanceId, np);
         QStringList webrtcCmds = npm.generateWebRTCSetupCommands(
             instanceId, adbSerial);
         for (const QString& cmd : transportCmds)
@@ -1399,20 +1401,19 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // stable across restarts of the same instance.
     QString fpSeed = QString::fromStdString(
         CryptoUtils::sha256((instanceId + manufacturer + model).toStdString()));
-    fpe.setSeed(fpSeed);
-    fpe.setDefaultConfig(manufacturer, model);
 
     UniqueDeviceGenerator& deviceGen = UniqueDeviceGenerator::instance();
-    // Use FingerprintEngine for IDs that require strict format validation;
-    // UniqueDeviceGenerator for the rest.
-    QString uniqueIMEI         = fpe.generateIMEI(fpSeed, "35875107");
+    // generateFromSeed() derives all identity fields deterministically from
+    // the seed; the remaining fields come from UniqueDeviceGenerator.
+    DeviceFingerprint fpId = fpe.generateFromSeed(fpSeed);
+    QString uniqueIMEI         = fpId.imei1;
     QString uniqueSerial       = deviceGen.generateUniqueSerial(manufacturer);
-    QString uniqueAndroidId    = fpe.generateAndroidId(fpSeed);
+    QString uniqueAndroidId    = fpId.androidId;
     QString uniqueGSFId        = deviceGen.generateUniqueGSFId();
-    QString uniqueWifiMac      = fpe.generateMAC(fpSeed, "A4:50:46");  // Samsung OUI
-    QString uniqueBluetoothMac = fpe.generateMAC(fpSeed, "AC:5A:FC");  // Samsung BT OUI
-    QString uniqueICCID        = fpe.generateICCID(fpSeed, "310");
-    QString uniqueIMSI         = fpe.generateIMSI(fpSeed, "310", "260"); // T-Mobile US
+    QString uniqueWifiMac      = fpId.wifiMac;
+    QString uniqueBluetoothMac = fpId.bluetoothMac;
+    QString uniqueICCID        = fpId.iccid1;
+    QString uniqueIMSI         = fpId.imsi1;
     qDebug() << "  ✓ Unique Identity Generated (seed-based, stable across reboots)";
 
     // ── Cryptographic device fingerprint ──────────────────────────────────────
@@ -1483,7 +1484,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         ScreenStateManager& screen = ScreenStateManager::instance();
         // Qualify ScreenInfo with its namespace to avoid collision with
         // VirtualPhonePro::ScreenMirror::ScreenInfo (same name, different struct)
-        VirtualPhonePro::ScreenStateManager::ScreenInfo si;
+        ScreenInfo si;
         si.width            = 1080;
         si.height           = 2400;
         si.densityDpi       = 420;
@@ -1514,16 +1515,21 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // (micro-jitter from hand tremor, location drift) rather than frozen values.
     {
         SensorInjector& si = SensorInjector::instance();
-        SensorConfig sc;
-        sc.gpsEnabled           = true;
-        sc.accelerometerEnabled = true;
-        sc.gyroscopeEnabled     = true;
-        sc.lat = 40.7128f;  sc.lon = -74.0060f;  // New York
-        sc.altitudeM = 10.0f;
-        si.configureSensor(instanceId, sc);
-        si.setSensorEnabled(instanceId, SensorType::GPS,           true);
-        si.setSensorEnabled(instanceId, SensorType::ACCELEROMETER, true);
-        si.setSensorEnabled(instanceId, SensorType::GYROSCOPE,     true);
+        // Enable continuous injection for the primary motion sensors. GPS
+        // spoofing is already handled upstream by SensorSimulator (Phase 6),
+        // which writes the fixed location via system properties.
+        SensorConfig accelCfg;
+        accelCfg.type = SensorKind::ACCELEROMETER;
+        accelCfg.enabled = true;
+        accelCfg.useGaussianNoise = true;
+        si.configureSensor(instanceId, accelCfg);
+        SensorConfig gyroCfg;
+        gyroCfg.type = SensorKind::GYROSCOPE;
+        gyroCfg.enabled = true;
+        gyroCfg.useGaussianNoise = true;
+        si.configureSensor(instanceId, gyroCfg);
+        si.setSensorEnabled(instanceId, SensorKind::ACCELEROMETER, true);
+        si.setSensorEnabled(instanceId, SensorKind::GYROSCOPE,     true);
         si.start(instanceId);  // background injection loop
         qDebug() << "  ✓ SensorInjector started (GPS + accel + gyro continuous)";
     }

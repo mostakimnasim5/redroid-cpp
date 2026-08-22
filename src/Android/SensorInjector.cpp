@@ -58,7 +58,7 @@ bool SensorInjector::start(const QString& instanceId) {
     
     // Configure default sensors
     SensorConfig accelConfig;
-    accelConfig.type = SensorType::ACCELEROMETER;
+    accelConfig.type = SensorKind::ACCELEROMETER;
     accelConfig.enabled = true;
     accelConfig.useGaussianNoise = true;
     accelConfig.baseValue[0] = 0.0;
@@ -69,10 +69,10 @@ bool SensorInjector::start(const QString& instanceId) {
     accelConfig.updateIntervalMs = 50;  // 20Hz
     accelConfig.range = 39.2266;  // ±2g typical
     accelConfig.resolution = 0.0012;
-    state->sensors[SensorType::ACCELEROMETER] = accelConfig;
+    state->sensors[SensorKind::ACCELEROMETER] = accelConfig;
     
     SensorConfig gyroConfig;
-    gyroConfig.type = SensorType::GYROSCOPE;
+    gyroConfig.type = SensorKind::GYROSCOPE;
     gyroConfig.enabled = true;
     gyroConfig.useGaussianNoise = true;
     gyroConfig.baseValue[0] = 0.0;
@@ -83,10 +83,10 @@ bool SensorInjector::start(const QString& instanceId) {
     gyroConfig.updateIntervalMs = 50;
     gyroConfig.range = 17.4533;  // ±1000 deg/s typical
     gyroConfig.resolution = 0.0003;
-    state->sensors[SensorType::GYROSCOPE] = gyroConfig;
+    state->sensors[SensorKind::GYROSCOPE] = gyroConfig;
     
     SensorConfig magConfig;
-    magConfig.type = SensorType::MAGNETOMETER;
+    magConfig.type = SensorKind::MAGNETOMETER;
     magConfig.enabled = true;
     magConfig.useGaussianNoise = true;
     magConfig.baseValue[0] = -25.0;
@@ -97,7 +97,7 @@ bool SensorInjector::start(const QString& instanceId) {
     magConfig.updateIntervalMs = 100;
     magConfig.range = 4915.0;  // ±50 gauss typical
     magConfig.resolution = 0.15;
-    state->sensors[SensorType::MAGNETOMETER] = magConfig;
+    state->sensors[SensorKind::MAGNETOMETER] = magConfig;
     
     // Create timer
     state->updateTimer = new QTimer(this);
@@ -164,7 +164,7 @@ void SensorInjector::configureSensor(const QString& instanceId, const SensorConf
     m_instances[instanceId]->sensors[config.type] = config;
 }
 
-void SensorInjector::setSensorEnabled(const QString& instanceId, SensorType type, bool enabled) {
+void SensorInjector::setSensorEnabled(const QString& instanceId, SensorKind type, bool enabled) {
     QMutexLocker locker(&m_mutex);
     
     if (!m_instances.contains(instanceId)) return;
@@ -186,34 +186,34 @@ void SensorInjector::setMovementPattern(const QString& instanceId, MovementPatte
     
     switch (pattern) {
         case MovementPattern::WALKING:
-            sensors[SensorType::ACCELEROMETER].noiseStdDev = WALK_ACCEL_AMPLITUDE;
-            sensors[SensorType::GYROSCOPE].noiseStdDev = WALK_GYRO_AMPLITUDE;
-            sensors[SensorType::ACCELEROMETER].updateIntervalMs = 30;  // Higher rate
+            sensors[SensorKind::ACCELEROMETER].noiseStdDev = WALK_ACCEL_AMPLITUDE;
+            sensors[SensorKind::GYROSCOPE].noiseStdDev = WALK_GYRO_AMPLITUDE;
+            sensors[SensorKind::ACCELEROMETER].updateIntervalMs = 30;  // Higher rate
             break;
             
         case MovementPattern::STATIONARY:
-            sensors[SensorType::ACCELEROMETER].noiseStdDev = STATIONARY_NOISE_STDDEV;
-            sensors[SensorType::GYROSCOPE].noiseStdDev = 0.001;
+            sensors[SensorKind::ACCELEROMETER].noiseStdDev = STATIONARY_NOISE_STDDEV;
+            sensors[SensorKind::GYROSCOPE].noiseStdDev = 0.001;
             break;
             
         case MovementPattern::ON_TABLE:
-            sensors[SensorType::ACCELEROMETER].noiseStdDev = TABLE_VIBRATION_STDDEV;
-            sensors[SensorType::GYROSCOPE].noiseStdDev = 0.0005;
+            sensors[SensorKind::ACCELEROMETER].noiseStdDev = TABLE_VIBRATION_STDDEV;
+            sensors[SensorKind::GYROSCOPE].noiseStdDev = 0.0005;
             break;
             
         case MovementPattern::IN_CAR:
-            sensors[SensorType::ACCELEROMETER].noiseStdDev = 0.5;
-            sensors[SensorType::GYROSCOPE].noiseStdDev = 0.3;
+            sensors[SensorKind::ACCELEROMETER].noiseStdDev = 0.5;
+            sensors[SensorKind::GYROSCOPE].noiseStdDev = 0.3;
             break;
             
         default:
-            sensors[SensorType::ACCELEROMETER].noiseStdDev = 0.1;
-            sensors[SensorType::GYROSCOPE].noiseStdDev = 0.05;
+            sensors[SensorKind::ACCELEROMETER].noiseStdDev = 0.1;
+            sensors[SensorKind::GYROSCOPE].noiseStdDev = 0.05;
             break;
     }
 }
 
-void SensorInjector::setUpdateRate(const QString& instanceId, SensorType type, int intervalMs) {
+void SensorInjector::setUpdateRate(const QString& instanceId, SensorKind type, int intervalMs) {
     QMutexLocker locker(&m_mutex);
     
     if (!m_instances.contains(instanceId)) return;
@@ -231,7 +231,7 @@ bool SensorInjector::injectReading(const QString& instanceId, const SensorReadin
 
 bool SensorInjector::injectAccelerometer(const QString& instanceId, double x, double y, double z) {
     SensorReading reading;
-    reading.type = SensorType::ACCELEROMETER;
+    reading.type = SensorKind::ACCELEROMETER;
     reading.timestamp = QDateTime::currentMSecsSinceEpoch();
     reading.nanoseconds = QDateTime::currentMSecsSinceEpoch() * 1000000;
     reading.x = x;
@@ -244,7 +244,7 @@ bool SensorInjector::injectAccelerometer(const QString& instanceId, double x, do
 
 bool SensorInjector::injectGyroscope(const QString& instanceId, double x, double y, double z) {
     SensorReading reading;
-    reading.type = SensorType::GYROSCOPE;
+    reading.type = SensorKind::GYROSCOPE;
     reading.timestamp = QDateTime::currentMSecsSinceEpoch();
     reading.nanoseconds = QDateTime::currentMSecsSinceEpoch() * 1000000;
     reading.x = x;
@@ -257,7 +257,7 @@ bool SensorInjector::injectGyroscope(const QString& instanceId, double x, double
 
 bool SensorInjector::injectMagnetometer(const QString& instanceId, double x, double y, double z) {
     SensorReading reading;
-    reading.type = SensorType::MAGNETOMETER;
+    reading.type = SensorKind::MAGNETOMETER;
     reading.timestamp = QDateTime::currentMSecsSinceEpoch();
     reading.nanoseconds = QDateTime::currentMSecsSinceEpoch() * 1000000;
     reading.x = x;
@@ -332,7 +332,7 @@ void SensorInjector::onTimerTimeout() {
             if (!sensorIt.value().enabled) continue;
             
             // Check if update is needed based on interval
-            SensorType type = sensorIt.key();
+            SensorKind type = sensorIt.key();
             int interval = sensorIt.value().updateIntervalMs;
             
             if (currentTime % interval < 60) {  // Approximate check
@@ -378,7 +378,7 @@ void SensorInjector::updateSensorData() {
     onTimerTimeout();
 }
 
-SensorReading SensorInjector::generateReading(const QString& instanceId, SensorType type) {
+SensorReading SensorInjector::generateReading(const QString& instanceId, SensorKind type) {
     QMutexLocker locker(&m_mutex);
     
     SensorReading reading;
@@ -409,7 +409,7 @@ SensorReading SensorInjector::generateReading(const QString& instanceId, SensorT
     }
     
     // For rotation vector
-    if (type == SensorType::ROTATION_VECTOR) {
+    if (type == SensorKind::ROTATION_VECTOR) {
         reading.w = 1.0;
     }
     
@@ -442,7 +442,7 @@ void SensorInjector::simulateWalkingMotion(const QString& instanceId, SensorRead
     // Simulate walking motion pattern
     double stepPhase = state->walkPhase;
     
-    if (reading.type == SensorType::ACCELEROMETER) {
+    if (reading.type == SensorKind::ACCELEROMETER) {
         // Walking creates oscillation in vertical axis
         double verticalOscillation = sin(stepPhase) * WALK_ACCEL_AMPLITUDE * 0.5;
         double lateralOscillation = cos(stepPhase * 0.5) * WALK_ACCEL_AMPLITUDE * 0.3;
@@ -455,7 +455,7 @@ void SensorInjector::simulateWalkingMotion(const QString& instanceId, SensorRead
         state->accumulatedX += reading.x * 0.001;
         state->accumulatedY += reading.y * 0.001;
     }
-    else if (reading.type == SensorType::GYROSCOPE) {
+    else if (reading.type == SensorKind::GYROSCOPE) {
         // Rotation during walking
         reading.x = sin(stepPhase) * WALK_GYRO_AMPLITUDE * 0.3;
         reading.y = cos(stepPhase) * WALK_GYRO_AMPLITUDE * 0.2;
@@ -467,12 +467,12 @@ void SensorInjector::simulateStationaryMotion(const QString& instanceId, SensorR
     // Stationary = almost no movement with tiny vibrations
     double microVibration = generateGaussianNoise(0, TABLE_VIBRATION_STDDEV * 2);
     
-    if (reading.type == SensorType::ACCELEROMETER) {
+    if (reading.type == SensorKind::ACCELEROMETER) {
         reading.x += microVibration * 0.1;
         reading.y += microVibration * 0.1;
         reading.z += microVibration * 0.05;
     }
-    else if (reading.type == SensorType::GYROSCOPE) {
+    else if (reading.type == SensorKind::GYROSCOPE) {
         // Very tiny rotation from breathing/hand tremor
         reading.x = generateGaussianNoise(0, 0.0005);
         reading.y = generateGaussianNoise(0, 0.0005);
@@ -484,13 +484,13 @@ void SensorInjector::simulateInPocketMotion(const QString& instanceId, SensorRea
     // In pocket = irregular, bouncing movements
     double randomBounce = generateUniformNoise(-0.5, 0.5);
     
-    if (reading.type == SensorType::ACCELEROMETER) {
+    if (reading.type == SensorKind::ACCELEROMETER) {
         // Random direction bouncing
         reading.x += generateGaussianNoise(0, 0.8);
         reading.y += generateGaussianNoise(0, 1.2) + 0.5;  // Slight upward bias
         reading.z += generateGaussianNoise(0, 0.8);
     }
-    else if (reading.type == SensorType::GYROSCOPE) {
+    else if (reading.type == SensorKind::GYROSCOPE) {
         reading.x = generateGaussianNoise(0, 0.5);
         reading.y = generateGaussianNoise(0, 0.8);
         reading.z = generateGaussianNoise(0, 0.3);
@@ -500,14 +500,14 @@ void SensorInjector::simulateInPocketMotion(const QString& instanceId, SensorRea
 void SensorInjector::simulateOnTableMotion(const QString& instanceId, SensorReading& reading) {
     // On table = very subtle vibrations, mostly gravity
     
-    if (reading.type == SensorType::ACCELEROMETER) {
+    if (reading.type == SensorKind::ACCELEROMETER) {
         // Tiny table vibrations
         double vibration = generateGaussianNoise(0, TABLE_VIBRATION_STDDEV);
         reading.x += vibration * 0.1;
         reading.y += vibration * 0.1;
         reading.z = 9.81 + vibration * 0.05;  // Keep gravity close to 9.81
     }
-    else if (reading.type == SensorType::GYROSCOPE) {
+    else if (reading.type == SensorKind::GYROSCOPE) {
         // Almost zero rotation
         reading.x = generateGaussianNoise(0, 0.0001);
         reading.y = generateGaussianNoise(0, 0.0001);
@@ -518,7 +518,7 @@ void SensorInjector::simulateOnTableMotion(const QString& instanceId, SensorRead
 void SensorInjector::simulateInCarMotion(const QString& instanceId, SensorReading& reading) {
     // In car = smooth acceleration/deceleration with road vibrations
     
-    if (reading.type == SensorType::ACCELEROMETER) {
+    if (reading.type == SensorKind::ACCELEROMETER) {
         // Road vibrations
         double roadNoise = generateGaussianNoise(0, 0.3);
         
@@ -529,7 +529,7 @@ void SensorInjector::simulateInCarMotion(const QString& instanceId, SensorReadin
         reading.y += roadNoise;        // Lateral
         reading.z = 9.81 + roadNoise * 0.2;  // Vertical
     }
-    else if (reading.type == SensorType::GYROSCOPE) {
+    else if (reading.type == SensorKind::GYROSCOPE) {
         // Gentle turns and road bumps
         reading.x = generateGaussianNoise(0, 0.1);
         reading.y = generateGaussianNoise(0, 0.15);
@@ -544,31 +544,31 @@ bool SensorInjector::injectViaADB(const QString& instanceId, const SensorReading
     double x, y, z;
     
     switch (reading.type) {
-        case SensorType::ACCELEROMETER:
+        case SensorKind::ACCELEROMETER:
             sensorType = "accelerometer";
             x = reading.x;
             y = reading.y;
             z = reading.z;
             break;
-        case SensorType::GYROSCOPE:
+        case SensorKind::GYROSCOPE:
             sensorType = "gyroscope";
             x = reading.x;
             y = reading.y;
             z = reading.z;
             break;
-        case SensorType::MAGNETOMETER:
+        case SensorKind::MAGNETOMETER:
             sensorType = "magnetic_field";
             x = reading.x;
             y = reading.y;
             z = reading.z;
             break;
-        case SensorType::GRAVITY:
+        case SensorKind::GRAVITY:
             sensorType = "gravity";
             x = reading.x;
             y = reading.y;
             z = reading.z;
             break;
-        case SensorType::LINEAR_ACCELERATION:
+        case SensorKind::LINEAR_ACCELERATION:
             sensorType = "linear_acceleration";
             x = reading.x;
             y = reading.y;

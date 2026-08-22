@@ -33,25 +33,6 @@ struct HardwareConfig {
     long totalMemory;
 };
 
-struct SensorConfig {
-    bool accelerometer;
-    bool gyroscope;
-    bool magnetometer;
-    bool proximity;
-    bool light;
-    
-    float accelerometerX;
-    float accelerometerY;
-    float accelerometerZ;
-    
-    float gyroscopeX;
-    float gyroscopeY;
-    float gyroscopeZ;
-    
-    float magnetometerX;
-    float magnetometerY;
-    float magnetometerZ;
-};
 
 struct WebRTCConfig {
     std::string localIp;
