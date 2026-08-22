@@ -74,6 +74,15 @@ root/emulator checks, TLS fingerprinting, canvas/WebGL fingerprinting, etc.
 6. **`avcodec_register_all()` was removed in FFmpeg 4.0+** — guard with `LIBAVCODEC_VERSION_INT < 0x380964` (58.9.100).
 7. Declared-but-unimplemented methods link-fail (LNK2001) on the function name — grep the .cpp for `::methodName` to confirm no body exists before implementing.
 
+## Current CI Failure (2026-08-21, run 32479452062)
+- Root cause: stray extra `endif()` in root CMakeLists.txt after the
+  `if(NOT FFMPEG_FOUND)` stub block (was line 171) — it closed `if(BUILD_QT6_GUI)`
+  prematurely, so `endif() # BUILD_QT6_GUI` errored with
+  "Flow control statements are not properly nested" at line 584.
+- Fix verified locally with cmake 4.4.2 (pip): delete the stray endif; configure
+  then proceeds past nesting check. Full configure still needs Qt6 installed.
+- Fix applied in working tree (uncommitted) as of 2026-08-22.
+
 ## Conventions
 - Namespace: `VirtualPhonePro` (core) / `FirebaseHelper`
 - Dual header convention: many classes have both `.h` and `.hpp` wrappers

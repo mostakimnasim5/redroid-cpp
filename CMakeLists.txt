@@ -168,7 +168,6 @@ if(BUILD_QT6_GUI)
         set(AVUTIL_LIB "")
         set(SWSCALE_LIB "")
     endif()
-    endif()
 
     # Linux requires OpenGL and EGL for Qt6Gui
     if(LINUX)
