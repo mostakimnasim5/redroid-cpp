@@ -7,10 +7,14 @@
  */
 
 #include "VirtualPhonePro/AppCloner.hpp"
+#include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
+#include "VirtualPhonePro/DeviceProfile.hpp"
 #include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
 #include <QDir>
+#include <QStandardPaths>
+#include <QUuid>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -222,3 +226,76 @@ QJsonObject AppCloner::getAppInfo(const QString& instanceId, const QString& pack
 }
 
 } // namespace VirtualPhonePro
+
+bool AppCloner::executeCommand(const QString& instanceId, const QString& command) {
+    ReDroidController& ctrl = ReDroidController::instance();
+    return !ctrl.executeShell(instanceId, command).isNull();
+}
+
+QString AppCloner::executeCommandSync(const QString& instanceId, const QString& command) {
+    ReDroidController& ctrl = ReDroidController::instance();
+    return ctrl.executeShell(instanceId, command);
+}
+
+QStringList AppCloner::getInstalledApps(const QString& instanceId) {
+    return listInstalledApps(instanceId);
+}
+
+bool AppCloner::installToWorkProfile(const QString& instanceId,
+                                     const QString& packageName,
+                                     const QString& profileName) {
+    if (instanceId.isEmpty() || packageName.isEmpty() || profileName.isEmpty()) {
+        return false;
+    }
+    // Install the already-installed package into the work profile user.
+    QString cmd = QString("pm install-existing --user %1 %2").arg(profileName, packageName);
+    QString result = executeCommandSync(instanceId, cmd);
+    return result.contains("Success");
+}
+
+QString AppCloner::cloneInstance(const QString& instanceId) {
+    ReDroidController& ctrl = ReDroidController::instance();
+    UniqueDeviceGenerator& gen = UniqueDeviceGenerator::instance();
+
+    InstanceInfo src = ctrl.getInstanceInfo(instanceId);
+    if (src.instanceId.isEmpty()) {
+        qWarning() << "AppCloner::cloneInstance: source instance not found:" << instanceId;
+        return {};
+    }
+
+    QString profilesDir =
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/profiles";
+    QDir().mkpath(profilesDir);
+
+    DeviceProfile profile = DeviceProfile::load(profilesDir + "/" + instanceId + ".json");
+
+    // Regenerate every identity-bearing field so the clone presents as a
+    // completely distinct physical device.
+    QString mfr = profile.manufacturer;
+    profile.id            = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    profile.identity.imei         = gen.generateUniqueIMEI(mfr);
+    profile.identity.imei2        = gen.generateUniqueIMEI(mfr);
+    profile.identity.serialNumber = gen.generateUniqueSerial(mfr);
+    profile.identity.androidId    = gen.generateUniqueAndroidId();
+    profile.identity.gsfId        = gen.generateUniqueGSFId();
+    profile.identity.advertisingId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    profile.sim.iccid             = gen.generateUniqueICCID();
+    profile.mac.wifiMac           = gen.generateUniqueMAC();
+    profile.mac.bluetoothMac      = gen.generateUniqueBluetoothMAC();
+    profile.network.wifiMac       = profile.mac.wifiMac;
+    profile.network.bluetoothMac  = profile.mac.bluetoothMac;
+
+    QString newId = gen.generateInstanceId();
+    if (!profile.save(profilesDir + "/" + newId + ".json")) {
+        qWarning() << "AppCloner::cloneInstance: failed to save cloned profile";
+        return {};
+    }
+
+    if (!ctrl.startInstance(newId, profile)) {
+        qWarning() << "AppCloner::cloneInstance: failed to start cloned instance";
+        return {};
+    }
+
+    return newId;
+}
+

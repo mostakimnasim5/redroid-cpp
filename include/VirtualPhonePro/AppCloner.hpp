@@ -103,10 +103,31 @@ public:
      * @return Map of original -> clone packages
      */
     QMap<QString, QString> listClonedApps(const QString& instanceId);
-    
+
+    /**
+     * @brief Clone an entire instance with a fresh device identity
+     * @param instanceId Source instance to clone
+     * @return New instance ID on success, empty string on failure
+     */
+    QString cloneInstance(const QString& instanceId);
+
+    /**
+     * @brief Clear app data for a package
+     * @param instanceId Target instance
+     * @param packageName Package name
+     * @return true if successful
+     */
+    bool clearAppData(const QString& instanceId, const QString& packageName);
+
+    /**
+     * @brief Get detailed info about an installed app
+     * @param instanceId Target instance
+     * @param packageName Package name
+     * @return JSON object with app metadata
+     */
+    QJsonObject getAppInfo(const QString& instanceId, const QString& packageName);
+
 private:
-    AppCloner() = default;
-    
     bool executeCommand(const QString& instanceId, const QString& command);
     QString executeCommandSync(const QString& instanceId, const QString& command);
 };

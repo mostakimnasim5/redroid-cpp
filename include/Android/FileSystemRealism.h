@@ -232,7 +232,7 @@ private:
     void populateAndroidData(const QString& instanceId, const FileSystemConfig& config);
     
     // App usage generation
-    void generateUsageStats(const QString& instanceId, const QVector<AppUsage>& apps);
+    bool generateUsageStats(const QString& instanceId, const QVector<AppUsage>& apps);
     
     // Instance state
     struct PopulationState {

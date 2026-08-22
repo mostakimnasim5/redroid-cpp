@@ -1,5 +1,5 @@
 #include "LoginWindow.h"
-#include "../FirebaseHelper.hpp"
+#include "FirebaseHelper.hpp"
 #include <QApplication>
 #include <QStyle>
 #include <QNetworkRequest>

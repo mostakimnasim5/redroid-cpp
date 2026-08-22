@@ -181,6 +181,9 @@ private:
     
     // Internal generation methods
     QString deriveFromSeed(const QString& seed, const QString& purpose, int length);
+    QString getMCCForCountry(const QString& country) const;
+    QString generateBuildId(const QString& seed);
+    QString generateRadioVersion(const QString& seed);
     QByteArray hmacSha256(const QString& key, const QString& data) const;
     QString generateIMEI(const QString& seed, const QString& tac);
     QString generateIMEI2(const QString& seed);

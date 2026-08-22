@@ -1,4 +1,5 @@
 /**
+#include <QIODevice>
  * @file FingerprintEngine.cpp
  * @brief Seed-Based Deterministic Fingerprint Generation Implementation
  */
@@ -424,9 +425,9 @@ QJsonObject FingerprintEngine::toJson(const DeviceFingerprint& fp) const {
     json["googleServicesKey"] = fp.googleServicesKey;
     json["tac"] = fp.tac;
     json["modelCode"] = fp.modelCode;
-    json["generatedAt"] = fp.generatedAt;
+    json["generatedAt"] = QJsonValue::fromVariant(QVariant::fromValue(fp.generatedAt));
     json["algorithmVersion"] = fp.algorithmVersion;
-    json["checksum"] = fp.checksum;
+    json["checksum"] = QJsonValue::fromVariant(QVariant::fromValue(fp.checksum));
     
     return json;
 }
@@ -461,9 +462,9 @@ DeviceFingerprint FingerprintEngine::fromJson(const QJsonObject& json) const {
     fp.googleServicesKey = json["googleServicesKey"].toString();
     fp.tac = json["tac"].toString();
     fp.modelCode = json["modelCode"].toString();
-    fp.generatedAt = json["generatedAt"].toLongLong();
+    fp.generatedAt = json["generatedAt"].toVariant().toLongLong();
     fp.algorithmVersion = json["algorithmVersion"].toString();
-    fp.checksum = json["checksum"].toUInt();
+    fp.checksum = json["checksum"].toVariant().toUInt();
     
     return fp;
 }
