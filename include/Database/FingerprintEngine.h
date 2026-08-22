@@ -201,7 +201,7 @@ private:
     QMap<QString, quint32> m_androidIdIndex;
     QMap<QString, quint32> m_serialIndex;
     QMap<QString, quint32> m_wifiMacIndex;
-    QMutex m_mutex;
+    mutable QMutex m_mutex;
     
     static constexpr const char* ALGORITHM_VERSION = "2.0.0";
 };
