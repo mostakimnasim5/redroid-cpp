@@ -80,7 +80,7 @@ struct BatteryState {
 };
 
 // Power profiles for different usage scenarios
-struct PowerProfile {
+struct PowerProfileConfig {
     QString name;
     
     // Screen power consumption (mW)
@@ -122,12 +122,12 @@ public:
     /**
      * @brief Get current power profile
      */
-    PowerProfile getPowerProfile() const;
+    PowerProfileConfig getPowerProfile() const;
     
     /**
      * @brief Set custom power profile
      */
-    void setPowerProfile(const PowerProfile& profile);
+    void setPowerProfile(const PowerProfileConfig& profile);
     
     // =========================================================================
     // Battery State Management
@@ -237,13 +237,13 @@ public:
 private:
     BatteryPowerManager();
     
-    PowerProfile getDefaultProfile(const QString& manufacturer);
+    PowerProfileConfig getDefaultProfile(const QString& manufacturer);
     int calculateTemperature(int baseTemp, bool isCharging, bool isHeavyUse);
     BatteryHealth calculateHealthFromAge(int daysOld);
     
     QMap<QString, BatteryState> m_batteryStates;
-    QMap<QString, PowerProfile> m_powerProfiles;
-    PowerProfile m_currentProfile;
+    QMap<QString, PowerProfileConfig> m_powerProfiles;
+    PowerProfileConfig m_currentProfile;
 };
 
 } // namespace VirtualPhonePro

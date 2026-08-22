@@ -76,7 +76,7 @@ bool ADBManager::initialize() {
     if (m_adbPath.empty()) {
         m_lastError = "ADB not found in system PATH";
         Logger::getInstance().error(m_lastError);
-        m_connectionState = ADBConnectionState::ERROR;
+        m_connectionState = ADBConnectionState::Error;
         return false;
     }
     
@@ -84,7 +84,7 @@ bool ADBManager::initialize() {
     if (!runADBCommand(initArgs)) {
         m_lastError = "Failed to start ADB server";
         Logger::getInstance().error(m_lastError);
-        m_connectionState = ADBConnectionState::ERROR;
+        m_connectionState = ADBConnectionState::Error;
         return false;
     }
     
@@ -230,7 +230,7 @@ bool ADBManager::connect(const std::string& deviceAddress) {
         return true;
     }
     
-    m_connectionState = ADBConnectionState::ERROR;
+    m_connectionState = ADBConnectionState::Error;
     m_lastError = "Failed to connect: " + result;
     Logger::getInstance().error(m_lastError);
     return false;

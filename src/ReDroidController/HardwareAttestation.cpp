@@ -54,7 +54,7 @@ HardwareSecurityState HardwareAttestation::getSecurityState(const QString& insta
     defaultState.isStrongBox = true;
     defaultState.isTEEPresent = true;
     defaultState.isSEPresent = true;
-    defaultState.verifiedBootState = VerifiedBootState::VERIFIED;
+    defaultState.verifiedBootState = HardwareBootState::VERIFIED;
     defaultState.bootloaderState = BootloaderState::LOCKED;
     defaultState.verifiedBootKey = "default_boot_key_needs_initialization";
     defaultState.verifiedBootHash = "";
@@ -165,7 +165,7 @@ bool HardwareAttestation::enableStrongBox(const QString& instanceId) {
     HardwareSecurityState state = getSecurityState(instanceId);
     state.isStrongBox = true;
     state.keymasterVersion = KeymasterVersion::KM_STRONGBOX;
-    state.verifiedBootState = VerifiedBootState::VERIFIED;
+    state.verifiedBootState = HardwareBootState::VERIFIED;
     
     return setSecurityState(instanceId, state);
 }
@@ -224,7 +224,7 @@ bool HardwareAttestation::generateAttestationKey(const QString& instanceId, Atte
 // Verified Boot
 // ============================================================================
 
-bool HardwareAttestation::setVerifiedBootState(const QString& instanceId, VerifiedBootState state) {
+bool HardwareAttestation::setVerifiedBootState(const QString& instanceId, HardwareBootState state) {
     HardwareSecurityState& securityState = m_securityStates[instanceId];
     securityState.verifiedBootState = state;
     securityState.verifiedBootStateString = verifiedBootStateToString(state);
@@ -239,7 +239,7 @@ bool HardwareAttestation::setBootloaderState(const QString& instanceId, Bootload
     
     // Update verified boot state based on bootloader
     if (state == BootloaderState::UNLOCKED) {
-        securityState.verifiedBootState = VerifiedBootState::UNLOCKED;
+        securityState.verifiedBootState = HardwareBootState::UNLOCKED;
         securityState.verifiedBootStateString = "orange";
     }
     
@@ -249,7 +249,7 @@ bool HardwareAttestation::setBootloaderState(const QString& instanceId, Bootload
 bool HardwareAttestation::lockBootloader(const QString& instanceId) {
     HardwareSecurityState state = getSecurityState(instanceId);
     state.bootloaderState = BootloaderState::LOCKED;
-    state.verifiedBootState = VerifiedBootState::VERIFIED;
+    state.verifiedBootState = HardwareBootState::VERIFIED;
     state.verifiedBootStateString = "green";
     
     return setSecurityState(instanceId, state);
@@ -258,7 +258,7 @@ bool HardwareAttestation::lockBootloader(const QString& instanceId) {
 bool HardwareAttestation::unlockBootloader(const QString& instanceId) {
     HardwareSecurityState state = getSecurityState(instanceId);
     state.bootloaderState = BootloaderState::UNLOCKED;
-    state.verifiedBootState = VerifiedBootState::UNLOCKED;
+    state.verifiedBootState = HardwareBootState::UNLOCKED;
     state.verifiedBootStateString = "orange";
     
     return setSecurityState(instanceId, state);
@@ -398,7 +398,7 @@ QJsonObject HardwareAttestation::verifyAttestation(const QString& instanceId) {
     
     // Overall pass/fail
     bool pass = true;
-    pass &= (state.verifiedBootState == VerifiedBootState::VERIFIED);
+    pass &= (state.verifiedBootState == HardwareBootState::VERIFIED);
     pass &= (state.bootloaderState == BootloaderState::LOCKED);
     pass &= (state.keymasterVersion >= KeymasterVersion::KM_4_0);
     pass &= (state.drmLevel == DRMLevel::L1);
@@ -415,7 +415,7 @@ bool HardwareAttestation::resetSecurity(const QString& instanceId) {
     defaultState.isStrongBox = true;
     defaultState.isTEEPresent = true;
     defaultState.isSEPresent = true;
-    defaultState.verifiedBootState = VerifiedBootState::VERIFIED;
+    defaultState.verifiedBootState = HardwareBootState::VERIFIED;
     defaultState.bootloaderState = BootloaderState::LOCKED;
     defaultState.verifiedBootKey = generateVerifiedBootKey();
     defaultState.verifiedBootStateString = "green";
@@ -455,13 +455,13 @@ QString HardwareAttestation::keymasterVersionToString(KeymasterVersion version) 
     }
 }
 
-QString HardwareAttestation::verifiedBootStateToString(VerifiedBootState state) const {
+QString HardwareAttestation::verifiedBootStateToString(HardwareBootState state) const {
     switch (state) {
-        case VerifiedBootState::VERIFIED: return "green";
-        case VerifiedBootState::SELF_SIGNED: return "yellow";
-        case VerifiedBootState::UNVERIFIED: return "orange";
-        case VerifiedBootState::FAILED: return "red";
-        case VerifiedBootState::UNLOCKED: return "orange";
+        case HardwareBootState::VERIFIED: return "green";
+        case HardwareBootState::SELF_SIGNED: return "yellow";
+        case HardwareBootState::UNVERIFIED: return "orange";
+        case HardwareBootState::FAILED: return "red";
+        case HardwareBootState::UNLOCKED: return "orange";
         default: return "green";
     }
 }
@@ -544,7 +544,7 @@ HardwareSecurityState HardwareAttestation::getDeviceDefaults(const QString& manu
     
     state.isTEEPresent = true;
     state.isSEPresent = true;
-    state.verifiedBootState = VerifiedBootState::VERIFIED;
+    state.verifiedBootState = HardwareBootState::VERIFIED;
     state.bootloaderState = BootloaderState::LOCKED;
     state.verifiedBootKey = generateVerifiedBootKey();
     state.verifiedBootStateString = "green";

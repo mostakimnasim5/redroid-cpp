@@ -33,11 +33,11 @@ bool BatteryPowerManager::configureForDevice(const QString& manufacturer, const 
     return true;
 }
 
-PowerProfile BatteryPowerManager::getPowerProfile() const {
+PowerProfileConfig BatteryPowerManager::getPowerProfile() const {
     return m_currentProfile;
 }
 
-void BatteryPowerManager::setPowerProfile(const PowerProfile& profile) {
+void BatteryPowerManager::setPowerProfile(const PowerProfileConfig& profile) {
     m_currentProfile = profile;
     qDebug() << "Power profile set:" << profile.name;
 }
@@ -370,8 +370,8 @@ bool BatteryPowerManager::resetBattery(const QString& instanceId) {
 // Private Helpers
 // ============================================================================
 
-PowerProfile BatteryPowerManager::getDefaultProfile(const QString& manufacturer) {
-    PowerProfile profile;
+PowerProfileConfig BatteryPowerManager::getDefaultProfile(const QString& manufacturer) {
+    PowerProfileConfig profile;
     profile.name = manufacturer;
     
     if (manufacturer.contains("samsung", Qt::CaseInsensitive)) {

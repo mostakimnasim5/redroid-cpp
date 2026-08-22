@@ -39,7 +39,7 @@ namespace VirtualPhonePro {
 /**
  * @brief Hardware attestation key types
  */
-enum class AttestationKeyType {
+enum class PlayIntegrityKeyType {
     SOFTWARE,          // Software-only attestation
     TRUSTED_ENVIRONMENT, // TEE-based attestation  
     STRONGBOX         // Hardware-backed StrongBox
@@ -48,7 +48,7 @@ enum class AttestationKeyType {
 /**
  * @brief Verified boot state enumeration
  */
-enum class VerifiedBootState {
+enum class PlayIntegrityBootState {
     GREEN,             // Verified boot succeeded
     YELLOW,           // Verified boot succeeded but with warnings
     ORANGE,           // Verified boot failed but device may still boot
@@ -98,7 +98,7 @@ enum class IntegrityVerdict {
 
 struct HardwareAttestationConfig {
     // Attestation level
-    AttestationKeyType keyType = AttestationKeyType::TRUSTED_ENVIRONMENT;
+    PlayIntegrityKeyType keyType = PlayIntegrityKeyType::TRUSTED_ENVIRONMENT;
     bool enableStrongBox = true;
     
     // Keymaster version (4.0 for Android 14)
@@ -108,7 +108,7 @@ struct HardwareAttestationConfig {
     bool hasKeymaster43 = false;
     
     // Verified boot
-    VerifiedBootState bootState = VerifiedBootState::GREEN;
+    PlayIntegrityBootState bootState = PlayIntegrityBootState::GREEN;
     QString verifiedBootHash;  // 32-byte hex string
     QString bootPatchLevel;     // YYYY-MM-DD format
     
@@ -190,13 +190,13 @@ struct HardwareAttestationResult {
     bool success = false;
     
     // Attestation level achieved
-    AttestationKeyType attestationLevel = AttestationKeyType::SOFTWARE;
+    PlayIntegrityKeyType attestationLevel = PlayIntegrityKeyType::SOFTWARE;
     
     // Device integrity verdict
     DeviceIntegrityCategory category = DeviceIntegrityCategory::EMPTY;
     
     // Verified boot
-    VerifiedBootState bootState = VerifiedBootState::GREEN;
+    PlayIntegrityBootState bootState = PlayIntegrityBootState::GREEN;
     QString bootStateString;  // "green", "yellow", "orange", "red"
     QString verifiedBootKeyHash;
     QString deviceLocked;  // "true" or "false"
@@ -615,7 +615,7 @@ private:
     // Hardware attestation helpers
     QByteArray generateAttestationChallenge(const QString& instanceId, const QString& nonce);
     QJsonObject buildAttestationPayload(const QString& instanceId, const QString& nonce);
-    QString generateVerifiedBootStateString(VerifiedBootState state) const;
+    QString generateVerifiedBootStateString(PlayIntegrityBootState state) const;
     QString generateDeviceIntegrityVerdict(const QString& instanceId);
     QByteArray signAttestationPayload(const QJsonObject& payload, const QString& instanceId);
     

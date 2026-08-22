@@ -17,6 +17,7 @@
 #include <QJsonObject>
 #include <QDateTime>
 #include <QMutex>
+#include <random>
 
 namespace VirtualPhonePro {
 

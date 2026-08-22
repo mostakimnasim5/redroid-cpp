@@ -136,7 +136,7 @@ struct CPUState {
     QVector<int> coreLoads;
 };
 
-struct BatteryState {
+struct SimulatedBatteryState {
     int level = 75;
     int temperature = 32;
     float voltage = 4.2f;
@@ -184,11 +184,11 @@ public:
     QVector<int> getCoreFrequencies();
     
     // Battery emulation
-    BatteryState getBatteryState();
-    void setBatteryState(const BatteryState& state);
+    SimulatedBatteryState getBatteryState();
+    void setBatteryState(const SimulatedBatteryState& state);
     void drainBattery(int percentagePerHour);
     void chargeBattery(int percentagePerHour);
-    BatteryState generateRealisticBatteryState(int hour, bool screenOn, int appLoad);
+    SimulatedBatteryState generateRealisticBatteryState(int hour, bool screenOn, int appLoad);
     
     // Thermal emulation
     ThermalState getThermalState();
@@ -209,7 +209,7 @@ private:
     AdvancedHardwareEmulator();
     
     CPUState m_cpuState;
-    BatteryState m_batteryState;
+    SimulatedBatteryState m_batteryState;
     ThermalState m_thermalState;
     ClockState m_clockState;
     

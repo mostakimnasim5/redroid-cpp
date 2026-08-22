@@ -290,8 +290,8 @@ bool DeviceIntegrityManager::setCtsProfileMatch(const QString& instanceId, bool 
     return true;
 }
 
-IntegrityCheckResult DeviceIntegrityManager::runIntegrityCheck(const QString& instanceId, const QString& checkName) {
-    IntegrityCheckResult result;
+DeviceIntegrityCheckResult DeviceIntegrityManager::runIntegrityCheck(const QString& instanceId, const QString& checkName) {
+    DeviceIntegrityCheckResult result;
     result.checkName = checkName;
     result.checkTime = QDateTime::currentDateTime();
     result.passed = false;
@@ -346,11 +346,11 @@ IntegrityCheckResult DeviceIntegrityManager::runIntegrityCheck(const QString& in
     return result;
 }
 
-QList<IntegrityCheckResult> DeviceIntegrityManager::getAllCheckResults(const QString& instanceId) {
+QList<DeviceIntegrityCheckResult> DeviceIntegrityManager::getAllCheckResults(const QString& instanceId) {
     if (m_checkResults.contains(instanceId)) {
         return m_checkResults[instanceId];
     }
-    return QList<IntegrityCheckResult>();
+    return QList<DeviceIntegrityCheckResult>();
 }
 
 // ============================================================================
@@ -808,7 +808,7 @@ bool DeviceIntegrityManager::evaluateIntegrityChecks(const QString& instanceId) 
     state.totalChecksFailed = 0;
     
     // Run all checks
-    QList<IntegrityCheckResult> results;
+    QList<DeviceIntegrityCheckResult> results;
     results.append(runIntegrityCheck(instanceId, "basic_integrity"));
     results.append(runIntegrityCheck(instanceId, "cts_profile_match"));
     results.append(runIntegrityCheck(instanceId, "verified_boot"));

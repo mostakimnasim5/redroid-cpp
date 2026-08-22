@@ -93,3 +93,13 @@ This tool's anti-detection/spoofing layer can enable fraud (fake device farms,
 banking-app circumvention). Distinguish legitimate work (build fixes, refactors,
 code-quality, security hardening, documentation) from work that *extends*
 evasion capability — the latter warrants a conversation with the user.
+
+## Audit Addendum (2026-08-22)
+- Latest CI: `Build and Test` = failure; `Docker Build` = success (run 03:02Z).
+- Legacy dead entry points: `src/main.cpp` (standalone CLI), `src/mainwindow.cpp`,
+  `src/qtmain.cpp`, `src/AutoStartDialog.cpp` duplicate the Qt6 GUI entry in `src/GUI/main.cpp`.
+- Admin auth is client-side: AdminLoginWindow.cpp compares plaintext Firestore
+  `password` field — broken auth model (firebase key + plaintext pass in public repo).
+- `VirtualSecurityChip.cpp` calls stub `RAND_bytes` (rand()-based) for key material.
+- CLI `src/main.cpp` uses `rand()` IMEI/serial/MAC gen (predictable identities).
+- ~71 TODO/FIXME markers; ~15 duplicate `.h`/`.hpp` header pairs.

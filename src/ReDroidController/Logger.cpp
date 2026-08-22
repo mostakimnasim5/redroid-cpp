@@ -45,7 +45,7 @@ std::string Logger::levelToString(LogLevel level) {
         case LogLevel::DEBUG:    return "DEBUG";
         case LogLevel::INFO:     return "INFO";
         case LogLevel::WARNING:  return "WARN";
-        case LogLevel::ERROR:    return "ERROR";
+        case LogLevel::Error:    return "Error";
         case LogLevel::CRITICAL: return "CRIT";
         default:                 return "UNKNOWN";
     }
@@ -58,7 +58,7 @@ std::string Logger::getColor(LogLevel level) {
         case LogLevel::DEBUG:    return "\033[36m";   // Cyan
         case LogLevel::INFO:     return "\033[32m";   // Green
         case LogLevel::WARNING:  return "\033[33m";   // Yellow
-        case LogLevel::ERROR:    return "\033[31m";   // Red
+        case LogLevel::Error:    return "\033[31m";   // Red
         case LogLevel::CRITICAL: return "\033[35m";   // Magenta
         default:                 return "\033[0m";
     }
@@ -119,7 +119,7 @@ void Logger::warning(const std::string& message) {
 }
 
 void Logger::error(const std::string& message) {
-    log(LogLevel::ERROR, message);
+    log(LogLevel::Error, message);
 }
 
 void Logger::critical(const std::string& message) {

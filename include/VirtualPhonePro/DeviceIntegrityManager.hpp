@@ -51,7 +51,7 @@ enum class DeviceLockState {
 };
 
 // Integrity Check Result
-struct IntegrityCheckResult {
+struct DeviceIntegrityCheckResult {
     bool passed;
     QString checkName;
     QString errorCode;
@@ -194,12 +194,12 @@ public:
     /**
      * @brief Run integrity check
      */
-    IntegrityCheckResult runIntegrityCheck(const QString& instanceId, const QString& checkName);
+    DeviceIntegrityCheckResult runIntegrityCheck(const QString& instanceId, const QString& checkName);
     
     /**
      * @brief Get all integrity check results
      */
-    QList<IntegrityCheckResult> getAllCheckResults(const QString& instanceId);
+    QList<DeviceIntegrityCheckResult> getAllCheckResults(const QString& instanceId);
     
     // =========================================================================
     // Security Patch
@@ -380,7 +380,7 @@ private:
     bool evaluateIntegrityChecks(const QString& instanceId);
     
     QMap<QString, DeviceIntegrityState> m_states;
-    QMap<QString, QList<IntegrityCheckResult>> m_checkResults;
+    QMap<QString, QList<DeviceIntegrityCheckResult>> m_checkResults;
 
 };
 

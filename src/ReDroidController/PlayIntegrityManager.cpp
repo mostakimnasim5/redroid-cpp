@@ -1888,10 +1888,10 @@ HardwareAttestationResult PlayIntegrityManager::performHardwareAttestation(
         config = m_attestationConfigs[instanceId];
     } else {
         // Default configuration for strong attestation
-        config.keyType = AttestationKeyType::TRUSTED_ENVIRONMENT;
+        config.keyType = PlayIntegrityKeyType::TRUSTED_ENVIRONMENT;
         config.enableStrongBox = true;
         config.keymasterVersion = 4;
-        config.bootState = VerifiedBootState::GREEN;
+        config.bootState = PlayIntegrityBootState::GREEN;
         config.isDeviceLocked = true;
         config.isRootHidden = true;
         config.isSystemVerified = true;
@@ -1938,16 +1938,16 @@ HardwareAttestationResult PlayIntegrityManager::performHardwareAttestation(
     result.basicMacAddressCheck = true;
     result.systemSignatureValid = true;
     result.platformSignatureValid = true;
-    result.bootSignatureValid = (config.bootState == VerifiedBootState::GREEN);
+    result.bootSignatureValid = (config.bootState == PlayIntegrityBootState::GREEN);
     
     // Set device recognition
     result.deviceRecognitionVerdict = "RECOGNIZED";
     result.deviceConfidenceLevel = "CONFIDENCE_HIGH";
     
     // Set category based on attestation level
-    if (config.keyType == AttestationKeyType::STRONGBOX) {
+    if (config.keyType == PlayIntegrityKeyType::STRONGBOX) {
         result.category = DeviceIntegrityCategory::HARDWARE_BACKED;
-    } else if (config.keyType == AttestationKeyType::TRUSTED_ENVIRONMENT) {
+    } else if (config.keyType == PlayIntegrityKeyType::TRUSTED_ENVIRONMENT) {
         result.category = DeviceIntegrityCategory::CTS_MATCH;
     } else {
         result.category = DeviceIntegrityCategory::BASIC;
@@ -2132,7 +2132,7 @@ void PlayIntegrityManager::configureStrongBox(const QString& instanceId) {
     HardwareAttestationConfig& config = m_attestationConfigs[instanceId];
     
     // Configure StrongBox
-    config.keyType = AttestationKeyType::STRONGBOX;
+    config.keyType = PlayIntegrityKeyType::STRONGBOX;
     config.enableStrongBox = true;
     config.keymasterVersion = 4;
     config.hasKeymaster4 = true;
@@ -2169,7 +2169,7 @@ void PlayIntegrityManager::configureTEE(const QString& instanceId) {
     HardwareAttestationConfig& config = m_attestationConfigs[instanceId];
     
     // Configure TEE
-    config.keyType = AttestationKeyType::TRUSTED_ENVIRONMENT;
+    config.keyType = PlayIntegrityKeyType::TRUSTED_ENVIRONMENT;
     config.enableStrongBox = false;
     config.keymasterVersion = 4;
     config.hasKeymaster4 = true;
@@ -2306,10 +2306,10 @@ QJsonObject PlayIntegrityManager::generateHardwareAttestationResponse(
     response["keymasterVersion"] = getKeymasterVersion(instanceId);
     
     // Attestation level
-    if (config.keyType == AttestationKeyType::STRONGBOX) {
+    if (config.keyType == PlayIntegrityKeyType::STRONGBOX) {
         response["attestationLevel"] = "STRONGBOX";
         response["securityLevel"] = "STRONG_BOX";
-    } else if (config.keyType == AttestationKeyType::TRUSTED_ENVIRONMENT) {
+    } else if (config.keyType == PlayIntegrityKeyType::TRUSTED_ENVIRONMENT) {
         response["attestationLevel"] = "TEE";
         response["securityLevel"] = "TRUSTED_ENVIRONMENT";
     } else {
@@ -2356,13 +2356,13 @@ QJsonObject PlayIntegrityManager::generateHardwareAttestationResponse(
     return response;
 }
 
-QString PlayIntegrityManager::generateVerifiedBootStateString(VerifiedBootState state) const {
+QString PlayIntegrityManager::generateVerifiedBootStateString(PlayIntegrityBootState state) const {
     switch (state) {
-        case VerifiedBootState::GREEN: return "green";
-        case VerifiedBootState::YELLOW: return "yellow";
-        case VerifiedBootState::ORANGE: return "orange";
-        case VerifiedBootState::RED: return "red";
-        case VerifiedBootState::UNLOCKED: return "unlocked";
+        case PlayIntegrityBootState::GREEN: return "green";
+        case PlayIntegrityBootState::YELLOW: return "yellow";
+        case PlayIntegrityBootState::ORANGE: return "orange";
+        case PlayIntegrityBootState::RED: return "red";
+        case PlayIntegrityBootState::UNLOCKED: return "unlocked";
         default: return "unknown";
     }
 }

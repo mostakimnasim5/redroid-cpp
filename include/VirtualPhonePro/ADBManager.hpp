@@ -22,7 +22,7 @@ enum class ADBConnectionState {
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
-    ERROR
+    Error
 };
 
 class ADBManager {

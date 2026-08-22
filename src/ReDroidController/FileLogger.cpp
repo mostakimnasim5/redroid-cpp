@@ -74,7 +74,7 @@ void FileLogger::log(LogLevel level, const QString& module, const QString& messa
             case LogLevel::WARNING:
                 qWarning().noquote() << consoleMsg;
                 break;
-            case LogLevel::ERROR:
+            case LogLevel::Error:
             case LogLevel::CRITICAL:
                 qCritical().noquote() << consoleMsg;
                 break;
@@ -98,7 +98,7 @@ void FileLogger::warning(const QString& module, const QString& message) {
 }
 
 void FileLogger::error(const QString& module, const QString& message) {
-    log(LogLevel::ERROR, module, message);
+    log(LogLevel::Error, module, message);
 }
 
 void FileLogger::critical(const QString& module, const QString& message) {
@@ -255,7 +255,7 @@ QString FileLogger::logLevelToString(LogLevel level) {
         case LogLevel::DEBUG: return "DEBUG";
         case LogLevel::INFO: return "INFO";
         case LogLevel::WARNING: return "WARN";
-        case LogLevel::ERROR: return "ERROR";
+        case LogLevel::Error: return "Error";
         case LogLevel::CRITICAL: return "CRITICAL";
         default: return "UNKNOWN";
     }

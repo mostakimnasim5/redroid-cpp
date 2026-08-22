@@ -273,11 +273,11 @@ QVector<int> AdvancedHardwareEmulator::getCoreFrequencies() {
     return m_cpuState.coreFrequencies;
 }
 
-BatteryState AdvancedHardwareEmulator::getBatteryState() {
+SimulatedBatteryState AdvancedHardwareEmulator::getBatteryState() {
     return m_batteryState;
 }
 
-void AdvancedHardwareEmulator::setBatteryState(const BatteryState& state) {
+void AdvancedHardwareEmulator::setBatteryState(const SimulatedBatteryState& state) {
     m_batteryState = state;
 }
 
@@ -303,8 +303,8 @@ void AdvancedHardwareEmulator::chargeBattery(int percentagePerHour) {
     m_batteryState.temperature += QRandomGenerator::global()->bounded(0, 2);
 }
 
-BatteryState AdvancedHardwareEmulator::generateRealisticBatteryState(int hour, bool screenOn, int appLoad) {
-    BatteryState state = m_batteryState;
+SimulatedBatteryState AdvancedHardwareEmulator::generateRealisticBatteryState(int hour, bool screenOn, int appLoad) {
+    SimulatedBatteryState state = m_batteryState;
     
     // Morning (6-9): Usually charging or high battery
     if (hour >= 6 && hour <= 9) {
@@ -610,7 +610,7 @@ bool UltraAntiDetectionEngine::applyAllMeasures(const QString& instanceId) {
     m_oem->applyAllOEM(instanceId, "Samsung");
     
     // Apply hardware emulation
-    BatteryState battery = m_hardware->getBatteryState();
+    SimulatedBatteryState battery = m_hardware->getBatteryState();
     m_hardware->drainBattery(5);
     
     // Apply graphics spoofing

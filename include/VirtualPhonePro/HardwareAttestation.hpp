@@ -43,7 +43,7 @@ enum class KeymasterVersion {
 };
 
 // Verified boot state
-enum class VerifiedBootState {
+enum class HardwareBootState {
     VERIFIED,      // Green - Device is verified
     SELF_SIGNED,   // Yellow - Device has been modified
     UNVERIFIED,    // Orange - Device is unverified
@@ -74,7 +74,7 @@ struct HardwareSecurityState {
     bool isSEPresent;
     
     // Verified Boot
-    VerifiedBootState verifiedBootState;
+    HardwareBootState verifiedBootState;
     BootloaderState bootloaderState;
     QString verifiedBootKey;
     QString verifiedBootHash;
@@ -167,7 +167,7 @@ public:
     /**
      * @brief Set verified boot state
      */
-    bool setVerifiedBootState(const QString& instanceId, VerifiedBootState state);
+    bool setVerifiedBootState(const QString& instanceId, HardwareBootState state);
     
     /**
      * @brief Set bootloader state
@@ -245,7 +245,7 @@ private:
     HardwareAttestation();
     
     QString keymasterVersionToString(KeymasterVersion version) const;
-    QString verifiedBootStateToString(VerifiedBootState state) const;
+    QString verifiedBootStateToString(HardwareBootState state) const;
     QString drmLevelToString(DRMLevel level) const;
     QString generateVerifiedBootHash(const QString& manufacturer, const QString& model);
     QString generateVerifiedBootKey() const;
