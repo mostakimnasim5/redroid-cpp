@@ -83,6 +83,20 @@ root/emulator checks, TLS fingerprinting, canvas/WebGL fingerprinting, etc.
   then proceeds past nesting check. Full configure still needs Qt6 installed.
 - Fix applied in working tree (uncommitted) as of 2026-08-22.
 
+## CI Fix Session 2026-08-22 (run 32565076337 = GREEN, all 4 jobs)
+Lessons for full codebase wiring:
+- When a call-site references a struct member that doesn't exist, fix the CALL SITE to
+  match the real struct (never add phantom fields) — e.g. SignalStrength uses `dBm`,
+  not `rsrp`; NetworkType uses `LTE`, not `LTE_4G`.
+- `QMutex` in a const method -> declare `mutable QMutex m_mutex`.
+- Appending impls to a .cpp: verify they're INSIDE the namespace (check the
+  `} // namespace` line position), else C2653 cascade.
+- AUTOMOC Q_OBJECT headers must be in BOTH REDROID_HEADERS (main target) AND the
+  test target's AUTOMOC header list in tests/CMakeLists.txt.
+- Non-singleton Qt classes: don't call ::instance(); use a `static` local or member.
+- When a method is declared but never implemented, LNK2001 fires at link time.
+  Prefer deleting the stray declaration if an equivalent method already exists.
+
 ## Conventions
 - Namespace: `VirtualPhonePro` (core) / `FirebaseHelper`
 - Dual header convention: many classes have both `.h` and `.hpp` wrappers
