@@ -513,8 +513,8 @@ QString NetworkProfileManager::generateMNCForCarrier(const QString& carrierName,
     return mcc + "01";
 }
 
-} // namespace VirtualPhonePro
-
 NetworkProfile NetworkProfileManager::getProfile(const QString& instanceId) const {
     return m_profiles.value(instanceId);
 }
+
+} // namespace VirtualPhonePro
