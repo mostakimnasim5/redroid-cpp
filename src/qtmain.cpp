@@ -433,17 +433,21 @@ int main(int argc, char *argv[]) {
 
         QObject::connect(&ctrl, &ReDroidController::instanceStateChanged,
             [&wm](const QString& instanceId, InstanceState state) {
+                QJsonObject data;
+                data["instanceId"] = instanceId;
                 if (state == InstanceState::Running)
-                    wm.onInstanceStarted(instanceId);
+                    wm.triggerEvent("instance_started", data);
                 else if (state == InstanceState::Stopped)
-                    wm.onInstanceStopped(instanceId);
+                    wm.triggerEvent("instance_stopped", data);
             });
 
         QObject::connect(&ctrl, &ReDroidController::error,
             [&wm](const QString& msg) {
-                // Error messages don't carry instanceId at the signal level;
-                // pass empty string — WebhookManager filters unknown instances.
-                wm.onInstanceError(QString(), msg);
+                // Error messages don't carry instanceId at the signal level.
+                QJsonObject data;
+                data["instanceId"] = QString();
+                data["error"] = msg;
+                wm.triggerEvent("instance_error", data);
             });
 
         qDebug() << "[Startup] WebhookManager connected to instance events";

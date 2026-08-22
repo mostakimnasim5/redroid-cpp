@@ -1758,7 +1758,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         NetworkBandConfig bands;
         bands.lteBands   = {2, 4, 12, 66};
         bands.nrBands    = {41};
-        netReal.configureSingleSIM(instanceId, "310260", "T-Mobile");
+        netReal.configureSingleSIM(instanceId, "310260", "T-Mobile", NetworkTechnology::LTE_4G);
         netReal.configureNetworkBands(instanceId, bands);
         netReal.enableWiFiCalling(instanceId);
         netReal.applyToInstance(instanceId);
