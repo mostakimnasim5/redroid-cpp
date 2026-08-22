@@ -416,6 +416,34 @@ SensorReading SensorInjector::generateReading(const QString& instanceId, SensorK
     return reading;
 }
 
+void SensorInjector::updateMovementState(const QString& instanceId) {
+    QMutexLocker locker(&m_mutex);
+
+    auto it = m_instances.find(instanceId);
+    if (it == m_instances.end()) return;
+
+    InstanceState* state = it.value();
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (state->lastUpdateTime == 0) {
+        state->lastUpdateTime = now;
+        return;
+    }
+    const double dt = (now - state->lastUpdateTime) / 1000.0;
+    state->lastUpdateTime = now;
+
+    switch (state->pattern) {
+    case MovementPattern::WALKING:
+        state->walkPhase += dt * 2.0 * 3.14159265358979323846; // ~1 Hz step cycle
+        state->stepCount = static_cast<int>(state->walkPhase / 3.14159265358979323846);
+        break;
+    case MovementPattern::IN_CAR:
+        state->accumulatedX += dt * 13.9; // ~50 km/h forward drift
+        break;
+    default:
+        break;
+    }
+}
+
 double SensorInjector::generateGaussianNoise(double mean, double stddev) {
     std::normal_distribution<double> dist(mean, stddev);
     return dist(m_generator);

@@ -92,6 +92,8 @@ set(REDROID_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/Android/LocaleTimezoneManager.cpp
     ${CMAKE_SOURCE_DIR}/src/Data/TACDatabase.cpp
     ${CMAKE_SOURCE_DIR}/src/ReDroidController/openssl_stub.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/FileLogger.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/ConfigManager.cpp
     ${CMAKE_SOURCE_DIR}/src/Database/FingerprintEngine.cpp
     ${CMAKE_SOURCE_DIR}/src/Android/SensorInjector.cpp
     ${CMAKE_SOURCE_DIR}/src/Android/FileSystemRealism.cpp

@@ -264,6 +264,8 @@ if(BUILD_QT6_GUI)
         src/ReDroidController/WebhookManager.cpp
         src/ReDroidController/FindMyDeviceManager.cpp
         src/ReDroidController/Logger.cpp
+        src/ReDroidController/FileLogger.cpp
+        src/ReDroidController/ConfigManager.cpp
         src/ReDroidController/TestingFramework.cpp
 
         # Android locale/proxy manager (used by ReDroidController)
@@ -384,6 +386,9 @@ if(BUILD_QT6_GUI)
         src/GUI/SettingsDialog.h
         include/VirtualPhonePro/FileLogger.hpp
         include/VirtualPhonePro/ConfigManager.hpp
+        include/Android/SensorInjector.h
+        include/Android/FileSystemRealism.h
+        include/Database/FingerprintEngine.h
 
         src/ReDroidController/openssl_stub.h
     )

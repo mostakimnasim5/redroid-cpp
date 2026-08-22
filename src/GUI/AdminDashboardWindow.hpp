@@ -61,7 +61,6 @@ private slots:
 
     // Manual user creation
     void onCreateUser();
-    void showCreateUserDialog();
 
     // Logout
     void onLogout();
