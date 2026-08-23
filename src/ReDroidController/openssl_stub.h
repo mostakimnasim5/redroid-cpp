@@ -75,12 +75,56 @@ unsigned char* SHA512(const unsigned char* d, size_t n, unsigned char* md);
 #define TLS1_3_VERSION 0x0304
 
 
-// RAND stubs
-#include <cstdlib>
-inline int  RAND_bytes(unsigned char* buf, int num) {
-    for (int i = 0; i < num; i++) buf[i] = static_cast<unsigned char>(rand() & 0xFF);
-    return 1;
+// RAND functions backed by the OS CSPRNG.
+// Never fall back to rand()/mt19937 for key material: on total CSPRNG
+// failure RAND_bytes returns 0 and callers must treat it as fatal.
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
+inline int RAND_bytes(unsigned char* buf, int num) {
+    if (num < 0) return 0;
+    if (num == 0) return 1;
+    return BCryptGenRandom(nullptr, buf, static_cast<ULONG>(num),
+                           BCRYPT_USE_SYSTEM_PREFERRED_RNG) == 0 ? 1 : 0;
 }
+#else
+#include <cstdio>
+#include <cerrno>
+#if defined(__linux__)
+#include <sys/random.h>
+#endif
+inline int RAND_bytes(unsigned char* buf, int num) {
+    if (num < 0) return 0;
+    if (num == 0) return 1;
+    size_t remaining = static_cast<size_t>(num);
+    unsigned char* p = buf;
+#if defined(__linux__)
+    while (remaining > 0) {
+        ssize_t n = getrandom(p, remaining, 0);
+        if (n > 0) {
+            p += n;
+            remaining -= static_cast<size_t>(n);
+            continue;
+        }
+        if (n < 0 && errno == EINTR) continue;
+        break;  // getrandom unavailable: fall through to /dev/urandom
+    }
+    if (remaining == 0) return 1;
+#endif
+    FILE* f = fopen("/dev/urandom", "rb");
+    if (!f) return 0;
+    size_t got = fread(p, 1, remaining, f);
+    fclose(f);
+    return got == remaining ? 1 : 0;
+}
+#endif
 inline void RAND_seed(const void*, int) {}
 
 #endif // OPENSSL_STUB_H

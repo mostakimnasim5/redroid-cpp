@@ -91,11 +91,15 @@ bool ConfigManager::saveConfig() {
 }
 
 bool ConfigManager::createDefaultConfig() {
-    // Create default config with Firebase project ID
+    // Firebase credentials come from the environment; only placeholders are
+    // written to disk. Never store real credentials in source or config defaults.
+    const QString projectId = qEnvironmentVariable("REDROID_FB_PROJECT_ID");
+    const QString apiKey = qEnvironmentVariable("REDROID_FB_API_KEY");
+
     m_config = QJsonObject{
         {"firebase", QJsonObject{
-            {"projectId", "redroid-d8110"},
-            {"apiKey", "AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA"}
+            {"projectId", projectId.isEmpty() ? QStringLiteral("YOUR_PROJECT_ID") : projectId},
+            {"apiKey", apiKey.isEmpty() ? QStringLiteral("your-firebase-api-key") : apiKey}
         }},
         {"api", QJsonObject{
             {"serverPort", 8080},

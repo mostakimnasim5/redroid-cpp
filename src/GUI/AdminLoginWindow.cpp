@@ -6,13 +6,37 @@
 
 #include "AdminLoginWindow.hpp"
 #include "AdminDashboardWindow.hpp"
+#include "VirtualPhonePro/ConfigManager.hpp"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
+#include <QCryptographicHash>
 #include <QDebug>
+
+namespace {
+
+// Constant-time comparison so password checks do not leak match length
+// through timing side channels.
+bool constantTimeEqual(const QByteArray& a, const QByteArray& b) {
+    if (a.size() != b.size()) return false;
+    unsigned char diff = 0;
+    for (int i = 0; i < a.size(); ++i) {
+        diff |= static_cast<unsigned char>(a.at(i) ^ b.at(i));
+    }
+    return diff == 0;
+}
+
+// Salted SHA-256 of (salt || password), hex-encoded. The salt is stored
+// per-admin in Firestore ("passwordSalt" field) alongside "passwordHash".
+QByteArray hashPassword(const QString& salt, const QString& password) {
+    QByteArray data = salt.toUtf8() + password.toUtf8();
+    return QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex();
+}
+
+} // namespace
 
 AdminLoginWindow::AdminLoginWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -183,11 +207,20 @@ void AdminLoginWindow::onLoginClicked() {
     m_loginButton->setText("Authenticating...");
     m_statusLabel->setVisible(false);
 
-    // Use Firebase REST API for admin authentication
-    // For simplicity, we'll query the admins collection and verify credentials
-    QString baseUrl = QString("https://firestore.googleapis.com/v1/projects/%1/databases/(default)/documents/admins")
-        .arg("Redroid-d8110");
-    QString apiKey = "AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA";
+    // Use Firebase REST API for admin authentication.
+    // Credentials come from REDROID_FB_PROJECT_ID / REDROID_FB_API_KEY
+    // environment variables or the user config file — never hardcoded.
+    auto& config = VirtualPhonePro::ConfigManager::instance();
+    if (!config.hasFirebaseConfig()) {
+        m_isLoggingIn = false;
+        m_loginButton->setEnabled(true);
+        m_loginButton->setText("LOGIN");
+        showError("Firebase is not configured. Set REDROID_FB_PROJECT_ID and "
+                  "REDROID_FB_API_KEY environment variables.");
+        return;
+    }
+    QString baseUrl = config.getFirebaseBaseUrl() + "/admins";
+    QString apiKey = config.getFirebaseApiKey();
 
     // Build query to find admin by ID
     QUrl url(baseUrl + ":runQuery?key=" + apiKey);
@@ -253,12 +286,25 @@ void AdminLoginWindow::onLoginReply(QNetworkReply* reply) {
         return;
     }
 
-    // Admin found - verify password
+    // Admin found - verify password against its salted hash.
+    // Firestore must store "passwordSalt" (hex) and "passwordHash"
+    // (hex SHA-256 of salt||password); plaintext is never stored or compared.
     QJsonObject document = results[0].toObject()["document"].toObject();
     QJsonObject fields = document["fields"].toObject();
-    QString storedPassword = fields["password"].toObject()["stringValue"].toString();
+    QString storedHash = fields["passwordHash"].toObject()["stringValue"].toString();
+    QString salt = fields["passwordSalt"].toObject()["stringValue"].toString();
 
-    if (password != storedPassword) {
+    if (storedHash.isEmpty() || salt.isEmpty()) {
+        // Fail closed: legacy documents with a plaintext "password" field
+        // are never honored — the account must be migrated to hashed storage.
+        qWarning() << "[AdminLogin] Admin document lacks passwordHash/passwordSalt;"
+                   << "legacy plaintext credentials are not accepted.";
+        showError("This account uses legacy password storage. "
+                  "Please reset the password to a hashed credential.");
+        return;
+    }
+
+    if (!constantTimeEqual(hashPassword(salt, password), storedHash.toUtf8())) {
         showError("Invalid password");
         return;
     }

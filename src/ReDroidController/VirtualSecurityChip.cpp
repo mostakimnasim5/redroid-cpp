@@ -3,6 +3,7 @@
 #include "VirtualPhonePro/Logger.hpp"
 #include "openssl_stub.h"
 #include <random>
+#include <vector>
 #include <sstream>
 #include <iomanip>
 #include <ctime>
@@ -82,29 +83,24 @@ bool VirtualSecurityChip::isInitialized() const {
 }
 
 std::string VirtualSecurityChip::generateRandomBytes(size_t length) {
-    std::string result;
-    result.reserve(length);
-    
-    // Use OpenSSL RAND_bytes or fallback
-    unsigned char* buffer = new unsigned char[length];
-    
-    // Initialize random seed
-    RAND_seed(__FILE__, sizeof(__FILE__));
-    
-    if (RAND_bytes(buffer, static_cast<int>(length)) != 1) {
-        // Fallback to std::random if OpenSSL fails
+    if (length == 0) return {};
+
+    // RAND_bytes is backed by the OS CSPRNG (BCryptGenRandom on Windows,
+    // getrandom()//dev/urandom on POSIX).
+    std::vector<unsigned char> buffer(length);
+
+    if (RAND_bytes(buffer.data(), static_cast<int>(length)) != 1) {
+        // Last-resort fallback: std::random_device is OS-entropy-backed on
+        // MSVC and libstdc++. Never use rand()/mt19937 for key material.
+        Logger::getInstance().error(
+            "OS CSPRNG failed in generateRandomBytes; falling back to std::random_device");
         std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(0, 255);
-        for (size_t i = 0; i < length; i++) {
-            buffer[i] = static_cast<unsigned char>(dis(gen));
+        for (auto& b : buffer) {
+            b = static_cast<unsigned char>(rd() & 0xFF);
         }
     }
-    
-    result.assign(reinterpret_cast<char*>(buffer), length);
-    delete[] buffer;
-    
-    return result;
+
+    return std::string(reinterpret_cast<const char*>(buffer.data()), length);
 }
 
 std::string VirtualSecurityChip::calculateSHA256(const std::string& data) {

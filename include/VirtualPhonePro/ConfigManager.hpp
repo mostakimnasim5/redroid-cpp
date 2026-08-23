@@ -19,6 +19,7 @@
 #include <QDir>
 #include <QCoreApplication>
 #include <QJsonArray>
+#include <QtGlobal>
 
 namespace VirtualPhonePro {
 
@@ -43,8 +44,16 @@ public:
     QString getConfigDir() const;
     
     // Firebase config
-    QString getFirebaseProjectId() const { return m_config["firebase"]["projectId"].toString(); }
-    QString getFirebaseApiKey() const { return m_config["firebase"]["apiKey"].toString(); }
+    // Environment variables take precedence over the config file so that
+    // credentials never need to be stored on disk or in source control.
+    QString getFirebaseProjectId() const {
+        const QString env = qEnvironmentVariable("REDROID_FB_PROJECT_ID");
+        return env.isEmpty() ? m_config["firebase"]["projectId"].toString() : env;
+    }
+    QString getFirebaseApiKey() const {
+        const QString env = qEnvironmentVariable("REDROID_FB_API_KEY");
+        return env.isEmpty() ? m_config["firebase"]["apiKey"].toString() : env;
+    }
     QString getFirebaseBaseUrl() const;
     
     // API config

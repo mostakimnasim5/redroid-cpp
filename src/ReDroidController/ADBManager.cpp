@@ -1,6 +1,8 @@
 #include "VirtualPhonePro/ADBManager.hpp"
 #include "VirtualPhonePro/Logger.hpp"
 #include <cstdlib>
+#include <cctype>
+#include <algorithm>
 #include <sstream>
 #include <array>
 #include <chrono>
@@ -21,6 +23,32 @@
 #endif
 
 namespace VirtualPhonePro {
+
+namespace {
+
+// Shell-command injection guards. ADB shell commands are built by string
+// concatenation and executed via popen, so anything interpolated into the
+// command must be strictly validated.
+
+// Android property names: alphanumerics plus '.', '_', '-'
+// (e.g. "ro.build.fingerprint", "persist.sys.timezone").
+bool isValidPropertyName(const std::string& name) {
+    if (name.empty() || name.size() > 96) return false;
+    return std::all_of(name.begin(), name.end(), [](char c) {
+        unsigned char u = static_cast<unsigned char>(c);
+        return std::isalnum(u) || c == '.' || c == '_' || c == '-';
+    });
+}
+
+// Property values are embedded in a double-quoted shell string; reject any
+// character that could break out of quoting or chain commands.
+bool isSafePropertyValue(const std::string& value) {
+    if (value.size() > 512) return false;
+    static const char* const dangerous = "\"`$\\;|&<>\n\r";
+    return value.find_first_of(dangerous) == std::string::npos;
+}
+
+} // namespace
 
 // ============================================================================
 // Per-instance registry
@@ -456,15 +484,30 @@ bool ADBManager::rebootRecovery() {
 }
 
 bool ADBManager::setProperty(const std::string& property, const std::string& value) {
+    if (!isValidPropertyName(property)) {
+        Logger::getInstance().warning("Rejected setprop with invalid property name");
+        return false;
+    }
+    if (!isSafePropertyValue(value)) {
+        Logger::getInstance().warning("Rejected setprop for property " + property +
+                                      ": value contains shell metacharacters");
+        return false;
+    }
+
     Logger::getInstance().info("Setting property: " + property + " = " + value);
-    
+
     std::string cmd = "setprop " + property + " \"" + value + "\"";
     std::string result = executeShellCommand(cmd);
-    
+
     return result.empty() || result.find("error") == std::string::npos;
 }
 
 std::string ADBManager::getProperty(const std::string& property) {
+    if (!isValidPropertyName(property)) {
+        Logger::getInstance().warning("Rejected getprop with invalid property name");
+        return "";
+    }
+
     std::string cmd = "getprop " + property;
     std::string result = executeShellCommand(cmd);
     
