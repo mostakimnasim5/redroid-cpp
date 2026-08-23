@@ -15,6 +15,7 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QMutexLocker>
+#include <memory>
 
 namespace VirtualPhonePro {
 
@@ -71,8 +72,8 @@ private:
     static QString logLevelToString(LogLevel level);
     
     
-    QFile* m_logFile;
-    QTextStream* m_logStream;
+    std::unique_ptr<QFile> m_logFile;
+    std::unique_ptr<QTextStream> m_logStream;
     QString m_logFilePath;
     QMutex m_fileMutex;
     

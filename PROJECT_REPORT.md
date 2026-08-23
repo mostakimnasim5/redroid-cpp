@@ -201,7 +201,7 @@ User Input ──► Qt6 GUI ──► API Server ──► Controller ──►
 | মডিউল | ফাইল | লাইন | বিবরণ |
 |-------|------|------|-------|
 | **MainWindow** | mainwindow.cpp | 1,016 | মূল Qt6 উইন্ডো |
-| **AutoStartDialog** | AutoStartDialog.cpp | 188 | অটো-স্টার্ট ডায়ালগ |
+| ~~**AutoStartDialog**~~ | ~~AutoStartDialog.cpp~~ | 188 | অটো-স্টার্ট ডায়ালগ — সরিয়ে ফেলা হয়েছে (legacy, Fix 12) |
 
 ---
 
@@ -590,10 +590,10 @@ redroid-cpp/
 │   │   └── CMakeLists.txt
 │   ├── main.cpp                         [450 lines]
 │   ├── mainwindow.cpp                   [1,016 lines] ⭐
-│   ├── mainwindow.h                     [272 lines]
+│   ├── mainwindow.h                     [272 lines]  ← সরিয়ে ফেলা হয়েছে (legacy, Fix 12)
 │   ├── qtmain.cpp                       [288 lines]
-│   ├── AutoStartDialog.cpp              [188 lines]
-│   └── AutoStartDialog.h                [76 lines]
+│   ├── AutoStartDialog.cpp              [188 lines]  ← সরিয়ে ফেলা হয়েছে (legacy, Fix 12)
+│   └── AutoStartDialog.h                [76 lines]   ← সরিয়ে ফেলা হয়েছে (legacy, Fix 12)
 │
 ├── 📂 docker/                          [Docker কনফিগ]
 │   ├── Dockerfile

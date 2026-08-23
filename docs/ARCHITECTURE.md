@@ -548,6 +548,11 @@ cd C:\vcpkg
 
 ### 5.3 Root CMakeLists.txt
 
+> Note (2026-08-23): this is an idealized example. The actual root
+> `CMakeLists.txt` builds a single `ReDroidCPP` target whose only entry
+> point is `src/qtmain.cpp`; the legacy `src/main.cpp` CLI shown below
+> was removed (Fix 12).
+
 ```cmake
 cmake_minimum_required(VERSION 3.20)
 project(VirtualPhonePro VERSION 1.0.0 LANGUAGES CXX)

@@ -30,6 +30,11 @@
 #include <QMutexLocker>
 #include <QtConcurrent>
 #include <QCoreApplication>
+#include <QFile>
+#include <QProcess>
+#include <QTcpServer>
+#include <QHostAddress>
+#include <cstring>
 
 namespace VirtualPhonePro {
 
@@ -37,6 +42,52 @@ MultiInstanceManager& MultiInstanceManager::instance() {
     static MultiInstanceManager s_instance;
     return s_instance;
 }
+
+namespace {
+
+// System memory in MB, or -1 when undetectable (callers then skip the
+// check rather than guessing). Cross-platform: /proc/meminfo on Linux,
+// GlobalMemoryStatusEx on Windows.
+qint64 readMeminfoMB(const char* key) {
+#ifdef _WIN32
+    MEMORYSTATUSEX memStatus{};
+    memStatus.dwLength = sizeof(memStatus);
+    if (!GlobalMemoryStatusEx(&memStatus))
+        return -1;
+    if (std::strcmp(key, "MemTotal") == 0)
+        return static_cast<qint64>(memStatus.ullTotalPhys / (1024 * 1024));
+    return static_cast<qint64>(memStatus.ullAvailPhys / (1024 * 1024));
+#else
+    QFile f(QStringLiteral("/proc/meminfo"));
+    if (!f.open(QIODevice::ReadOnly))
+        return -1;
+    const QByteArray content = f.readAll();
+    const QList<QByteArray> lines = content.split('\n');
+    for (const QByteArray& line : lines) {
+        if (line.startsWith(key)) {
+            // Format: "MemAvailable:   12345678 kB"
+            const QList<QByteArray> parts = line.simplified().split(' ');
+            if (parts.size() >= 2)
+                return parts.at(1).toLongLong() / 1024;  // kB -> MB
+        }
+    }
+    return -1;
+#endif
+}
+
+qint64 systemTotalMemoryMB()     { return readMeminfoMB("MemTotal"); }
+qint64 systemAvailableMemoryMB() { return readMeminfoMB("MemAvailable"); }
+
+// Socket-level probe: true when nothing on this host is bound to the port.
+bool isHostPortFree(int port) {
+    QTcpServer probe;
+    if (!probe.listen(QHostAddress::LocalHost, static_cast<quint16>(port)))
+        return false;
+    probe.close();
+    return true;
+}
+
+} // namespace
 
 MultiInstanceManager::MultiInstanceManager(QObject* parent)
     : QObject(parent)
@@ -96,10 +147,57 @@ BatchStatus MultiInstanceManager::deployBatch(const InstanceDeployConfig& config
     BatchStatus status;
     status.total = config.count;
 
+    // Sweep containers left behind by crashed sessions before judging
+    // capacity — stale vpp-* containers otherwise hold ports and names.
+    const int swept = cleanupStaleContainers();
+    if (swept > 0)
+        qDebug() << "deployBatch: removed" << swept << "stale container(s)";
+
     if (!canDeploy(config.count)) {
-        emit resourceWarning("Resource limit reached. Cannot deploy requested instances.");
+        const QString msg = QStringLiteral(
+            "Resource limit reached: %1 concurrent-instance cap or "
+            "insufficient free RAM for %2 new instance(s).")
+            .arg(m_maxConcurrentInstances).arg(config.count);
+        emit resourceWarning(msg);
         status.failed = config.count;
+        status.errors.append(msg);
         return status;
+    }
+
+    // RAM overcommit guard with an explicit, actionable error (canDeploy()
+    // above only returns a bool).
+    const qint64 freeMB = systemAvailableMemoryMB();
+    const qint64 needMB = static_cast<qint64>(config.count) * m_maxMemoryPerInstance;
+    if (freeMB >= 0 && freeMB < needMB) {
+        const QString msg = QStringLiteral(
+            "Not enough free RAM: need %1 MB for %2 instance(s) "
+            "(%3 MB each) but only %4 MB available.")
+            .arg(needMB).arg(config.count)
+            .arg(m_maxMemoryPerInstance).arg(freeMB);
+        qCritical() << "deployBatch:" << msg;
+        emit resourceWarning(msg);
+        status.failed = config.count;
+        status.errors.append(msg);
+        return status;
+    }
+
+    // Pre-flight the requested port range when the caller pins ports:
+    // a busy port now would otherwise surface as an obscure docker
+    // "port is already allocated" failure mid-launch.
+    if (config.assignUniquePort) {
+        for (int i = 0; i < config.count; ++i) {
+            const int port = config.portStart + (i * 2);
+            if (!isHostPortFree(port)) {
+                const QString msg = QStringLiteral(
+                    "Requested ADB port %1 is already in use on the host.")
+                    .arg(port);
+                qCritical() << "deployBatch:" << msg;
+                emit resourceWarning(msg);
+                status.failed = config.count;
+                status.errors.append(msg);
+                return status;
+            }
+        }
     }
 
     qDebug() << "Batch deploy:" << config.count << "instances (parallel)";
@@ -128,8 +226,9 @@ BatchStatus MultiInstanceManager::deployBatch(const InstanceDeployConfig& config
     // ── 2. Launch all containers in parallel ──────────────────────────────────
     // startInstance() is thread-safe (internal QMutexLocker on m_instancesMutex,
     // socket-level port probe, binderfs isolation per container).
-    // applyCompleteRealism() is serialised by m_globalAdbMutex so the global
-    // ADBManager selectDevice() cannot interleave between instances.
+    // applyCompleteRealism() pins every spoofing module to the instance's own
+    // adb serial (per-instance ADBManager), so parallel pipelines cannot leak
+    // commands across containers.
     QMutex           resultMutex;
     std::atomic<int> completed{0};
     std::atomic<int> failed{0};
@@ -392,44 +491,50 @@ QMap<QString, int> MultiInstanceManager::getResourceSummary() const {
 
 bool MultiInstanceManager::canDeploy(int count) const {
     QMutexLocker locker(&m_mutex);
-    
+
     int currentRunning = 0;
     ReDroidController& ctrl = ReDroidController::instance();
-    
+
     for (const InstanceInfo& info : ctrl.listInstances()) {
         if (info.state == InstanceState::Running) {
             currentRunning++;
         }
     }
-    
-    return (currentRunning + count <= m_maxConcurrentInstances);
+
+    if (currentRunning + count > m_maxConcurrentInstances)
+        return false;
+
+    // RAM overcommit guard: refuse when the host clearly cannot fit the
+    // requested instances. Skipped when free RAM is undetectable (-1).
+    const qint64 freeMB = systemAvailableMemoryMB();
+    if (freeMB >= 0 &&
+        freeMB < static_cast<qint64>(count) * m_maxMemoryPerInstance)
+        return false;
+
+    return true;
 }
 
 int MultiInstanceManager::getRecommendedMaxInstances() const {
-    // Simple heuristic based on typical system
-    // In production, would check actual CPU cores and memory
-    
     int cpuCores = QThread::idealThreadCount();
     if (cpuCores <= 0) cpuCores = 4;
-    
-    // Each instance uses 1536MB RAM
-    // Try to detect actual system RAM on Windows
-    quint64 totalRAM = 4096; // Default fallback (MB)
-#ifdef _WIN32
-    MEMORYSTATUSEX memStatus;
-    memStatus.dwLength = sizeof(memStatus);
-    if (GlobalMemoryStatusEx(&memStatus)) {
-        totalRAM = memStatus.ullTotalPhys / (1024 * 1024); // bytes → MB
+
+    // Cross-platform RAM detection (-1 = unknown -> conservative fallback).
+    const qint64 totalRAM = systemTotalMemoryMB();
+    qint64 availableRAM;
+    if (totalRAM > 0) {
+        // Reserve 3GB for host OS + Docker daemon + this GUI.
+        availableRAM = qMax<qint64>(0, totalRAM - 3072);
+    } else {
+        availableRAM = 4096;
     }
-#endif
 
-    // Reserve 3GB for Windows + Docker + GUI overhead
-    quint64 availableRAM = (totalRAM > 3072) ? (totalRAM - 3072) : 0;
+    const int perInstanceMB = qMax(1, m_maxMemoryPerInstance);
+    const int maxByCPU = qMax(1, cpuCores / 2);
+    const int maxByRAM = static_cast<int>(availableRAM / perInstanceMB);
 
-    int maxByCPU = cpuCores / 2;
-    int maxByRAM = static_cast<int>(availableRAM / 1536); // 1536MB per instance
-    
-    return qMin(maxByCPU, maxByRAM);
+    // At least 1 (a single instance is always worth offering), at most the
+    // configured hard limit.
+    return qBound(1, qMin(maxByCPU, maxByRAM), m_maxConcurrentInstances);
 }
 
 void MultiInstanceManager::setResourceLimits(int maxInstances, int maxMemoryPerInstance) {
@@ -517,6 +622,70 @@ int MultiInstanceManager::findAvailablePort() {
             m_nextAvailablePort = 5555;
         }
     }
+}
+
+int MultiInstanceManager::cleanupStaleContainers() {
+    // List vpp-* containers in any state. Short timeout — a wedged docker
+    // daemon must not block the launch path.
+    QProcess ps;
+    ps.start(QStringLiteral("docker"),
+             {QStringLiteral("ps"), QStringLiteral("-a"),
+              QStringLiteral("--filter"), QStringLiteral("name=vpp-"),
+              QStringLiteral("--format"), QStringLiteral("{{.Names}} {{.State}}")});
+    if (!ps.waitForFinished(10000)) {
+        ps.kill();
+        ps.waitForFinished(2000);
+        qWarning() << "cleanupStaleContainers: 'docker ps' timed out — skipping sweep";
+        return 0;
+    }
+
+    // Instance IDs that must never be removed.
+    QSet<QString> active;
+    for (const InstanceInfo& info : ReDroidController::instance().listInstances()) {
+        if (info.state == InstanceState::Starting ||
+            info.state == InstanceState::Running  ||
+            info.state == InstanceState::Paused) {
+            active.insert(info.instanceId);
+        }
+    }
+
+    int removed = 0;
+    const QString output = QString::fromUtf8(ps.readAllStandardOutput());
+    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString& line : lines) {
+        const QStringList parts = line.simplified().split(QLatin1Char(' '));
+        if (parts.size() < 2)
+            continue;
+        const QString name  = parts.at(0);             // e.g. "vpp-<instanceId>"
+        const QString state = parts.at(1).toLower();   // running/exited/dead/...
+        const QString id    = name.mid(4);             // strip "vpp-"
+
+        // Stale = not running, or running but unknown to us (orphaned).
+        const bool orphanRunning = (state == QStringLiteral("running")) && !active.contains(id);
+        const bool deadContainer = (state == QStringLiteral("exited") ||
+                                    state == QStringLiteral("dead")   ||
+                                    state == QStringLiteral("created"));
+        if (active.contains(id) || (!orphanRunning && !deadContainer))
+            continue;
+
+        qDebug() << "cleanupStaleContainers: removing stale container" << name
+                 << "(state:" << state << ")";
+        QProcess rm;
+        rm.start(QStringLiteral("docker"),
+                 {QStringLiteral("rm"), QStringLiteral("-f"), name});
+        if (!rm.waitForFinished(10000)) {
+            rm.kill();
+            rm.waitForFinished(2000);
+            qWarning() << "cleanupStaleContainers: timed out removing" << name;
+            continue;
+        }
+        if (rm.exitCode() == 0)
+            ++removed;
+        else
+            qWarning() << "cleanupStaleContainers: failed to remove" << name
+                       << ":" << QString::fromUtf8(rm.readAllStandardError()).trimmed();
+    }
+    return removed;
 }
 
 } // namespace VirtualPhonePro

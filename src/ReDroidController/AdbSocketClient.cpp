@@ -51,6 +51,7 @@ AdbSocketClient::AdbSocketClient(QObject* parent)
 
 AdbSocketClient::~AdbSocketClient() {
     disconnect();
+    closeControlChannel();  // m_controlSocket is owning — must not leak
 }
 
 // ── VPP instanceId → AdbSocketClient registry ────────────────────────────────
@@ -416,7 +417,7 @@ bool AdbSocketClient::openControlChannel(const QString& host, quint16 controlPor
         return true;
 
     if (!m_controlSocket)
-        m_controlSocket = new QTcpSocket();
+        m_controlSocket = new QTcpSocket(this);
 
     m_controlSocket->connectToHost(host, controlPort);
     if (!m_controlSocket->waitForConnected(5000)) {
@@ -442,6 +443,7 @@ void AdbSocketClient::adoptControlSocket(QTcpSocket* socket) {
         delete m_controlSocket;
     }
     m_controlSocket = socket;
+    m_controlSocket->setParent(this);  // we own it from here on
     qDebug() << "[ControlChannel] Adopted pre-connected socket";
 }
 

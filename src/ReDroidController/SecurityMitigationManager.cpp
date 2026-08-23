@@ -1685,7 +1685,7 @@ bool SecurityMitigationManager::startMonitoring(const QString& instanceId, int i
         }
     }
     
-    QTimer* timer = new QTimer();
+    QTimer* timer = new QTimer(this);  // parent-owned: no leak if never stopped
     m_monitoringTimers[instanceId] = timer;
     
     connect(timer, &QTimer::timeout, this, &SecurityMitigationManager::onMonitoringTimeout);

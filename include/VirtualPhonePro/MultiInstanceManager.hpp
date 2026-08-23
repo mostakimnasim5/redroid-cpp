@@ -209,6 +209,15 @@ public:
      * @return Available port number
      */
     int findAvailablePort();
+
+    /**
+     * @brief Remove stale vpp-* containers left over from crashed sessions.
+     * A container is stale when it is exited/dead/created (not running) and
+     * is not tracked as an active instance. Called automatically at the
+     * start of deployBatch().
+     * @return Number of containers removed
+     */
+    int cleanupStaleContainers();
     
 signals:
     /**
