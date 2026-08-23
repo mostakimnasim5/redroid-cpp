@@ -1026,7 +1026,9 @@ CompleteTimingConfig RealisticDeviceProfile::generateTiming(const QString& count
     auto locale = IPTimezoneConverter::getInstance().getLocaleByCountryCode(
         countryCode.isEmpty() ? "US" : countryCode.toStdString());
     QTimeZone tz(QString::fromStdString(locale.timezone).toUtf8());
-    qint64 offsetSec = tz.isValid() ? tz.standardTimeOffset(now / 1000) : 0;
+    qint64 offsetSec = tz.isValid()
+        ? tz.standardTimeOffset(QDateTime::fromMSecsSinceEpoch(now, QTimeZone::UTC))
+        : 0;
     timing.timeZoneOffset = static_cast<int>(offsetSec * 1000);
     timing.timeZoneId = QString::fromStdString(locale.timezone);
     const QString nitzGmt = QStringLiteral("GMT%1%2:%3")

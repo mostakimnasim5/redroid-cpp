@@ -2,6 +2,7 @@
 #include "VirtualPhonePro/ScreenMirror.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
 #include "VirtualPhonePro/Logger.hpp"
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
