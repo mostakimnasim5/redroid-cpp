@@ -185,6 +185,9 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/CryptoUtils.hpp
     # NEW: Device Profile Generator
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceProfileGenerator.hpp
+    # NEW: Hardware ID + hardware-anchored generator factory
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HardwareId.hpp
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/ProfileGeneratorFactory.hpp
     # NEW: Logger (centralized logging)
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/Logger.hpp
     # NEW: Requirements installer (WSL2 + Docker Desktop)
@@ -279,6 +282,8 @@ set(REDCONTROLLER_SOURCES
     ${PROJECT_SOURCE_DIR}/CryptoUtils.cpp
     # NEW: Device Profile Generator (HMAC-SHA256 based unique profile generation)
     ${PROJECT_SOURCE_DIR}/DeviceProfileGenerator.cpp
+    ${PROJECT_SOURCE_DIR}/HardwareId.cpp
+    ${PROJECT_SOURCE_DIR}/ProfileGeneratorFactory.cpp
     # NEW: Logger (centralized logging)
     ${PROJECT_SOURCE_DIR}/Logger.cpp
     # NEW: OpenSSL Stub (crypto without OpenSSL dependency)
