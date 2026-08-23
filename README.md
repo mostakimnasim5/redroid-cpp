@@ -96,7 +96,7 @@ ReDroidCPP/
 ├── src/
 │   ├── ReDroidController/    ← 45+ C++ modules
 │   ├── GUI/                  ← Qt6 phone window
-│   └── mainwindow.cpp        ← Main window
+│   └── qtmain.cpp            ← Application entry point
 ├── include/VirtualPhonePro/  ← All headers
 ├── docker/
 │   ├── Dockerfile            ← Android container
@@ -105,7 +105,9 @@ ReDroidCPP/
 │   └── patch_system.sh       ← Anti-detection
 ├── tests/
 │   ├── Test_DetectionBypass.cpp
-│   └── Test_UniqueDeviceGenerator.cpp
+│   ├── Test_ProfileGenerator.cpp
+│   ├── Test_UniqueDeviceGenerator.cpp
+│   └── Test_Validation.cpp
 ├── profiles/                 ← Device profiles
 ├── start.bat                 ← Quick launcher
 ├── build-release.bat         ← Build script
