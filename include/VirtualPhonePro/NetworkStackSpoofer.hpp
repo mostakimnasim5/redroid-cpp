@@ -4,7 +4,10 @@
 #include <map>
 #include <vector>
 
+#include <QString>
+
 namespace VirtualPhonePro {
+class ADBManager;
 
 struct NetworkStackConfig {
     std::string tcpCongestionControl;
@@ -156,6 +159,15 @@ private:
     
     std::map<std::string, std::string> m_modifiedSettings;
     std::map<std::string, std::string> m_originalSettings;
+
+public:
+    // Bind this spoofer to a specific instance so its ADB commands are
+    // pinned to that container (cross-instance spoofing fix).
+    void setInstanceId(const QString& instanceId) { m_instanceId = instanceId; }
+
+private:
+    ADBManager& adbForInstance() const;
+    QString m_instanceId;
 };
 
 }

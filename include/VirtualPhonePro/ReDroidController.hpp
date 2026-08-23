@@ -273,6 +273,11 @@ public:
      * @brief Get info for specific instance
      */
     InstanceInfo getInstanceInfo(const QString& instanceId) const;
+
+    // Adb serial ("127.0.0.1:<port>") for an instance. Used by per-instance
+    // spoofing modules to bind their own ADBManager so spoofing can never
+    // leak onto another container (cross-instance spoofing fix).
+    QString adbSerialFor(const QString& instanceId) const;
     
     /**
      * @brief Check if instance exists
@@ -587,7 +592,6 @@ private:
     // Instance management
     QMap<QString, InstanceInfo> m_instances;
     mutable QMutex m_instancesMutex;
-    QMutex         m_globalAdbMutex;  // Serialises global ADBManager::selectDevice()
                                       // across concurrent applyCompleteRealism() calls
     int m_nextAdbPort;
     

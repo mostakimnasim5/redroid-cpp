@@ -8,6 +8,7 @@
 #include <QMutex>
 
 namespace VirtualPhonePro {
+class ADBManager;
 
 struct HardeningConfig {
     bool hideRoot;
@@ -210,6 +211,11 @@ private:
     
     bool m_initialized;
     bool m_hardeningApplied;
+
+    // Per-instance ADB routing — commands go to the serial bound at
+    // registry creation time, never the shared global selected device.
+    ADBManager& adbForInstance();
+    QString m_instanceId;
 };
 
 }

@@ -1,5 +1,6 @@
 #include "VirtualPhonePro/RealPhoneHardening.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/Logger.hpp"
 #include <QMutexLocker>
 #include <random>
@@ -20,6 +21,7 @@ RealPhoneHardening& RealPhoneHardening::getInstanceFor(const QString& instanceId
     QMutexLocker lock(&s_hardeningMutex);
     if (!s_hardeningRegistry.contains(instanceId)) {
         s_hardeningRegistry[instanceId] = new RealPhoneHardening();
+        s_hardeningRegistry[instanceId]->m_instanceId = instanceId;
     }
     return *s_hardeningRegistry[instanceId];
 }
@@ -29,6 +31,22 @@ void RealPhoneHardening::removeInstance(const QString& instanceId) {
     if (s_hardeningRegistry.contains(instanceId)) {
         delete s_hardeningRegistry.take(instanceId);
     }
+}
+
+ADBManager& RealPhoneHardening::adbForInstance() {
+    // Per-instance ADB context: returns the ADBManager pre-bound to this
+    // module's instanceId's adb serial, so every setprop/shell command is
+    // pinned to the correct container and can never leak onto another
+    // running instance (cross-instance spoofing leak fix). Falls back to
+    // the legacy global manager only for the getInstance() singleton path.
+    if (m_instanceId.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    const QString serial = ReDroidController::instance().adbSerialFor(m_instanceId);
+    if (serial.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    return ADBManager::getInstanceFor(serial.toStdString());
 }
 
 RealPhoneHardening::RealPhoneHardening()
@@ -77,21 +95,21 @@ HardeningConfig RealPhoneHardening::getConfig() const {
 }
 
 bool RealPhoneHardening::applyProperty(const std::string& key, const std::string& value) {
-    return ADBManager::getInstance().setProperty(key, value);
+    return adbForInstance().setProperty(key, value);
 }
 
 std::string RealPhoneHardening::getProperty(const std::string& key) {
-    return ADBManager::getInstance().getProperty(key);
+    return adbForInstance().getProperty(key);
 }
 
 bool RealPhoneHardening::executeCommand(const std::string& command) {
-    return ADBManager::getInstance().executeShellCommand(command).find("error") == std::string::npos;
+    return adbForInstance().executeShellCommand(command).find("error") == std::string::npos;
 }
 
 // Root Detection Bypass
 bool RealPhoneHardening::hideRoot() {
     Logger::getInstance().info("Hiding root detection...");
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("mount -o rw,remount /system");
     
@@ -111,7 +129,7 @@ bool RealPhoneHardening::hideRoot() {
 }
 
 bool RealPhoneHardening::hideMagisk() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("magisk --denylist add com.google.android.gms 2>/dev/null || true");
     adb.executeShellCommand("magisk hide enable 2>/dev/null || true");
@@ -123,7 +141,7 @@ bool RealPhoneHardening::hideMagisk() {
 }
 
 bool RealPhoneHardening::hideSU() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("chmod 000 /system/bin/su 2>/dev/null || true");
     adb.executeShellCommand("chmod 000 /system/xbin/su 2>/dev/null || true");
@@ -136,7 +154,7 @@ bool RealPhoneHardening::hideSU() {
 }
 
 bool RealPhoneHardening::hideXposed() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("mv /system/bin/app_process64 /system/bin/app_process64.bak 2>/dev/null || true");
     adb.executeShellCommand("mv /system/bin/app_process32 /system/bin/app_process32.bak 2>/dev/null || true");
@@ -147,7 +165,7 @@ bool RealPhoneHardening::hideXposed() {
 }
 
 bool RealPhoneHardening::hideSelinuxStatus() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.build.selinux.enforce", "false");
     adb.executeShellCommand("setenforce 0 2>/dev/null || true");
@@ -156,7 +174,7 @@ bool RealPhoneHardening::hideSelinuxStatus() {
 }
 
 bool RealPhoneHardening::hideDebugStatus() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.debuggable", "0");
     adb.setProperty("ro.adb.secure", "1");
@@ -169,7 +187,7 @@ bool RealPhoneHardening::hideDebugStatus() {
 }
 
 bool RealPhoneHardening::enableDmVerity() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.verity.mode", "enforcing");
     adb.executeShellCommand(" mount -o remount,ro /system");
@@ -178,7 +196,7 @@ bool RealPhoneHardening::enableDmVerity() {
 }
 
 bool RealPhoneHardening::enableVerifiedBoot() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.boot.verifiedbootstate", "green");
     adb.setProperty("ro.boot.veritymode", "enforcing");
@@ -188,7 +206,7 @@ bool RealPhoneHardening::enableVerifiedBoot() {
 }
 
 bool RealPhoneHardening::hideBuildType() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.build.type", "user");
     adb.setProperty("ro.build.tags", "release-keys");
@@ -197,7 +215,7 @@ bool RealPhoneHardening::hideBuildType() {
 }
 
 bool RealPhoneHardening::convertUserdebugToUser() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string currentType = adb.getProperty("ro.build.type");
     if (currentType == "userdebug") {
@@ -210,7 +228,7 @@ bool RealPhoneHardening::convertUserdebugToUser() {
 }
 
 bool RealPhoneHardening::hideTestKeys() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string fingerprint = adb.getProperty("ro.build.fingerprint");
     if (fingerprint.find("test-keys") != std::string::npos) {
@@ -224,7 +242,7 @@ bool RealPhoneHardening::hideTestKeys() {
 // SafetyNet & Play Integrity
 bool RealPhoneHardening::enableSafetyNet() {
     Logger::getInstance().info("Enabling SafetyNet...");
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.verity.mode", "enforcing");
     adb.setProperty("ro.boot.verifiedbootstate", "green");
@@ -242,7 +260,7 @@ bool RealPhoneHardening::enableSafetyNet() {
 
 bool RealPhoneHardening::enablePlayIntegrity() {
     Logger::getInstance().info("Enabling Play Integrity...");
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.play.integrity.enabled", "true");
     adb.setProperty("ro.play.integrity.basic", "true");
@@ -254,7 +272,7 @@ bool RealPhoneHardening::enablePlayIntegrity() {
 }
 
 bool RealPhoneHardening::mockSafetyNetResponse(bool basicIntegrity, bool ctsProfile) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.safetynet.basic", basicIntegrity ? "true" : "false");
     adb.setProperty("persist.safetynet.cts", ctsProfile ? "true" : "false");
@@ -264,7 +282,7 @@ bool RealPhoneHardening::mockSafetyNetResponse(bool basicIntegrity, bool ctsProf
 }
 
 bool RealPhoneHardening::setPlayIntegrityResult(const std::string& nonce, const std::string& result) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.play.integrity.nonce", nonce);
     adb.setProperty("persist.play.integrity.result", result);
@@ -277,7 +295,7 @@ bool RealPhoneHardening::setPlayIntegrityResult(const std::string& nonce, const 
 
 // Battery Hardening
 bool RealPhoneHardening::setBatteryState(int level, const std::string& status, const std::string& type) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("dumpsys battery set level " + std::to_string(level));
     
@@ -304,14 +322,14 @@ bool RealPhoneHardening::setBatteryState(int level, const std::string& status, c
 }
 
 bool RealPhoneHardening::setBatteryTemperature(const std::string& temp) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.executeShellCommand("dumpsys battery set temperature " + temp);
     m_batteryConfig.temperature = temp;
     return true;
 }
 
 bool RealPhoneHardening::setBatteryHealth(const std::string& health) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.executeShellCommand("dumpsys battery set health 2");
     m_batteryConfig.health = health;
     return true;
@@ -324,14 +342,14 @@ bool RealPhoneHardening::enableBatterySimulation() {
 
 bool RealPhoneHardening::disableBatterySimulation() {
     m_batteryConfig.enabled = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.executeShellCommand("dumpsys battery reset");
     return true;
 }
 
 // Radio/Bandwidth Hardening
 bool RealPhoneHardening::spoofBaseband(const std::string& version) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("ro.baseband", version);
     adb.setProperty("persist.radio.baseband", version);
     m_radioConfig.basebandVersion = version;
@@ -339,7 +357,7 @@ bool RealPhoneHardening::spoofBaseband(const std::string& version) {
 }
 
 bool RealPhoneHardening::spoofRadioVersion(const std::string& version) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("ro.radio.version", version);
     adb.setProperty("ro.modem.wifi.version", version);
     adb.setProperty("persist.radio.version", version);
@@ -348,7 +366,7 @@ bool RealPhoneHardening::spoofRadioVersion(const std::string& version) {
 }
 
 bool RealPhoneHardening::spoofKernelVersion(const std::string& version) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("ro.kernel.version", version);
     adb.setProperty("ro.config.kernel.version", version);
     m_kernelConfig.kernelVersion = version;
@@ -356,7 +374,7 @@ bool RealPhoneHardening::spoofKernelVersion(const std::string& version) {
 }
 
 bool RealPhoneHardening::spoofCpuAbi(const std::string& abi) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("ro.product.cpu.abi", abi);
     adb.setProperty("ro.product.cpu.abi2", abi + "2");
     return true;
@@ -364,7 +382,7 @@ bool RealPhoneHardening::spoofCpuAbi(const std::string& abi) {
 
 // Kernel Hardening
 bool RealPhoneHardening::hideProcfsContents() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("mount -o rw,remount /proc");
     adb.executeShellCommand("chmod 000 /proc/1/cmdline 2>/dev/null || true");
@@ -389,7 +407,7 @@ bool RealPhoneHardening::removeSensorNoise() {
 }
 
 bool RealPhoneHardening::hideLinuxSubsystem() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("ro.kernel.android.qemu", "0");
     adb.executeShellCommand("getprop ro.kernel.android.qemu 2>/dev/null | grep -v qemu && echo '0'");
     return true;
@@ -397,7 +415,7 @@ bool RealPhoneHardening::hideLinuxSubsystem() {
 
 // Emulator Detection Bypass
 bool RealPhoneHardening::bypassQEMUDetection() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.kernel.qemu", "0");
     adb.setProperty("ro.kernel.android.qemu", "0");
@@ -411,7 +429,7 @@ bool RealPhoneHardening::bypassQEMUDetection() {
 }
 
 bool RealPhoneHardening::bypassGenymotionDetection() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.product.model", "Samsung Galaxy S21");
     adb.setProperty("ro.product.device", "o1s");
@@ -425,7 +443,7 @@ bool RealPhoneHardening::bypassGenymotionDetection() {
 }
 
 bool RealPhoneHardening::bypassBlueStacksDetection() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.product.model", "Samsung Galaxy S21 Ultra");
     adb.setProperty("ro.product.device", "dreamlte");
@@ -442,7 +460,7 @@ bool RealPhoneHardening::bypassBlueStacksDetection() {
 }
 
 bool RealPhoneHardening::bypassNoxDetection() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.product.model", "Pixel 7 Pro");
     adb.setProperty("ro.product.device", "panther");
@@ -453,7 +471,7 @@ bool RealPhoneHardening::bypassNoxDetection() {
 }
 
 bool RealPhoneHardening::bypassLDPlayerDetection() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.product.model", "Galaxy S23");
     adb.setProperty("ro.product.device", "z3q");
@@ -465,7 +483,7 @@ bool RealPhoneHardening::bypassLDPlayerDetection() {
 }
 
 bool RealPhoneHardening::bypassVirtualBoxDetection() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.vbox.app.mode", "0");
     adb.executeShellCommand("getprop | grep vbox | while read line; do setprop ${line%%:*} '' 2>/dev/null; done");
@@ -493,35 +511,35 @@ bool RealPhoneHardening::bypassAllEmulators() {
 
 // Canvas Fingerprint Bypass
 bool RealPhoneHardening::enableCanvasSpoofing() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.canvas.mode", "1");
     m_canvasConfig.enabled = true;
     return true;
 }
 
 bool RealPhoneHardening::disableCanvasSpoofing() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.canvas.mode", "0");
     m_canvasConfig.enabled = false;
     return true;
 }
 
 bool RealPhoneHardening::setCanvasSpoofMode(int mode) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.canvas.mode", std::to_string(mode));
     m_canvasConfig.spoofMode = mode;
     return true;
 }
 
 bool RealPhoneHardening::setCustomCanvasPattern(const std::string& pattern) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.canvas.pattern", pattern);
     m_canvasConfig.customPattern = pattern;
     return true;
 }
 
 bool RealPhoneHardening::randomizeCanvasFingerprint() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -554,7 +572,7 @@ bool RealPhoneHardening::randomizeCanvasFingerprint() {
 
 // WebGL Fingerprint Bypass
 bool RealPhoneHardening::spoofWebGLRenderer(const std::string& renderer) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.webgl.renderer", renderer);
     adb.setProperty("debug.webgl.renderer", renderer);
     m_webglConfig.renderer = renderer;
@@ -562,7 +580,7 @@ bool RealPhoneHardening::spoofWebGLRenderer(const std::string& renderer) {
 }
 
 bool RealPhoneHardening::spoofWebGLVendor(const std::string& vendor) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.webgl.vendor", vendor);
     adb.setProperty("debug.webgl.vendor", vendor);
     m_webglConfig.vendor = vendor;
@@ -570,7 +588,7 @@ bool RealPhoneHardening::spoofWebGLVendor(const std::string& vendor) {
 }
 
 bool RealPhoneHardening::spoofWebGLVersion(const std::string& version) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.webgl.version", version);
     adb.setProperty("debug.webgl.version", version);
     m_webglConfig.version = version;
@@ -578,7 +596,7 @@ bool RealPhoneHardening::spoofWebGLVersion(const std::string& version) {
 }
 
 bool RealPhoneHardening::applyWebGLHardening() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Samsung Galaxy S24 uses Snapdragon 8 Gen 3 → Adreno 750
     if (m_webglConfig.renderer.empty()) {
@@ -646,28 +664,28 @@ bool RealPhoneHardening::applyWebGLHardening() {
 
 // Audio Fingerprint Bypass
 bool RealPhoneHardening::enableAudioSpoofing() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.audio.mode", "1");
     m_audioConfig.enabled = true;
     return true;
 }
 
 bool RealPhoneHardening::disableAudioSpoofing() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.audio.mode", "0");
     m_audioConfig.enabled = false;
     return true;
 }
 
 bool RealPhoneHardening::setAudioContext(const std::string& context) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.audio.context", context);
     m_audioConfig.audioContext = context;
     return true;
 }
 
 bool RealPhoneHardening::setSampleRate(const std::string& rate) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("persist.sys.audio.samplerate", rate);
     m_audioConfig.sampleRate = rate;
     return true;
@@ -675,7 +693,7 @@ bool RealPhoneHardening::setSampleRate(const std::string& rate) {
 
 // DNS Hardening
 bool RealPhoneHardening::setGoogleDNS() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.executeShellCommand("setprop net.dns1 8.8.8.8");
     adb.executeShellCommand("setprop net.dns2 8.8.4.4");
     adb.setProperty("persist.net.dns1", "8.8.8.8");
@@ -684,7 +702,7 @@ bool RealPhoneHardening::setGoogleDNS() {
 }
 
 bool RealPhoneHardening::setCloudflareDNS() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.executeShellCommand("setprop net.dns1 1.1.1.1");
     adb.executeShellCommand("setprop net.dns2 1.0.0.1");
     adb.setProperty("persist.net.dns1", "1.1.1.1");
@@ -693,7 +711,7 @@ bool RealPhoneHardening::setCloudflareDNS() {
 }
 
 bool RealPhoneHardening::setCustomDNS(const std::string& dns1, const std::string& dns2) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.executeShellCommand("setprop net.dns1 " + dns1);
     if (!dns2.empty()) {
         adb.executeShellCommand("setprop net.dns2 " + dns2);
@@ -706,7 +724,7 @@ bool RealPhoneHardening::setCustomDNS(const std::string& dns1, const std::string
 }
 
 bool RealPhoneHardening::enablePrivateDNS() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.executeShellCommand("settings put global private_dns_mode hostname");
     adb.executeShellCommand("settings put global private_dns_default_hostname dns.google");
     adb.setProperty("persist.sys.private_dns", "enabled");
@@ -714,7 +732,7 @@ bool RealPhoneHardening::enablePrivateDNS() {
 }
 
 bool RealPhoneHardening::disablePrivateDNS() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.executeShellCommand("settings put global private_dns_mode off");
     adb.executeShellCommand("settings delete global private_dns_default_hostname");
     adb.setProperty("persist.sys.private_dns", "disabled");
@@ -771,7 +789,7 @@ bool RealPhoneHardening::resetAll() {
 }
 
 bool RealPhoneHardening::resetRootDetection() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("mv /system/bin/su.bak /system/bin/su 2>/dev/null || true");
     adb.executeShellCommand("mv /system/xbin/su.bak /system/xbin/su 2>/dev/null || true");
@@ -789,7 +807,7 @@ bool RealPhoneHardening::resetBattery() {
 }
 
 bool RealPhoneHardening::resetEmulatorBypass() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("setprop ro.kernel.qemu 2>/dev/null || true");
     adb.executeShellCommand("setprop ro.kernel.android.qemu 2>/dev/null || true");
@@ -826,7 +844,7 @@ std::map<std::string, std::string> RealPhoneHardening::getHardeningStatus() {
 }
 
 bool RealPhoneHardening::isDeviceRealPhone() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string qemu = adb.getProperty("ro.kernel.qemu");
     std::string product = adb.getProperty("ro.product.device");
@@ -840,7 +858,7 @@ bool RealPhoneHardening::isDeviceRealPhone() {
 
 std::vector<std::string> RealPhoneHardening::getDetectionWarnings() {
     std::vector<std::string> warnings;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string type = adb.getProperty("ro.build.type");
     if (type == "userdebug") {

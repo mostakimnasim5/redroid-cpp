@@ -1,5 +1,6 @@
 #include "VirtualPhonePro/HypervisorBypass.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/Logger.hpp"
 #include <QMutexLocker>
 #include <random>
@@ -23,6 +24,7 @@ HypervisorBypass& HypervisorBypass::getInstanceFor(const QString& instanceId) {
     QMutexLocker lock(&s_registryMutex);
     if (!s_registry.contains(instanceId)) {
         s_registry[instanceId] = new HypervisorBypass();
+        s_registry[instanceId]->m_instanceId = instanceId;
     }
     return *s_registry[instanceId];
 }
@@ -32,6 +34,22 @@ void HypervisorBypass::removeInstance(const QString& instanceId) {
     if (s_registry.contains(instanceId)) {
         delete s_registry.take(instanceId);
     }
+}
+
+ADBManager& HypervisorBypass::adbForInstance() {
+    // Per-instance ADB context: returns the ADBManager pre-bound to this
+    // module's instanceId's adb serial, so every setprop/shell command is
+    // pinned to the correct container and can never leak onto another
+    // running instance (cross-instance spoofing leak fix). Falls back to
+    // the legacy global manager only for the getInstance() singleton path.
+    if (m_instanceId.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    const QString serial = ReDroidController::instance().adbSerialFor(m_instanceId);
+    if (serial.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    return ADBManager::getInstanceFor(serial.toStdString());
 }
 
 HypervisorBypass::HypervisorBypass()
@@ -63,7 +81,7 @@ HypervisorBypass::~HypervisorBypass() {
 bool HypervisorBypass::initialize() {
     Logger::getInstance().info("Initializing Hypervisor Bypass...");
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     if (!adb.isConnected()) {
         Logger::getInstance().warning("ADB not connected - Hypervisor Bypass will use cached mode");
         // Continue in cached mode - apply bypass when ADB connects
@@ -116,7 +134,7 @@ void HypervisorBypass::shutdown() {
 }
 
 HypervisorType HypervisorBypass::detectCurrentHypervisor() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Check for common hypervisor indicators
     std::string cpuinfo = adb.executeShellCommand(std::string("cat /proc/cpuinfo"));
@@ -215,7 +233,7 @@ HypervisorResult HypervisorBypass::disableBypass() {
 HypervisorResult HypervisorBypass::setDeviceAsRealHardware() {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Remove all VM/hypervisor indicators
     adb.executeShellCommand(std::string("setprop ro.hardware exynos2100"));
@@ -319,7 +337,7 @@ HypervisorResult HypervisorBypass::useNaturalTiming() {
 HypervisorResult HypervisorBypass::spoofCPUInfo(const std::string& cpuModel, int cores, int threads) {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Spoof CPU model
     m_spoofedCPUModel = cpuModel;
@@ -347,7 +365,7 @@ HypervisorResult HypervisorBypass::spoofCPUInfo(const std::string& cpuModel, int
 HypervisorResult HypervisorBypass::spoofGPUInfo(const std::string& gpuModel) {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Spoof GPU properties
     adb.setProperty("ro.hardware.gpu", gpuModel);
@@ -366,7 +384,7 @@ HypervisorResult HypervisorBypass::spoofGPUInfo(const std::string& gpuModel) {
 HypervisorResult HypervisorBypass::spoofKernelVersion(const std::string& version) {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.kernel.version", version);
     adb.setProperty("ro.build.version.kernel", version);
@@ -383,7 +401,7 @@ HypervisorResult HypervisorBypass::spoofKernelVersion(const std::string& version
 HypervisorResult HypervisorBypass::disableVMDetection() {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Disable common VM detection triggers
     adb.executeShellCommand(std::string("setprop ro.kernel.qemu 0"));
@@ -406,7 +424,7 @@ HypervisorResult HypervisorBypass::disableVMDetection() {
 HypervisorResult HypervisorBypass::hideHypervisorIndicators() {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide hypervisor CPU flags
     std::string cpuinfo = adb.executeShellCommand(std::string("cat /proc/cpuinfo"));
@@ -445,7 +463,7 @@ HypervisorResult HypervisorBypass::setCPUFeatures(const std::vector<std::string>
     HypervisorResult result = {false, "", "", {}};
     
     // Set CPU feature flags
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string featureStr;
     for (const auto& f : features) {
@@ -465,7 +483,7 @@ HypervisorResult HypervisorBypass::setCPUFeatures(const std::vector<std::string>
 HypervisorResult HypervisorBypass::bypassQEMUDetection() {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Remove QEMU-specific indicators
     adb.executeShellCommand(std::string("setprop ro.kernel.qemu 0"));
@@ -497,7 +515,7 @@ HypervisorResult HypervisorBypass::bypassQEMUDetection() {
 HypervisorResult HypervisorBypass::setQEMUIndicators(bool isQEMU) {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     if (!isQEMU) {
         // Hide QEMU indicators
@@ -524,7 +542,7 @@ HypervisorResult HypervisorBypass::bypassVMDetection() {
     HypervisorResult result = {false, "", "", {}};
     
     // Generic VM detection bypass
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Disable VM-specific services
     adb.executeShellCommand(std::string("stop vmware-tools 2>/dev/null || true"));
@@ -547,7 +565,7 @@ HypervisorResult HypervisorBypass::bypassVMDetection() {
 HypervisorResult HypervisorBypass::hideVMArtifacts() {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Remove VM-specific directories and files
     std::vector<std::string> vmPaths = {
@@ -573,7 +591,7 @@ HypervisorResult HypervisorBypass::hideVMArtifacts() {
 HypervisorResult HypervisorBypass::enableARMSimulation() {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set ARM-specific properties
     adb.executeShellCommand(std::string("setprop ro.product.cpu.abi arm64-v8a"));
@@ -615,7 +633,7 @@ HypervisorResult HypervisorBypass::disableARMSimulation() {
 HypervisorResult HypervisorBypass::setARMProperties() {
     HypervisorResult result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Samsung Exynos 2100 properties
     adb.setProperty("ro.hardware", "exynos2100");
@@ -741,7 +759,7 @@ std::map<std::string, std::string> HypervisorBypass::getDetailedStatus() {
 }
 
 void HypervisorBypass::applyAllBypasses() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Apply all bypass techniques
     bypassQEMUDetection();
@@ -754,7 +772,7 @@ void HypervisorBypass::applyAllBypasses() {
 }
 
 void HypervisorBypass::removeAllBypasses() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Restore original properties
     for (const auto& pair : m_modifiedProperties) {

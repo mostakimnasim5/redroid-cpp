@@ -1065,34 +1065,12 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         return false;
     }
 
-    // =========================================================================
-    // Fix 6: Select this instance on the shared global ADBManager.
-    //
-    // Several anti-detection singletons (HypervisorBypass, SafetyNetAdvancedBypass,
-    // RealPhoneHardening, AdvancedSpoofing, HardwareFingerprintSpoofer,
-    // NetworkStackSpoofer) issue ADB commands through the process-global
-    // ADBManager instance rather than through ReDroidController's
-    // instanceId-aware executeShell(). ADBManager routes those commands to
-    // m_selectedDevice — which, if never set, defaults to "any connected
-    // device". In a multi-instance setup that means spoofing intended for
-    // instance A could silently land on instance B.
-    //
-    // We connect this instance's adb endpoint and select it on the global
-    // manager before any global-ADB module runs, so every singleton below
-    // operates on the correct container.
-    // =========================================================================
-    // =========================================================================
-    // Global ADBManager serialisation lock.
-    // applyCompleteRealism() calls 11 phases that all route through the
-    // global ADBManager singleton (getInstance()). Without this lock, two
-    // concurrent launches can interleave selectDevice() calls, causing
-    // Phase-N of instance-A to fire commands at instance-B's serial.
-    // The lock is held for the entire realism pipeline of one instance;
-    // other instances queue behind it. Each instance's pipeline takes
-    // ~5-15 s, so contention is brief relative to the 90-180 s boot wait
-    // that already precedes this call.
-    // =========================================================================
-    QMutexLocker globalAdbLock(&m_globalAdbMutex);
+    // Per-instance ADB binding: HypervisorBypass / SafetyNetAdvancedBypass /
+    // RealPhoneHardening (per-instance registries) and AdvancedSpoofing /
+    // NetworkStackSpoofer (stack objects bound via setInstanceId()) all pin
+    // their ADB commands to this instance's adb serial, so no global
+    // serialization is needed here — instances can run their realism
+    // pipelines in parallel without cross-instance spoofing leaks.
 
     // Resolve this instance's country early — timezone, locale and carrier
     // settings throughout the pipeline must match it (see IPTimezoneConverter,
@@ -1262,6 +1240,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // and mobile operator identity. These are checked by banking apps that
     // correlate network-layer fingerprints with device identity.
     VirtualPhonePro::NetworkStackSpoofer netSpoofer;
+    netSpoofer.setInstanceId(instanceId);
     if (netSpoofer.initialize()) {
         netSpoofer.setDeviceTTL();                        // real device TTL=64
         netSpoofer.spoofMACAddress("A4:50:46:XX:XX:XX"); // Samsung OUI prefix
@@ -1628,6 +1607,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     gpuHw.generateForDevice(manufacturer);
 
     AdvancedSpoofing advSpoof;
+    advSpoof.setInstanceId(instanceId);
     if (advSpoof.initialize()) {
         advSpoof.spoofGPURenderer(gpuHw.gpuRenderer.toStdString());
         advSpoof.spoofGPUVendor(gpuHw.gpuVendor.toStdString());
@@ -2234,6 +2214,10 @@ QString ReDroidController::getLogs(const QString& instanceId, int tail) {
 
 QString ReDroidController::getAdbSerial(const QString& instanceId) const {
     return m_adbSerials.value(instanceId, QString("127.0.0.1:%1").arg(m_instances.value(instanceId).adbPort));
+}
+
+QString ReDroidController::adbSerialFor(const QString& instanceId) const {
+    return getAdbSerial(instanceId);
 }
 
 QString ReDroidController::getContainerName(const QString& instanceId) const {
