@@ -566,6 +566,7 @@ private:
     QString getAdbSerial(const QString& instanceId) const;
     QString getContainerName(const QString& instanceId) const;
     int allocateAdbPort();
+    int tryReserveAdbPort(int port);
     
     QString convertToWSL2Path(const QString& windowsPath) const;
     QString convertToWindowsPath(const QString& wsl2Path) const;

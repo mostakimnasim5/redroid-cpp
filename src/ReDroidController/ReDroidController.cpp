@@ -447,7 +447,20 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // Allocate ports BEFORE taking the mutex
     // allocateAdbPort also locks m_instancesMutex
     // Calling it inside the lock below would cause a deadlock (non-recursive mutex)
-    int adbPort = allocateAdbPort();
+    //
+    // Honor an explicitly requested port (profile.adbPort > 0) when it is
+    // actually free; otherwise fall back to the dynamic allocator. Batch
+    // deploys pin ports via assignUniquePort — silently ignoring that
+    // would defeat the port pre-flight check in MultiInstanceManager.
+    int adbPort = -1;
+    if (profile.adbPort > 0 && profile.adbPort <= 65535) {
+        adbPort = tryReserveAdbPort(profile.adbPort);
+        if (adbPort < 0)
+            qWarning() << "startInstance: requested ADB port" << profile.adbPort
+                       << "is unavailable — falling back to dynamic allocation";
+    }
+    if (adbPort < 0)
+        adbPort = allocateAdbPort();
     if (adbPort < 0) {
         qCritical() << "startInstance: no free ADB port available";
         emit error(QStringLiteral("Cannot start instance — no free ADB port in range 5556-65535"));
@@ -2244,6 +2257,20 @@ QString ReDroidController::adbSerialFor(const QString& instanceId) const {
 
 QString ReDroidController::getContainerName(const QString& instanceId) const {
     return QString("vpp-%1").arg(instanceId);
+}
+
+int ReDroidController::tryReserveAdbPort(int port) {
+    QMutexLocker locker(&m_instancesMutex);
+
+    for (const InstanceInfo& info : m_instances.values())
+        if (info.adbPort == port)
+            return -1;
+
+    QTcpServer probe;
+    if (!probe.listen(QHostAddress::LocalHost, static_cast<quint16>(port)))
+        return -1;
+    probe.close();
+    return port;
 }
 
 int ReDroidController::allocateAdbPort() {
