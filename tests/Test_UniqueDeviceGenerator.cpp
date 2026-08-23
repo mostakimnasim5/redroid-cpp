@@ -13,7 +13,7 @@
 #include <QFuture>
 #include <QtConcurrent>
 
-#include "VirtualPhonePro/UniqueDeviceGenerator.h"
+#include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
 #include "Data/TACDatabase.h"
 
 using namespace VirtualPhonePro;
