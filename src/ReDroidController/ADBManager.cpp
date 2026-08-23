@@ -12,10 +12,8 @@
 #include <memory>
 
 #ifdef _WIN32
-#include <windows.h>
-#include <process.h>
-#define popen _popen
-#define pclose _pclose
+#include <QProcess>
+#include <QStringList>
 #else
 #include <unistd.h>
 #include <sys/wait.h>
@@ -28,7 +26,32 @@ namespace VirtualPhonePro {
 
 namespace {
 
-#ifndef _WIN32
+#ifdef _WIN32
+// Run a program with an explicit argv list (no shell) and a hard timeout.
+// QProcess passes the program and each argument separately to CreateProcess,
+// so cmd.exe is never involved and shell metacharacters in paths/arguments
+// are never interpreted — this closes the injection vector the old _popen
+// string-concatenation had. Returns true when the child finished within
+// timeoutMs (stdout captured into output, exit code in exitCode); false
+// when it had to be killed or could not be started.
+bool runProcessWithTimeout(const QString& program, const QStringList& args,
+                           int timeoutMs, std::string& output, int& exitCode) {
+    exitCode = -1;
+    QProcess proc;
+    proc.start(program, args);
+    if (!proc.waitForStarted(timeoutMs)) {
+        return false;
+    }
+    if (!proc.waitForFinished(timeoutMs)) {
+        proc.kill();
+        proc.waitForFinished(1000);  // reap after kill
+        return false;
+    }
+    output = proc.readAllStandardOutput().toStdString();
+    exitCode = proc.exitCode();
+    return true;
+}
+#else
 // Run a shell command with a hard timeout. Returns true when the child
 // finished within timeoutMs (stdout+stderr captured into output); false
 // when it had to be killed or could not be started. The previous
@@ -230,26 +253,25 @@ std::string ADBManager::findADBPath() {
     for (const auto& path : searchPaths) {
         if (path.empty()) continue;
         
-        std::string cmd = 
 #ifdef _WIN32
-            "where " + path + " 2>nul";
-#else
-            "which " + path + " 2>/dev/null";
-#endif
-        
-#ifdef _WIN32
-        FILE* pipe = _popen(cmd.c_str(), "r");
-        if (pipe) {
-            char buffer[512];
-            if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-                _pclose(pipe);
-                std::string result(buffer);
+        // QProcess runs where.exe directly with the path as a separate
+        // argument — no cmd.exe is involved, so special characters in the
+        // path cannot chain commands. Hard timeout matches the POSIX path.
+        {
+            std::string out;
+            int exitCode = -1;
+            if (runProcessWithTimeout("where", {QString::fromStdString(path)},
+                                      5000, out, exitCode)
+                    && exitCode == 0 && !out.empty()) {
+                const auto nl = out.find('\n');
+                std::string result = out.substr(0, nl);
                 result.erase(result.find_last_not_of(" \n\r\t") + 1);
-                return result;
+                if (!result.empty())
+                    return result;
             }
-            _pclose(pipe);
         }
 #else
+        std::string cmd = "which " + path + " 2>/dev/null";
         // Hard timeout so a wedged shell/PATH lookup cannot stall startup.
         std::string out;
         if (runCommandWithTimeout(cmd, 5000, out) && !out.empty()) {
@@ -434,28 +456,27 @@ std::string ADBManager::executeADBCommand(const std::vector<std::string>& args, 
         }
         return result;
 #else
-        std::array<char, 128> buffer;
+        // Windows: QProcess passes the adb binary and each argument
+        // separately to CreateProcess — cmd.exe is never involved, so
+        // metacharacters in the device serial or arguments cannot chain
+        // commands. waitForFinished enforces a hard timeout; a hung child
+        // is killed instead of blocking forever in _pclose.
+        QStringList qargs;
+        if (!m_selectedDevice.empty()) {
+            qargs << "-s" << QString::fromStdString(m_selectedDevice);
+        }
+        for (const auto& arg : args) {
+            qargs << QString::fromStdString(arg);
+        }
         std::string result;
-        FILE* pipe = _popen(cmd.c_str(), "r");
-        if (!pipe) {
-            m_lastError = "Failed to execute command: " + cmd;
+        int exitCode = -1;
+        if (!runProcessWithTimeout(QString::fromStdString(m_adbPath), qargs,
+                                   timeoutMs, result, exitCode)) {
+            m_lastError = "Command timed out (" + std::to_string(timeoutMs)
+                        + " ms) or failed to start, child process killed: " + cmd;
             Logger::getInstance().error(m_lastError);
             return "";
         }
-        auto startTime = std::chrono::steady_clock::now();
-        while (true) {
-            if (std::chrono::steady_clock::now() - startTime > std::chrono::milliseconds(timeoutMs)) {
-                Logger::getInstance().warning("Command timeout exceeded");
-                _pclose(pipe);
-                return result;
-            }
-            char* fgetsResult = fgets(buffer.data(), buffer.size(), pipe);
-            if (fgetsResult == nullptr) {
-                break;
-            }
-            result += fgetsResult;
-        }
-        int exitCode = _pclose(pipe);
         if (exitCode != 0) {
             Logger::getInstance().warning("Command returned non-zero exit code: " + std::to_string(exitCode));
         }
