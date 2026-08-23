@@ -312,12 +312,12 @@ if(BUILD_QT6_GUI)
     # =========================================================================
     set(REDROID_HEADERS
         include/VirtualPhonePro/ReDroidController.hpp
-        include/VirtualPhonePro/DeviceProfile.h
-        include/VirtualPhonePro/EnhancedDeviceProfile.h
-        include/VirtualPhonePro/BankingAppSpoofer.h
-        include/VirtualPhonePro/GoogleFacebookSpoofer.h
-        include/VirtualPhonePro/DeepDeviceSpoofer.h
-        include/VirtualPhonePro/UniqueDeviceGenerator.h
+        include/VirtualPhonePro/DeviceProfile.hpp
+        include/VirtualPhonePro/EnhancedDeviceProfile.hpp
+        include/VirtualPhonePro/BankingAppSpoofer.hpp
+        include/VirtualPhonePro/GoogleFacebookSpoofer.hpp
+        include/VirtualPhonePro/DeepDeviceSpoofer.hpp
+        include/VirtualPhonePro/UniqueDeviceGenerator.hpp
         include/VirtualPhonePro/AdvancedAntiDetection.hpp
         include/VirtualPhonePro/TLSFingerprint.hpp
         include/VirtualPhonePro/HyperRealisticTouchEmulator.hpp
@@ -325,7 +325,7 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/RealisticDeviceProfile.hpp
         include/VirtualPhonePro/MultiInstanceManager.hpp
         include/VirtualPhonePro/HardwareFingerprintSpoofer.hpp
-        include/VirtualPhonePro/SafetyNetSpoofer.h
+        include/VirtualPhonePro/SafetyNetSpoofer.hpp
         include/VirtualPhonePro/SafetyNetAdvancedBypass.hpp
         include/VirtualPhonePro/HypervisorBypass.hpp
         include/VirtualPhonePro/RealPhoneHardening.hpp
@@ -339,36 +339,36 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/RequirementsManager.hpp
         include/VirtualPhonePro/PlayIntegrityManager.hpp
         include/VirtualPhonePro/EmulatorDetectionBypass.hpp
-        include/VirtualPhonePro/AndroidRealismEngine.h
+        include/VirtualPhonePro/AndroidRealismEngine.hpp
         include/VirtualPhonePro/NetworkStackSpoofer.hpp
         include/VirtualPhonePro/TimingAttackPrevention.hpp
-        include/VirtualPhonePro/CarrierNetworkSimulator.h
-        include/VirtualPhonePro/OEMDeepSpoofing.h
+        include/VirtualPhonePro/CarrierNetworkSimulator.hpp
+        include/VirtualPhonePro/OEMDeepSpoofing.hpp
         include/VirtualPhonePro/SensorSimulator.hpp
-        include/VirtualPhonePro/BatteryPowerManager.h
-        include/VirtualPhonePro/SSLCertificateManager.h
-        include/VirtualPhonePro/PersistentIdentityManager.h
-        include/VirtualPhonePro/DeviceBehaviorManager.h
+        include/VirtualPhonePro/BatteryPowerManager.hpp
+        include/VirtualPhonePro/SSLCertificateManager.hpp
+        include/VirtualPhonePro/PersistentIdentityManager.hpp
+        include/VirtualPhonePro/DeviceBehaviorManager.hpp
         include/VirtualPhonePro/AppCloner.hpp
         include/VirtualPhonePro/ScreenMirror.hpp
-        include/VirtualPhonePro/ScreenStateManager.h
-        include/VirtualPhonePro/FindMyDeviceManager.h
+        include/VirtualPhonePro/ScreenStateManager.hpp
+        include/VirtualPhonePro/FindMyDeviceManager.hpp
         include/VirtualPhonePro/Logger.hpp
         include/VirtualPhonePro/HttpClient.hpp
         include/VirtualPhonePro/WebhookManager.hpp
         include/VirtualPhonePro/APIServer.hpp
-        include/VirtualPhonePro/DeviceIntegrityManager.h
-        include/VirtualPhonePro/HardwareAttestation.h
-        include/VirtualPhonePro/HALSimulation.h
+        include/VirtualPhonePro/DeviceIntegrityManager.hpp
+        include/VirtualPhonePro/HardwareAttestation.hpp
+        include/VirtualPhonePro/HALSimulation.hpp
         include/VirtualPhonePro/TestingFramework.hpp
-        include/VirtualPhonePro/NetworkRealismEnhancer.h
+        include/VirtualPhonePro/NetworkRealismEnhancer.hpp
         include/VirtualPhonePro/CryptoUtils.hpp
         include/VirtualPhonePro/SecurityMitigationManager.hpp
-        include/VirtualPhonePro/FridaXposedDetector.h
+        include/VirtualPhonePro/FridaXposedDetector.hpp
         include/VirtualPhonePro/MagiskPatcher.hpp
         include/VirtualPhonePro/SELinuxManager.hpp
-        include/VirtualPhonePro/AdvancedRealisticSimulation.h
-        include/VirtualPhonePro/NetworkConfig.h
+        include/VirtualPhonePro/AdvancedRealisticSimulation.hpp
+        include/VirtualPhonePro/NetworkConfig.hpp
         include/Data/TACDatabase.h
         # Q_OBJECT headers that AUTOMOC must process (declared in the target
         # source list so the moc_*.cpp outputs are generated and linked).

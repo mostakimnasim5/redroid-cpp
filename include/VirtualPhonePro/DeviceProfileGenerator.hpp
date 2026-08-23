@@ -360,7 +360,7 @@ public:
      * Formula: Master_Seed = HMAC-SHA256(HWID + License_Key, "PROFILE_" + Index)
      * 
      * @param profile_index Unique index for this profile (1-999999)
-     * @param template_name Device template name (e.g., "samsung_s24_ultra")
+     * @param template_name Device template codename (e.g., "dm3q", "husky")
      * @return Complete device identity profile
      * 
      * ⚡ Performance: < 0.1ms on modern hardware
@@ -368,7 +368,7 @@ public:
      */
     DeviceIdentityProfile generateProfile(
         uint32_t profile_index,
-        const std::string& template_name = "samsung_s24_ultra"
+        const std::string& template_name = "dm3q"
     );
     
     /**

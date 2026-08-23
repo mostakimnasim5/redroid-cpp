@@ -357,6 +357,10 @@ std::string IPTimezoneConverter::getTimezoneFromIP(const std::string& ipAddress)
 }
 
 IPTimezoneConverter::LocaleInfo IPTimezoneConverter::getLocaleByCountryCode(const std::string& countryCode) {
+    if (!m_initialized) {
+        initialize();
+    }
+
     auto it = m_countryDatabase.find(countryCode);
     if (it != m_countryDatabase.end()) {
         return it->second;

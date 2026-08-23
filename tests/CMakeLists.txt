@@ -219,6 +219,70 @@ endif()
 add_test(NAME Validation COMMAND Test_Validation)
 
 # =========================================================
+# Test 4: Device Profile Generator Tests
+# =========================================================
+add_executable(Test_ProfileGenerator
+    Test_ProfileGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeviceProfileGenerator.cpp
+    ${REDROID_TEST_SOURCES}
+    # Add all Q_OBJECT headers so AUTOMOC can process them
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/ReDroidController.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/HardwareFingerprintSpoofer.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/PlayIntegrityManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/NetworkProfileManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/EmulatorDetectionBypass.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MagiskPatcher.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SELinuxManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SensorSimulator.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TimingAttackPrevention.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/WebhookManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/MultiInstanceManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/SecurityMitigationManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/APIServer.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/AppCloner.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/TestingFramework.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/ConfigManager.hpp
+    ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/FileLogger.hpp
+    ${CMAKE_SOURCE_DIR}/include/Android/SensorInjector.h
+    ${CMAKE_SOURCE_DIR}/include/Android/FileSystemRealism.h
+    ${CMAKE_SOURCE_DIR}/include/Android/LocaleTimezoneManager.h
+)
+
+target_link_libraries(Test_ProfileGenerator PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Widgets
+    Qt6::Network
+    Qt6::Concurrent
+    Threads::Threads
+)
+
+target_include_directories(Test_ProfileGenerator PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController
+    ${CMAKE_SOURCE_DIR}/src/Data
+    ${CMAKE_SOURCE_DIR}/src/GUI
+    ${Qt6_INCLUDE_DIRS}
+)
+
+# Force Qt to process all headers with Q_OBJECT
+set_target_properties(Test_ProfileGenerator PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
+)
+
+# Set console subsystem for Windows (required for Qt Test)
+if(WIN32)
+    set_target_properties(Test_ProfileGenerator PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
+
+add_test(NAME ProfileGenerator COMMAND Test_ProfileGenerator)
+
+# =========================================================
 # Copy test profiles
 # =========================================================
 if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")
@@ -226,4 +290,4 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")
          DESTINATION ${CMAKE_BINARY_DIR}/profiles/)
 endif()
 
-message(STATUS "Tests configured: DetectionBypass + UniqueDeviceGenerator + Validation")
+message(STATUS "Tests configured: DetectionBypass + UniqueDeviceGenerator + Validation + ProfileGenerator")

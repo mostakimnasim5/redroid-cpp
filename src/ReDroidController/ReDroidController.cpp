@@ -51,9 +51,9 @@
 #include "VirtualPhonePro/AppCloner.hpp"
 #include "VirtualPhonePro/CryptoUtils.hpp"
 #include "VirtualPhonePro/HttpClient.hpp"
-#include "VirtualPhonePro/FileSystemRealism.hpp"
-#include "VirtualPhonePro/FingerprintEngine.hpp"
-#include "VirtualPhonePro/SensorInjector.hpp"
+#include "Android/FileSystemRealism.h"
+#include "Database/FingerprintEngine.h"
+#include "Android/SensorInjector.h"
 
 #include <QCoreApplication>
 #include <QRandomGenerator>

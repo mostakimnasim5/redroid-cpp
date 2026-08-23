@@ -138,8 +138,8 @@ void Test_Validation::test_phoneValidation_invalidFormats() {
         QString digits = phone;
         digits.replace(QRegularExpression("[^0-9]"), "");
         
-        // Invalid if not 11 or 13-14 digits
-        bool isInvalid = digits.length() < 11 || digits.length() > 14 || 
+        // Invalid unless exactly 11, 13, or 14 digits with 01 prefix
+        bool isInvalid = (digits.length() != 11 && digits.length() != 13 && digits.length() != 14) || 
                          !digits.startsWith("01");
         
         QVERIFY2(isInvalid, qUtf8Printable(QString("Invalid phone detected: %1").arg(phone)));
@@ -151,7 +151,7 @@ void Test_Validation::test_phoneValidation_bangladeshi() {
     QStringList prefixes = {"013", "014", "015", "016", "017", "018", "019"};
     
     for (const QString& prefix : prefixes) {
-        QString phone = prefix + "1234567"; // 11 digits total
+        QString phone = prefix + "12345678"; // 11 digits total
         QVERIFY(phone.length() == 11);
         QVERIFY(phone.startsWith("01")); // Must start with 01
     }

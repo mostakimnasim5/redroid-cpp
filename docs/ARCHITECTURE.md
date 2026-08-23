@@ -371,7 +371,7 @@ docker run -it --rm \
 VirtualPhonePro/
 │
 ├── src/                              # C++ source files
-│   ├── main.cpp                      # Application entry point
+│   ├── qtmain.cpp                    # Application entry point
 │   ├── CMakeLists.txt                 # Main CMake config
 │   │
 │   ├── core/                         # Core engine
