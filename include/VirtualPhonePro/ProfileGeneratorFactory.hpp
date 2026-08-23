@@ -18,9 +18,12 @@
 #define VIRTUALPHONEPRO_PROFILE_GENERATOR_FACTORY_HPP
 
 #include "VirtualPhonePro/DeviceProfileGenerator.hpp"
+#include "VirtualPhonePro/DeviceProfile.hpp"
 
 #include <cstdint>
 #include <memory>
+
+class QString;
 
 namespace VirtualPhonePro {
 
@@ -50,6 +53,51 @@ uint32_t allocateNextProfileIndex();
  * @return The persisted counter value, or 0 if none was ever issued.
  */
 uint32_t lastIssuedProfileIndex();
+
+/**
+ * @brief Result of a registry-checked deterministic identity allocation.
+ */
+struct HardwareAnchoredIdentity {
+    bool ok = false;                    ///< true when identity + index are usable
+    uint32_t profileIndex = 0;          ///< the persisted index consumed
+    DeviceIdentityProfile identity;     ///< all 20 derived units
+};
+
+/**
+ * @brief Allocate a fresh, registry-unique hardware-anchored identity.
+ *
+ * Single allocation path shared by the GUI single-create dialog and the
+ * batch/multi deploy path. Each attempt consumes a fresh persisted index
+ * (allocateNextProfileIndex), derives all 20 units from the deterministic
+ * engine, and rejects candidates colliding with the local uniqueness
+ * registry (UniqueDeviceGenerator), retrying with the next index.
+ *
+ * @return HardwareAnchoredIdentity with ok=false only when the index space
+ *         is exhausted, persistence fails, or 100 consecutive candidates
+ *         collide with the registry.
+ */
+HardwareAnchoredIdentity generateUniqueHardwareAnchoredIdentity();
+
+/**
+ * @brief Map all 20 derived identity units onto a DeviceProfile.
+ *
+ * Shared by the GUI single-create path and the batch clone path so both
+ * produce byte-identical DeviceProfile identity fields for the same
+ * DeviceIdentityProfile. Only identity-bearing fields are touched;
+ * caller-controlled fields (name, build model, ports, ...) are preserved.
+ */
+void applyIdentityToDeviceProfile(DeviceProfile& profile,
+                                  const DeviceIdentityProfile& identity);
+
+/**
+ * @brief Record an issued identity in the local uniqueness registry.
+ *
+ * Registers IMEI/serial/androidId under the owning instance so future
+ * allocations (GUI or batch) can detect collisions. Must be called once
+ * per instance after applyIdentityToDeviceProfile().
+ */
+void registerIssuedIdentity(const QString& instanceId,
+                            const DeviceProfile& profile);
 
 } // namespace VirtualPhonePro
 

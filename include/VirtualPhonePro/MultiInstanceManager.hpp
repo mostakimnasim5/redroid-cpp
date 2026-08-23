@@ -18,6 +18,8 @@
 #include <QFuture>
 #include <QtConcurrent>
 
+#include <optional>
+
 namespace VirtualPhonePro {
 
 /**
@@ -244,9 +246,11 @@ signals:
 private:
     explicit MultiInstanceManager(QObject* parent = nullptr);
     Q_DISABLE_COPY(MultiInstanceManager)
-    
+
     // Internal helpers
-    DeviceProfile cloneProfile(const DeviceProfile& base, const QString& instanceId, int index);
+    // Returns std::nullopt when no unique deterministic identity could be
+    // allocated (index space exhausted or persistence failure).
+    std::optional<DeviceProfile> cloneProfile(const DeviceProfile& base, const QString& instanceId, int index);
     QString generateUniqueId(const QString& prefix, int index);
     void updateResourceTracking(const QString& instanceId, bool added);
     
