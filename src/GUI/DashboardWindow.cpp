@@ -301,17 +301,33 @@ void NewPhoneDialog::onOk() {
     m_profile.build.model = m_modelCombo->currentText().replace(" ", "_");
     m_profile.build.androidVersion = m_androidVersion.toInt();
 
-    // Full deterministic identity from the hardware-anchored engine
+    // Full deterministic identity from the hardware-anchored engine.
+    // All 20 derived units are mapped — nothing is dropped.
     m_profile.identity.imei = QString::fromStdString(m_identity.imei1);
     m_profile.identity.imei2 = QString::fromStdString(m_identity.imei2);
     m_profile.identity.serialNumber = QString::fromStdString(m_identity.serial_number);
     m_profile.identity.androidId = QString::fromStdString(m_identity.android_id);
     m_profile.identity.gsfId = QString::fromStdString(m_identity.gsf_id);
     m_profile.identity.advertisingId = QString::fromStdString(m_identity.advertising_id);
+    m_profile.identity.deviceKey = QString::fromStdString(m_identity.device_key);
+    m_profile.identity.authToken = QString::fromStdString(m_identity.auth_token);
+    m_profile.identity.profileId = QString::fromStdString(m_identity.profile_id);
+
     m_profile.mac.wifiMac = QString::fromStdString(m_identity.wifi_mac);
     m_profile.mac.bluetoothMac = QString::fromStdString(m_identity.bluetooth_mac);
+    m_profile.mac.bssid = QString::fromStdString(m_identity.bssid);
+
     m_profile.sim.iccid = QString::fromStdString(m_identity.iccid1);
     m_profile.sim.imsi = QString::fromStdString(m_identity.imsi1);
+    m_profile.sim.iccid2 = QString::fromStdString(m_identity.iccid2);
+    m_profile.sim.imsi2 = QString::fromStdString(m_identity.imsi2);
+    m_profile.sim.phoneNumber1 = QString::fromStdString(m_identity.phone_number1);
+    m_profile.sim.phoneNumber2 = QString::fromStdString(m_identity.phone_number2);
+
+    m_profile.network.ipAddress = QString::fromStdString(m_identity.local_ip);
+
+    m_profile.build.bootloader = QString::fromStdString(m_identity.bootloader_version);
+    m_profile.build.radioVersion = QString::fromStdString(m_identity.radio_version);
 
     // Record the issued identity so future allocations can detect collisions
     QJsonObject uniqueIds;

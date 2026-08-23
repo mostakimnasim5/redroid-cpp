@@ -23,6 +23,11 @@ struct DeviceIdentity {
     QString gsfId;            // 10-digit Google Services Framework ID
     QString advertisingId;     // UUID-format advertising ID
 
+    // Deterministic engine units (DeviceProfileGenerator)
+    QString deviceKey;         // SHA256-derived device key
+    QString authToken;         // SHA256-derived auth token
+    QString profileId;         // 32-char deterministic profile ID
+
     QVariantMap toVariantMap() const;
     void fromVariantMap(const QVariantMap& map);
 };
@@ -34,6 +39,7 @@ struct MACAddresses {
     QString wifiMac;           // WiFi MAC address (XX:XX:XX:XX:XX:XX)
     QString bluetoothMac;      // Bluetooth MAC address
     QString ethernetMac;       // Ethernet MAC address
+    QString bssid;             // WiFi AP BSSID (Locally Administered)
 
     QVariantMap toVariantMap() const;
     void fromVariantMap(const QVariantMap& map);
@@ -53,6 +59,7 @@ struct BuildInfo {
     
     QString fingerprint;       // Full Android fingerprint
     QString bootloader;       // e.g., "S928BXXU1AXXX"
+    QString radioVersion;      // Modem/baseband firmware version
     QString buildId;          // e.g., "UP1A.231005.007"
     QString buildType;         // e.g., "userdebug" or "user"
     QString securityPatch;     // e.g., "2024-01-01"
@@ -87,6 +94,10 @@ struct DeviceNetworkConfig {
 struct SIMConfig {
     QString iccid;            // 20-digit ICCID
     QString imsi;            // 15-digit IMSI
+    QString imsi2;            // 15-digit IMSI (dual-SIM)
+    QString iccid2;           // 19-20 digit ICCID (dual-SIM)
+    QString phoneNumber1;      // International format (SIM 1)
+    QString phoneNumber2;      // International format (SIM 2)
     QString carrier;          // e.g., "T-Mobile"
     QString country;          // e.g., "US"
     QString mcc;             // Mobile Country Code (3 digits)

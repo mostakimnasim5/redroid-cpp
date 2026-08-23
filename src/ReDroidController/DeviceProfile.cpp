@@ -36,6 +36,9 @@ QVariantMap DeviceIdentity::toVariantMap() const {
     map["androidId"] = androidId;
     map["gsfId"] = gsfId;
     map["advertisingId"] = advertisingId;
+    map["deviceKey"] = deviceKey;
+    map["authToken"] = authToken;
+    map["profileId"] = profileId;
     return map;
 }
 
@@ -46,6 +49,9 @@ void DeviceIdentity::fromVariantMap(const QVariantMap& map) {
     androidId = map.value("androidId").toString();
     gsfId = map.value("gsfId").toString();
     advertisingId = map.value("advertisingId").toString();
+    deviceKey = map.value("deviceKey").toString();
+    authToken = map.value("authToken").toString();
+    profileId = map.value("profileId").toString();
 }
 
 // ============================================================================
@@ -57,6 +63,7 @@ QVariantMap MACAddresses::toVariantMap() const {
     map["wifiMac"] = wifiMac;
     map["bluetoothMac"] = bluetoothMac;
     map["ethernetMac"] = ethernetMac;
+    map["bssid"] = bssid;
     return map;
 }
 
@@ -64,6 +71,7 @@ void MACAddresses::fromVariantMap(const QVariantMap& map) {
     wifiMac = map.value("wifiMac").toString();
     bluetoothMac = map.value("bluetoothMac").toString();
     ethernetMac = map.value("ethernetMac").toString();
+    bssid = map.value("bssid").toString();
 }
 
 // ============================================================================
@@ -81,6 +89,7 @@ QVariantMap BuildInfo::toVariantMap() const {
     map["hardware"] = hardware;
     map["fingerprint"] = fingerprint;
     map["bootloader"] = bootloader;
+    map["radioVersion"] = radioVersion;
     map["buildId"] = buildId;
     map["buildType"] = buildType;
     map["securityPatch"] = securityPatch;
@@ -99,6 +108,7 @@ void BuildInfo::fromVariantMap(const QVariantMap& map) {
     hardware = map.value("hardware").toString();
     fingerprint = map.value("fingerprint").toString();
     bootloader = map.value("bootloader").toString();
+    radioVersion = map.value("radioVersion").toString();
     buildId = map.value("buildId").toString();
     buildType = map.value("buildType").toString();
     securityPatch = map.value("securityPatch").toString();
@@ -140,6 +150,10 @@ QVariantMap SIMConfig::toVariantMap() const {
     QVariantMap map;
     map["iccid"] = iccid;
     map["imsi"] = imsi;
+    map["imsi2"] = imsi2;
+    map["iccid2"] = iccid2;
+    map["phoneNumber1"] = phoneNumber1;
+    map["phoneNumber2"] = phoneNumber2;
     map["carrier"] = carrier;
     map["country"] = country;
     map["mcc"] = mcc;
@@ -150,6 +164,10 @@ QVariantMap SIMConfig::toVariantMap() const {
 void SIMConfig::fromVariantMap(const QVariantMap& map) {
     iccid = map.value("iccid").toString();
     imsi = map.value("imsi").toString();
+    imsi2 = map.value("imsi2").toString();
+    iccid2 = map.value("iccid2").toString();
+    phoneNumber1 = map.value("phoneNumber1").toString();
+    phoneNumber2 = map.value("phoneNumber2").toString();
     carrier = map.value("carrier").toString();
     country = map.value("country").toString();
     mcc = map.value("mcc").toString();
