@@ -27,6 +27,7 @@
 
 #include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/DeviceProfile.hpp"
+#include "VirtualPhonePro/DeviceProfileGenerator.hpp"
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/BankingAppSpoofer.hpp"
 #include "VirtualPhonePro/SafetyNetSpoofer.hpp"
@@ -48,6 +49,7 @@ public:
     QString getInstanceId() const { return m_instanceId; }
     bool isProtected() const { return m_isProtected; }
     DeviceProfile getProfile() const { return m_profile; }
+    uint32_t getProfileIndex() const { return m_profileIndex; }
     QString getManufacturer() const { return m_manufacturer; }
     QString getAndroidVersion() const { return m_androidVersion; }
     
@@ -67,12 +69,17 @@ private slots:
 private:
     void setupUI();
     void loadManufacturerModels();
-    
+    bool generateDeterministicIdentity();
+
     QString m_instanceId;
     bool m_isProtected = false;
     DeviceProfile m_profile;
     QString m_manufacturer;
     QString m_androidVersion;
+
+    // Hardware-anchored deterministic identity (see fix/hwid-foundation)
+    DeviceIdentityProfile m_identity;
+    uint32_t m_profileIndex = 0;
     
     QComboBox* m_manufacturerCombo;
     QComboBox* m_modelCombo;
