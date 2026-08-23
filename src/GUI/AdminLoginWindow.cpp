@@ -13,7 +13,30 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
+#include <QCryptographicHash>
 #include <QDebug>
+
+namespace {
+
+// Constant-time comparison so password checks do not leak match length
+// through timing side channels.
+bool constantTimeEqual(const QByteArray& a, const QByteArray& b) {
+    if (a.size() != b.size()) return false;
+    unsigned char diff = 0;
+    for (int i = 0; i < a.size(); ++i) {
+        diff |= static_cast<unsigned char>(a.at(i) ^ b.at(i));
+    }
+    return diff == 0;
+}
+
+// Salted SHA-256 of (salt || password), hex-encoded. The salt is stored
+// per-admin in Firestore ("passwordSalt" field) alongside "passwordHash".
+QByteArray hashPassword(const QString& salt, const QString& password) {
+    QByteArray data = salt.toUtf8() + password.toUtf8();
+    return QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex();
+}
+
+} // namespace
 
 AdminLoginWindow::AdminLoginWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -263,12 +286,25 @@ void AdminLoginWindow::onLoginReply(QNetworkReply* reply) {
         return;
     }
 
-    // Admin found - verify password
+    // Admin found - verify password against its salted hash.
+    // Firestore must store "passwordSalt" (hex) and "passwordHash"
+    // (hex SHA-256 of salt||password); plaintext is never stored or compared.
     QJsonObject document = results[0].toObject()["document"].toObject();
     QJsonObject fields = document["fields"].toObject();
-    QString storedPassword = fields["password"].toObject()["stringValue"].toString();
+    QString storedHash = fields["passwordHash"].toObject()["stringValue"].toString();
+    QString salt = fields["passwordSalt"].toObject()["stringValue"].toString();
 
-    if (password != storedPassword) {
+    if (storedHash.isEmpty() || salt.isEmpty()) {
+        // Fail closed: legacy documents with a plaintext "password" field
+        // are never honored — the account must be migrated to hashed storage.
+        qWarning() << "[AdminLogin] Admin document lacks passwordHash/passwordSalt;"
+                   << "legacy plaintext credentials are not accepted.";
+        showError("This account uses legacy password storage. "
+                  "Please reset the password to a hashed credential.");
+        return;
+    }
+
+    if (!constantTimeEqual(hashPassword(salt, password), storedHash.toUtf8())) {
         showError("Invalid password");
         return;
     }
