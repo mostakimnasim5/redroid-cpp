@@ -27,7 +27,6 @@
 #include "VirtualPhonePro/AppCloner.hpp"
 #include "VirtualPhonePro/NetworkConfigManager.hpp"
 #include "VirtualPhonePro/ProfileGeneratorFactory.hpp"
-#include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
 #include "SettingsDialog.hpp"
 
 namespace VirtualPhonePro {
@@ -208,33 +207,17 @@ void NewPhoneDialog::onRandomizeProfile() {
 }
 
 bool NewPhoneDialog::generateDeterministicIdentity() {
-    // Identity is derived from the hardware-anchored deterministic engine
+    // Shared allocation path with the batch/multi deploy path: identity is
+    // derived from the hardware-anchored deterministic engine
     // (Master_Seed = HMAC-SHA256(HWID + License_Key, "PROFILE_" + Index)),
-    // never from process-random sources. Each call consumes a fresh persisted
-    // index, and any candidate colliding with the local uniqueness registry
-    // is rejected and retried with the next index.
-    auto generator = createHardwareAnchoredProfileGenerator();
-    if (!generator) {
+    // never from process-random sources.
+    const HardwareAnchoredIdentity result = generateUniqueHardwareAnchoredIdentity();
+    if (!result.ok) {
         return false;
     }
-
-    UniqueDeviceGenerator& registry = UniqueDeviceGenerator::instance();
-    for (int attempt = 0; attempt < 100; ++attempt) {
-        const uint32_t index = allocateNextProfileIndex();
-        if (index == 0) {
-            return false; // index space exhausted or persistence failure
-        }
-
-        DeviceIdentityProfile candidate = generator->generateProfile(index);
-        const QString imei = QString::fromStdString(candidate.imei1);
-        const QString serial = QString::fromStdString(candidate.serial_number);
-        if (registry.isIMEIUnique(imei) && registry.isSerialUnique(serial)) {
-            m_identity = std::move(candidate);
-            m_profileIndex = index;
-            return true;
-        }
-    }
-    return false;
+    m_identity = result.identity;
+    m_profileIndex = result.profileIndex;
+    return true;
 }
 
 void NewPhoneDialog::onProxyModeChanged(int index) {
@@ -301,40 +284,12 @@ void NewPhoneDialog::onOk() {
     m_profile.build.model = m_modelCombo->currentText().replace(" ", "_");
     m_profile.build.androidVersion = m_androidVersion.toInt();
 
-    // Full deterministic identity from the hardware-anchored engine.
-    // All 20 derived units are mapped — nothing is dropped.
-    m_profile.identity.imei = QString::fromStdString(m_identity.imei1);
-    m_profile.identity.imei2 = QString::fromStdString(m_identity.imei2);
-    m_profile.identity.serialNumber = QString::fromStdString(m_identity.serial_number);
-    m_profile.identity.androidId = QString::fromStdString(m_identity.android_id);
-    m_profile.identity.gsfId = QString::fromStdString(m_identity.gsf_id);
-    m_profile.identity.advertisingId = QString::fromStdString(m_identity.advertising_id);
-    m_profile.identity.deviceKey = QString::fromStdString(m_identity.device_key);
-    m_profile.identity.authToken = QString::fromStdString(m_identity.auth_token);
-    m_profile.identity.profileId = QString::fromStdString(m_identity.profile_id);
-
-    m_profile.mac.wifiMac = QString::fromStdString(m_identity.wifi_mac);
-    m_profile.mac.bluetoothMac = QString::fromStdString(m_identity.bluetooth_mac);
-    m_profile.mac.bssid = QString::fromStdString(m_identity.bssid);
-
-    m_profile.sim.iccid = QString::fromStdString(m_identity.iccid1);
-    m_profile.sim.imsi = QString::fromStdString(m_identity.imsi1);
-    m_profile.sim.iccid2 = QString::fromStdString(m_identity.iccid2);
-    m_profile.sim.imsi2 = QString::fromStdString(m_identity.imsi2);
-    m_profile.sim.phoneNumber1 = QString::fromStdString(m_identity.phone_number1);
-    m_profile.sim.phoneNumber2 = QString::fromStdString(m_identity.phone_number2);
-
-    m_profile.network.ipAddress = QString::fromStdString(m_identity.local_ip);
-
-    m_profile.build.bootloader = QString::fromStdString(m_identity.bootloader_version);
-    m_profile.build.radioVersion = QString::fromStdString(m_identity.radio_version);
+    // Full deterministic identity from the hardware-anchored engine — shared
+    // mapping with the batch/multi deploy path (all 20 units, nothing dropped).
+    applyIdentityToDeviceProfile(m_profile, m_identity);
 
     // Record the issued identity so future allocations can detect collisions
-    QJsonObject uniqueIds;
-    uniqueIds["imei"] = m_profile.identity.imei;
-    uniqueIds["serialNumber"] = m_profile.identity.serialNumber;
-    uniqueIds["androidId"] = m_profile.identity.androidId;
-    UniqueDeviceGenerator::instance().registerInstance(m_instanceId, uniqueIds);
+    registerIssuedIdentity(m_instanceId, m_profile);
 
     accept();
 }

@@ -24,9 +24,9 @@
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 
 #include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/ProfileGeneratorFactory.hpp"
 
 #include <QThread>
-#include <QRandomGenerator>
 #include <QMutexLocker>
 #include <QtConcurrent>
 #include <QCoreApplication>
@@ -98,34 +98,45 @@ MultiInstanceManager::MultiInstanceManager(QObject* parent)
     m_threadPool.setMaxThreadCount(m_maxConcurrentInstances);
 }
 
-DeviceProfile MultiInstanceManager::cloneProfile(const DeviceProfile& base, 
+std::optional<DeviceProfile> MultiInstanceManager::cloneProfile(const DeviceProfile& base,
                                                const QString& instanceId, int index) {
     DeviceProfile profile = base;
-    
+
     // Generate unique ID
     profile.id = QUuid::createUuid().toString();
     profile.name = QString("%1 #%2").arg(base.name).arg(index + 1);
     profile.instanceIndex = index;
-    
-    if (true) { // Always assign unique identity per instance
-        // Generate unique IMEI
-        QString tac = base.identity.imei.left(8);
-        profile.identity.imei = DeviceProfile::generateIMEI(tac);
-        profile.identity.imei2 = DeviceProfile::generateIMEI(tac);
-        profile.identity.serialNumber = DeviceProfile::generateSerial(base.manufacturer);
-        profile.identity.androidId = DeviceProfile::generateAndroidId();
-        profile.identity.gsfId = QString::number(QRandomGenerator::global()->bounded((quint64)1000000000ULL, (quint64)9999999999ULL));
-        
-        // Generate unique MAC addresses
-        profile.mac.wifiMac = DeviceProfile::generateMAC("8C:71:F8");
-        profile.mac.bluetoothMac = DeviceProfile::generateMAC("94:EB:2C");
-        profile.mac.ethernetMac = DeviceProfile::generateMAC("00:1A:11");
+
+    // Identity comes from the same hardware-anchored deterministic engine
+    // the GUI single-create path uses (Master_Seed = HMAC-SHA256(HWID +
+    // License_Key, "PROFILE_" + Index)). Each instance consumes a fresh
+    // persisted profile index, so seeds never overlap — uniqueness is
+    // deterministic, not probabilistic. No process-random sources.
+    const HardwareAnchoredIdentity identity = generateUniqueHardwareAnchoredIdentity();
+    if (!identity.ok) {
+        qCritical() << "cloneProfile: could not allocate a unique deterministic"
+                       " identity for" << instanceId
+                    << "(profile-index space exhausted or persistence failure)";
+        return std::nullopt;
     }
-    
-    if (false) { // IP assigned via Docker network
-        // Unique IP would be assigned via Docker network
+    applyIdentityToDeviceProfile(profile, identity.identity);
+
+    // The engine derives no ethernet MAC, but the field is consumed per
+    // container (NET_ETHERNET_MAC), so sharing the base value across clones
+    // would duplicate it. Derive it deterministically from engine material:
+    // first 6 bytes of the device key, forced locally-administered unicast.
+    const QByteArray keyBytes = QByteArray::fromHex(
+        QByteArray::fromStdString(identity.identity.device_key));
+    if (keyBytes.size() >= 6) {
+        QByteArray mac = keyBytes.left(6);
+        mac[0] = static_cast<char>((static_cast<quint8>(mac[0]) | 0x02) & 0xFE);
+        profile.mac.ethernetMac = QString::fromLatin1(mac.toHex(':')).toUpper();
     }
-    
+
+    // Record the issued identity so future allocations (GUI or batch) can
+    // detect collisions against this instance.
+    registerIssuedIdentity(instanceId, profile);
+
     return profile;
 }
 
@@ -205,8 +216,9 @@ BatchStatus MultiInstanceManager::deployBatch(const InstanceDeployConfig& config
 
     // ── 1. Pre-allocate instanceId + profile list ─────────────────────────────
     // Do this synchronously so every instance has a unique identity before any
-    // container starts. cloneProfile() generates unique IMEI/serial/MAC — must
-    // not run concurrently (uses QRandomGenerator which is not thread-safe here).
+    // container starts. cloneProfile() derives the full identity from the
+    // hardware-anchored deterministic engine (same as the GUI single-create
+    // path) and consumes one persisted profile index per instance.
     struct LaunchItem {
         QString       instanceId;
         DeviceProfile profile;
@@ -217,7 +229,21 @@ BatchStatus MultiInstanceManager::deployBatch(const InstanceDeployConfig& config
     for (int i = 0; i < config.count; ++i) {
         LaunchItem item;
         item.instanceId = generateUniqueId(config.profilePrefix, i);
-        item.profile    = cloneProfile(config.baseProfile, item.instanceId, i);
+        std::optional<DeviceProfile> profile =
+            cloneProfile(config.baseProfile, item.instanceId, i);
+        if (!profile) {
+            const QString msg = QStringLiteral(
+                "Could not allocate a unique deterministic identity for %1 "
+                "(profile-index space exhausted or persistence failure). "
+                "Aborting batch before any container starts.")
+                .arg(item.instanceId);
+            qCritical() << "deployBatch:" << msg;
+            emit resourceWarning(msg);
+            status.failed = config.count;
+            status.errors.append(msg);
+            return status;
+        }
+        item.profile = std::move(*profile);
         if (config.assignUniquePort)
             item.profile.adbPort = config.portStart + (i * 2);
         items.append(item);
