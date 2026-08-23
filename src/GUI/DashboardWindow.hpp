@@ -32,7 +32,7 @@
 #include "VirtualPhonePro/BankingAppSpoofer.hpp"
 #include "VirtualPhonePro/SafetyNetSpoofer.hpp"
 #include "VirtualPhonePro/RequirementsManager.hpp"
-#include "PhoneWindow.h"
+#include "PhoneWindow.hpp"
 
 namespace VirtualPhonePro {
 

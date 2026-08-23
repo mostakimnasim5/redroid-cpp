@@ -3,7 +3,7 @@
  * @brief Settings Dialog Implementation
  */
 
-#include "SettingsDialog.h"
+#include "SettingsDialog.hpp"
 #include "VirtualPhonePro/FileLogger.hpp"
 #include <QHostInfo>
 #include <QProcess>
