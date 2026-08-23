@@ -3,7 +3,7 @@
  * @brief Phone Settings Dialog Implementation
  */
 
-#include "PhoneSettingsDialog.h"
+#include "PhoneSettingsDialog.hpp"
 #include <QFileDialog>
 #include <QJsonArray>
 #include <QStandardPaths>

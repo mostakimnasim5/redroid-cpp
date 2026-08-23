@@ -1,4 +1,4 @@
-#include "DashboardWindow.h"
+#include "DashboardWindow.hpp"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -28,7 +28,7 @@
 #include "VirtualPhonePro/NetworkConfigManager.hpp"
 #include "VirtualPhonePro/ProfileGeneratorFactory.hpp"
 #include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
-#include "SettingsDialog.h"
+#include "SettingsDialog.hpp"
 
 namespace VirtualPhonePro {
 

@@ -20,8 +20,8 @@
 #include <QPixmap>
 #include <QIcon>
 
-#include "GUI/DashboardWindow.h"
-#include "GUI/LoginWindow.h"
+#include "GUI/DashboardWindow.hpp"
+#include "GUI/LoginWindow.hpp"
 #include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/WebhookManager.hpp"
 #include "VirtualPhonePro/APIServer.hpp"

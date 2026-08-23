@@ -378,13 +378,13 @@ if(BUILD_QT6_GUI)
         include/VirtualPhonePro/MediaStreamDecoder.hpp
         include/VirtualPhonePro/FrameRenderer.hpp
         include/Android/LocaleTimezoneManager.h
-        src/GUI/PhoneWindow.h
-        src/GUI/DashboardWindow.h
-        src/GUI/AntiDetectionPanel.h
-        src/GUI/LoginWindow.h
-        src/GUI/MainWindow.h
-        src/GUI/PhoneSettingsDialog.h
-        src/GUI/SettingsDialog.h
+        src/GUI/PhoneWindow.hpp
+        src/GUI/DashboardWindow.hpp
+        src/GUI/AntiDetectionPanel.hpp
+        src/GUI/LoginWindow.hpp
+        src/GUI/MainWindow.hpp
+        src/GUI/PhoneSettingsDialog.hpp
+        src/GUI/SettingsDialog.hpp
         include/VirtualPhonePro/FileLogger.hpp
         include/VirtualPhonePro/ConfigManager.hpp
         include/Android/SensorInjector.h

@@ -3,7 +3,7 @@
  * @brief Anti-Detection Control Panel Implementation
  */
 
-#include "AntiDetectionPanel.h"
+#include "AntiDetectionPanel.hpp"
 
 #include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/RealPhoneHardening.hpp"

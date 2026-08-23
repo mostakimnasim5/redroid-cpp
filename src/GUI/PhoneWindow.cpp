@@ -54,9 +54,9 @@
 #endif
 #endif
 
-#include "PhoneWindow.h"
-#include "PhoneSettingsDialog.h"
-#include "AntiDetectionPanel.h"
+#include "PhoneWindow.hpp"
+#include "PhoneSettingsDialog.hpp"
+#include "AntiDetectionPanel.hpp"
 
 namespace VirtualPhonePro {
 
