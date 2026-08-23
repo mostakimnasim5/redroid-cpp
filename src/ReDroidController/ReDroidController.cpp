@@ -42,6 +42,7 @@
 #include "VirtualPhonePro/DeviceBehaviorManager.hpp"
 #include "VirtualPhonePro/AdvancedRealisticSimulation.hpp"
 #include "VirtualPhonePro/RealisticDeviceProfile.hpp"
+#include "VirtualPhonePro/EnhancedDeviceProfile.hpp"
 #include "VirtualPhonePro/FindMyDeviceManager.hpp"
 #include "VirtualPhonePro/NetworkProfileManager.hpp"
 #include "VirtualPhonePro/MagiskPatcher.hpp"
@@ -1592,14 +1593,21 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // capability strings, and the audio sample-rate/channel layout. On a
     // stock ReDroid image the GPU renderer reports "Android Emulator
     // OpenGL ES Translator" / "SwiftShader", which is an instant fail. We
-    // rewrite the EGL/Vulkan/GLES property surface to look like a real
-    // Adreno GPU and pin the audio HAL to a common Qualcomm layout.
+    // rewrite the EGL/Vulkan/GLES property surface to match the profile's
+    // real GPU and pin the audio HAL to a realistic layout.
+    // GPU identity must match the device profile's SoC: Qualcomm devices
+    // (Samsung/Xiaomi/OnePlus/Huawei flagships) ship Adreno, Google Tensor
+    // ships ARM Immortalis. A single hardcoded GPU string makes every
+    // instance share one fingerprint and contradicts the spoofed build props.
+    EnhancedHardwareInfo gpuHw;
+    gpuHw.generateForDevice(manufacturer);
+
     AdvancedSpoofing advSpoof;
     if (advSpoof.initialize()) {
-        advSpoof.spoofGPURenderer("Adreno (TM) 740");
-        advSpoof.spoofGPUVendor("Qualcomm");
-        advSpoof.spoofOpenGLVersion("OpenGL ES 3.2 V@0490.0 (GIT@1abcdef, I0a0a0a0a0a, 1700000000) (Date:01/01/24)");
-        advSpoof.spoofVulkanVersion("1.3.0");
+        advSpoof.spoofGPURenderer(gpuHw.gpuRenderer.toStdString());
+        advSpoof.spoofGPUVendor(gpuHw.gpuVendor.toStdString());
+        advSpoof.spoofOpenGLVersion(gpuHw.gpuVersion.toStdString());
+        advSpoof.spoofVulkanVersion(gpuHw.vulkanVersion.toStdString());
         // WebRTC leaks the local IP (canvas/audio fingerprinting supplements
         // this). Pin a private IP that matches the spoofed network identity.
         advSpoof.spoofWebRTCLocalIP("192.168.1.42");
@@ -1616,10 +1624,14 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // Pin the EGL/Vulkan/GLES property surface directly. AdvancedSpoofing's
     // GPU_PROPERTIES list targets ro.* GL flags; these debug.* / ro.* keys
     // are what the WebView's Canvas2D/WebGL backend actually queries.
+    // The EGL/Vulkan HAL name must match the profile GPU vendor:
+    // Qualcomm -> "adreno", ARM (Tensor) -> "mali".
+    const bool isArmGpu = gpuHw.gpuVendor.compare("ARM", Qt::CaseInsensitive) == 0;
+    const QString eglHal = isArmGpu ? QStringLiteral("mali") : QStringLiteral("adreno");
     QStringList canvasWebglCommands = {
         // EGL renderer string read by WebGL getParameter(RENDERER)
-        "setprop ro.hardware.egl adreno",
-        "setprop ro.hardware.vulkan adreno",
+        "setprop ro.hardware.egl " + eglHal,
+        "setprop ro.hardware.vulkan " + eglHal,
         // OpenGL ES / Vulkan versions queried by fingerprinters
         "setprop ro.opengles.version 196610",     // 3.2
         // HWUI renderer — affects Canvas2D rasterisation output

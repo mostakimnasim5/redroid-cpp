@@ -183,60 +183,116 @@ void EnhancedBuildInfo::generateForDevice(const QString& mfr, const QString& mdl
 void EnhancedHardwareInfo::generateForDevice(const QString& manufacturer) {
     cpuArchitecture = "arm64-v8a";
     cpuAbiList = {"arm64-v8a", "armeabi-v7a", "armeabi"};
-    
-    if (manufacturer.toLower() == "samsung") {
+
+    const QString mfr = manufacturer.toLower();
+
+    if (mfr == "samsung") {
+        // Galaxy S24 Ultra — Snapdragon 8 Gen 3 for Galaxy (SM8650)
         processor = "ARM Implementer 88 -> Qualcomm";
         hardware = "qcom";
-        board = "taro";
+        board = "pineapple";
         gpuRenderer = "Adreno (TM) 750";
         gpuVendor = "Qualcomm";
+        gpuVersion = "OpenGL ES 3.2 V@0762.6 (GIT@I8a9c11e1c7)";
+        vulkanVersion = "1.3.231";
         coreCount = 8;
         coreCountBig = 1;
-        coreCountMid = 3;
-        coreCountLittle = 4;
+        coreCountMid = 5;
+        coreCountLittle = 2;
         totalRAM = 12288000000ULL;  // 12GB
         heapSize = 512000000ULL;
         largeHeapSize = 4096000000ULL;
-    } else if (manufacturer.toLower() == "google") {
+    } else if (mfr == "google") {
+        // Pixel 8 Pro — Google Tensor G3 (zuma) with ARM Immortalis-G715s
         processor = "ARM Implementer 65 -> Google";
-        hardware = "gschip";
-        board = "gschip";
+        hardware = "zuma";
+        board = "husky";
         gpuRenderer = "Immortalis-G715s MC10";
         gpuVendor = "ARM";
-        coreCount = 8;
-        coreCountBig = 4;
-        coreCountMid = 0;
+        gpuVersion = "OpenGL ES 3.2";
+        vulkanVersion = "1.3.231";
+        coreCount = 9;
+        coreCountBig = 1;
+        coreCountMid = 4;
         coreCountLittle = 4;
         totalRAM = 12288000000ULL;
         heapSize = 512000000ULL;
         largeHeapSize = 4096000000ULL;
-    } else {
-        processor = "ARM Implementer 88";
+    } else if (mfr == "xiaomi") {
+        // Xiaomi 14 — Snapdragon 8 Gen 3 (SM8650)
+        processor = "ARM Implementer 88 -> Qualcomm";
         hardware = "qcom";
-        board = "qcom";
-        gpuRenderer = "Adreno (TM) 740";
+        board = "pineapple";
+        gpuRenderer = "Adreno (TM) 750";
         gpuVendor = "Qualcomm";
+        gpuVersion = "OpenGL ES 3.2 V@0762.6 (GIT@I8a9c11e1c7)";
+        vulkanVersion = "1.3.231";
+        coreCount = 8;
+        coreCountBig = 1;
+        coreCountMid = 5;
+        coreCountLittle = 2;
+        totalRAM = 12288000000ULL;
+        heapSize = 512000000ULL;
+        largeHeapSize = 4096000000ULL;
+    } else if (mfr == "oneplus") {
+        // OnePlus 12 — Snapdragon 8 Gen 3 (SM8650)
+        processor = "ARM Implementer 88 -> Qualcomm";
+        hardware = "qcom";
+        board = "pineapple";
+        gpuRenderer = "Adreno (TM) 750";
+        gpuVendor = "Qualcomm";
+        gpuVersion = "OpenGL ES 3.2 V@0762.6 (GIT@I8a9c11e1c7)";
+        vulkanVersion = "1.3.231";
+        coreCount = 8;
+        coreCountBig = 1;
+        coreCountMid = 5;
+        coreCountLittle = 2;
+        totalRAM = 16384000000ULL;  // 16GB
+        heapSize = 512000000ULL;
+        largeHeapSize = 4096000000ULL;
+    } else if (mfr == "huawei") {
+        // Huawei P60 Pro — Snapdragon 8+ Gen 1 4G (SM8475)
+        processor = "ARM Implementer 88 -> Qualcomm";
+        hardware = "qcom";
+        board = "taro";
+        gpuRenderer = "Adreno (TM) 730";
+        gpuVendor = "Qualcomm";
+        gpuVersion = "OpenGL ES 3.2 V@0615.0 (GIT@I5074c6b0f2)";
+        vulkanVersion = "1.1.269";
         coreCount = 8;
         coreCountBig = 1;
         coreCountMid = 3;
         coreCountLittle = 4;
+        totalRAM = 8192000000ULL;   // 8GB
+        heapSize = 512000000ULL;
+        largeHeapSize = 4096000000ULL;
+    } else {
+        // Generic Qualcomm flagship fallback (Snapdragon 8 Gen 2 class)
+        processor = "ARM Implementer 88";
+        hardware = "qcom";
+        board = "kalama";
+        gpuRenderer = "Adreno (TM) 740";
+        gpuVendor = "Qualcomm";
+        gpuVersion = "OpenGL ES 3.2 V@0676.0 (GIT@I36e2b42d23)";
+        vulkanVersion = "1.3.128";
+        coreCount = 8;
+        coreCountBig = 1;
+        coreCountMid = 4;
+        coreCountLittle = 3;
         totalRAM = 8192000000ULL;
         heapSize = 512000000ULL;
         largeHeapSize = 4096000000ULL;
     }
-    
+
     cpuMaxFreq = 3200000000ULL;
     cpuMinFreq = 300000000ULL;
     bogoMips = 38.40;
-    
+
     hasAES = true;
     hasNEON = true;
     hasVFPv4 = true;
     hasARMv8 = true;
-    
-    gpuVersion = "OpenGL ES 3.2 V@0533.0";
-    vulkanVersion = "1.1.269";
-    
+
     totalRAMMB = totalRAM / (1024 * 1024);
 }
 

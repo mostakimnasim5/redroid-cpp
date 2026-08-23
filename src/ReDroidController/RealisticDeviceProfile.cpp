@@ -598,15 +598,17 @@ CompleteHardwareSpec RealisticDeviceProfile::generateHardware(const QString& man
         hw.gpuRenderer = "Adreno (TM) 750";
         hw.totalRam = 12288000000ULL;
     } else if (manufacturer.toLower() == "google") {
-        hw.hardware = "google";
+        // Pixel 8 Pro — Tensor G3 ships ARM Immortalis-G715s (not Mali-G715);
+        // the exact GPU string is part of the device fingerprint.
+        hw.hardware = "zuma";
         hw.board = "husky";
         hw.systemOnChip = "Tensor G3";
-        hw.coreCount = 8;
+        hw.coreCount = 9;
         hw.bigCoreCount = 1;
         hw.midCoreCount = 4;
-        hw.littleCoreCount = 3;
+        hw.littleCoreCount = 4;
         hw.gpuVendor = "ARM";
-        hw.gpuRenderer = "Mali-G715";
+        hw.gpuRenderer = "Immortalis-G715s MC10";
         hw.totalRam = 12288000000ULL;
     } else if (manufacturer.toLower() == "xiaomi") {
         hw.hardware = "qcom";
