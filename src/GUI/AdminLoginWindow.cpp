@@ -6,6 +6,7 @@
 
 #include "AdminLoginWindow.hpp"
 #include "AdminDashboardWindow.hpp"
+#include "VirtualPhonePro/ConfigManager.hpp"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -183,11 +184,20 @@ void AdminLoginWindow::onLoginClicked() {
     m_loginButton->setText("Authenticating...");
     m_statusLabel->setVisible(false);
 
-    // Use Firebase REST API for admin authentication
-    // For simplicity, we'll query the admins collection and verify credentials
-    QString baseUrl = QString("https://firestore.googleapis.com/v1/projects/%1/databases/(default)/documents/admins")
-        .arg("Redroid-d8110");
-    QString apiKey = "AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA";
+    // Use Firebase REST API for admin authentication.
+    // Credentials come from REDROID_FB_PROJECT_ID / REDROID_FB_API_KEY
+    // environment variables or the user config file — never hardcoded.
+    auto& config = VirtualPhonePro::ConfigManager::instance();
+    if (!config.hasFirebaseConfig()) {
+        m_isLoggingIn = false;
+        m_loginButton->setEnabled(true);
+        m_loginButton->setText("LOGIN");
+        showError("Firebase is not configured. Set REDROID_FB_PROJECT_ID and "
+                  "REDROID_FB_API_KEY environment variables.");
+        return;
+    }
+    QString baseUrl = config.getFirebaseBaseUrl() + "/admins";
+    QString apiKey = config.getFirebaseApiKey();
 
     // Build query to find admin by ID
     QUrl url(baseUrl + ":runQuery?key=" + apiKey);
