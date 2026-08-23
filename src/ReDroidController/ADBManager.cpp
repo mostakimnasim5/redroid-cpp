@@ -20,9 +20,90 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <poll.h>
+#include <cerrno>
 #endif
 
 namespace VirtualPhonePro {
+
+namespace {
+
+#ifndef _WIN32
+// Run a shell command with a hard timeout. Returns true when the child
+// finished within timeoutMs (stdout+stderr captured into output); false
+// when it had to be killed or could not be started. The previous
+// popen/fgets loop could not enforce this — fgets blocks indefinitely
+// when the child produces no output, and pclose blocks on a hung child.
+bool runCommandWithTimeout(const std::string& cmd, int timeoutMs, std::string& output) {
+    int pipeFd[2];
+    if (pipe(pipeFd) != 0) return false;
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        close(pipeFd[0]);
+        close(pipeFd[1]);
+        return false;
+    }
+
+    if (pid == 0) {
+        dup2(pipeFd[1], STDOUT_FILENO);
+        dup2(pipeFd[1], STDERR_FILENO);
+        close(pipeFd[0]);
+        close(pipeFd[1]);
+        execl("/bin/sh", "sh", "-c", cmd.c_str(), static_cast<char*>(nullptr));
+        _exit(127);
+    }
+
+    close(pipeFd[1]);
+
+    const auto deadline = std::chrono::steady_clock::now()
+                        + std::chrono::milliseconds(timeoutMs);
+    bool timedOut = false;
+    std::array<char, 512> buffer;
+
+    while (true) {
+        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+            deadline - std::chrono::steady_clock::now()).count();
+        if (remaining <= 0) { timedOut = true; break; }
+
+        struct pollfd pfd { pipeFd[0], POLLIN, 0 };
+        const int ready = poll(&pfd, 1, static_cast<int>(remaining));
+        if (ready < 0) {
+            if (errno == EINTR) continue;
+            break;  // poll error — waitpid below still reaps the child
+        }
+        if (ready == 0) { timedOut = true; break; }
+
+        const ssize_t n = read(pipeFd[0], buffer.data(), buffer.size());
+        if (n > 0) {
+            output.append(buffer.data(), static_cast<size_t>(n));
+        } else if (n == 0) {
+            break;  // EOF — child closed the pipe
+        } else if (errno != EINTR) {
+            break;
+        }
+    }
+
+    close(pipeFd[0]);
+
+    if (timedOut)
+        kill(pid, SIGKILL);
+
+    int status = 0;
+    waitpid(pid, &status, 0);
+
+    if (timedOut) return false;
+
+    if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+        Logger::getInstance().warning(
+            "Command returned non-zero exit code: " + std::to_string(WEXITSTATUS(status)));
+    }
+    return true;
+}
+#endif
+
+} // namespace
+
 
 namespace {
 
@@ -156,17 +237,29 @@ std::string ADBManager::findADBPath() {
             "which " + path + " 2>/dev/null";
 #endif
         
-        FILE* pipe = popen(cmd.c_str(), "r");
+#ifdef _WIN32
+        FILE* pipe = _popen(cmd.c_str(), "r");
         if (pipe) {
             char buffer[512];
             if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-                pclose(pipe);
+                _pclose(pipe);
                 std::string result(buffer);
                 result.erase(result.find_last_not_of(" \n\r\t") + 1);
                 return result;
             }
-            pclose(pipe);
+            _pclose(pipe);
         }
+#else
+        // Hard timeout so a wedged shell/PATH lookup cannot stall startup.
+        std::string out;
+        if (runCommandWithTimeout(cmd, 5000, out) && !out.empty()) {
+            const auto nl = out.find('\n');
+            std::string result = out.substr(0, nl);
+            result.erase(result.find_last_not_of(" \n\r\t") + 1);
+            if (!result.empty())
+                return result;
+        }
+#endif
     }
     
     return "adb";
@@ -329,58 +422,45 @@ std::string ADBManager::executeADBCommand(const std::vector<std::string>& args, 
         }
         
         Logger::getInstance().debug("Executing: " + cmd);
-        
+#ifndef _WIN32
+        // POSIX: fork/exec + poll enforces a hard timeout — a hung child is
+        // SIGKILLed instead of blocking fgets/pclose forever.
+        std::string result;
+        if (!runCommandWithTimeout(cmd, timeoutMs, result)) {
+            m_lastError = "Command timed out (" + std::to_string(timeoutMs)
+                        + " ms), child process killed: " + cmd;
+            Logger::getInstance().error(m_lastError);
+            return "";
+        }
+        return result;
+#else
         std::array<char, 128> buffer;
         std::string result;
-        
-#ifdef _WIN32
         FILE* pipe = _popen(cmd.c_str(), "r");
-#else
-        FILE* pipe = popen(cmd.c_str(), "r");
-#endif
-        
         if (!pipe) {
             m_lastError = "Failed to execute command: " + cmd;
             Logger::getInstance().error(m_lastError);
             return "";
         }
-        
         auto startTime = std::chrono::steady_clock::now();
-        
         while (true) {
             if (std::chrono::steady_clock::now() - startTime > std::chrono::milliseconds(timeoutMs)) {
                 Logger::getInstance().warning("Command timeout exceeded");
-#ifdef _WIN32
                 _pclose(pipe);
-#else
-                pclose(pipe);
-#endif
                 return result;
             }
-            
-#ifdef _WIN32
             char* fgetsResult = fgets(buffer.data(), buffer.size(), pipe);
-#else
-            char* fgetsResult = fgets(buffer.data(), buffer.size(), pipe);
-#endif
-            
             if (fgetsResult == nullptr) {
                 break;
             }
             result += fgetsResult;
         }
-        
-#ifdef _WIN32
         int exitCode = _pclose(pipe);
-#else
-        int exitCode = pclose(pipe);
-#endif
-        
         if (exitCode != 0) {
             Logger::getInstance().warning("Command returned non-zero exit code: " + std::to_string(exitCode));
         }
-        
         return result;
+#endif
     }
     catch (const std::exception& e) {
         m_lastError = std::string("Exception during ADB command: ") + e.what();
