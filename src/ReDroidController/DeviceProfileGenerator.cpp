@@ -244,7 +244,7 @@ std::array<uint8_t, HMAC_SHA256::OUTPUT_SIZE> HMAC_SHA256::compute(
     const uint8_t* key, size_t keyLen,
     const uint8_t* data, size_t dataLen
 ) {
-    std::array<uint8_t, BLOCK_SIZE> k;
+    std::array<uint8_t, BLOCK_SIZE> k{};
     std::array<uint8_t, BLOCK_SIZE> k_ipad{};
     std::array<uint8_t, BLOCK_SIZE> k_opad{};
     
@@ -1225,7 +1225,7 @@ bool DeviceProfileGenerator::verifyLuhn(const std::string& full_imei) {
     if (full_imei.length() != 15) return false;
     
     int sum = 0;
-    bool alternate = true;
+    bool alternate = false;  // check digit at index 14 is not doubled
     
     for (int i = 14; i >= 0; i--) {
         int digit = full_imei[i] - '0';
