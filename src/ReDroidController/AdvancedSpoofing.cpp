@@ -1,5 +1,6 @@
 #include "VirtualPhonePro/AdvancedSpoofing.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/Logger.hpp"
 #include <algorithm>
 #include <sstream>
@@ -93,6 +94,20 @@ const std::vector<std::string> AdvancedSpoofing::TRACKER_DOMAINS = {
     "fabric.io"
 };
 
+ADBManager& AdvancedSpoofing::adbForInstance() const {
+    // Per-instance ADB context: commands are pinned to the adb serial bound
+    // to this instance, so spoofing never leaks onto another container.
+    // Falls back to the global manager only when no instanceId was bound.
+    if (m_instanceId.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    const QString serial = ReDroidController::instance().adbSerialFor(m_instanceId);
+    if (serial.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    return ADBManager::getInstanceFor(serial.toStdString());
+}
+
 AdvancedSpoofing::AdvancedSpoofing()
     : m_initialized(false)
     , m_sensorSpoofingEnabled(false)
@@ -107,7 +122,7 @@ AdvancedSpoofing::~AdvancedSpoofing() {
 bool AdvancedSpoofing::initialize() {
     Logger::getInstance().info("Initializing Advanced Spoofing Engine...");
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     if (!adb.isConnected()) {
         Logger::getInstance().warning("ADB not connected - limited functionality");
     }
@@ -203,7 +218,7 @@ std::string AdvancedSpoofing::generateRandomBuildFingerprint() {
 }
 
 bool AdvancedSpoofing::applySpoof(const std::string& property, const std::string& value) {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     if (m_originalValues.find(property) == m_originalValues.end()) {
         std::string current = adb.getProperty(property);
@@ -231,7 +246,7 @@ bool AdvancedSpoofing::applySpoof(const std::string& property, const std::string
 }
 
 std::string AdvancedSpoofing::getCurrentValue(const std::string& property) {
-    return ADBManager::getInstance().getProperty(property);
+    return adbForInstance().getProperty(property);
 }
 
 void AdvancedSpoofing::backupOriginalValue(const std::string& property, const std::string& value) {
@@ -243,7 +258,7 @@ void AdvancedSpoofing::backupOriginalValue(const std::string& property, const st
 AdvancedSpoofingResult AdvancedSpoofing::spoofAndroidId(const std::string& androidId) {
     AdvancedSpoofingResult result = {false, "DeviceID", "android_id", "", androidId, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string current = adb.executeShellCommand("settings get secure android_id");
     result.originalValue = current;
@@ -265,7 +280,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofAndroidId(const std::string& andro
 AdvancedSpoofingResult AdvancedSpoofing::spoofDeviceId(const std::string& deviceId) {
     AdvancedSpoofingResult result = {false, "DeviceID", "ro.system.device_id", "", deviceId, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     result.originalValue = adb.getProperty("ro.system.device_id");
     result.success = applySpoof("ro.system.device_id", deviceId);
@@ -281,7 +296,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofDeviceId(const std::string& device
 AdvancedSpoofingResult AdvancedSpoofing::spoofSerialNumber(const std::string& serial) {
     AdvancedSpoofingResult result = {false, "DeviceID", "ro.serialno", "", serial, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     result.originalValue = adb.getProperty("ro.serialno");
     
@@ -347,7 +362,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofCPUAbi(const std::string& abi) {
 AdvancedSpoofingResult AdvancedSpoofing::spoofProcessorCount(int count) {
     AdvancedSpoofingResult result = {false, "Hardware", "sys.proc_count", "", std::to_string(count), "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string cmd = "sysctl -w hw.nproc=" + std::to_string(count);
     adb.executeShellCommand(cmd);
@@ -363,7 +378,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofProcessorCount(int count) {
 AdvancedSpoofingResult AdvancedSpoofing::spoofTotalMemory(long memoryMB) {
     AdvancedSpoofingResult result = {false, "Hardware", "sys.total_memory", "", std::to_string(memoryMB) + "MB", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("settings put global sys_total_memory " + std::to_string(memoryMB));
     
@@ -376,7 +391,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofTotalMemory(long memoryMB) {
 AdvancedSpoofingResult AdvancedSpoofing::spoofGPURenderer(const std::string& renderer) {
     AdvancedSpoofingResult result = {false, "GPU", "debug.hwui.render_gpu_profiler.renderer", "", renderer, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("settings put global gpu_render " + renderer);
     adb.setProperty("debug.hwui.render_gpu_profiler.renderer", renderer);
@@ -427,7 +442,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofAccelerometer(float x, float y, fl
     AdvancedSpoofingResult result = {false, "Sensor", "accelerometer", "", 
                             std::to_string(x) + "," + std::to_string(y) + "," + std::to_string(z), "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string cmd = "sensor set accelerometer " + std::to_string(x) + ":" + std::to_string(y) + ":" + std::to_string(z);
     adb.executeShellCommand(cmd);
@@ -442,7 +457,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofGyroscope(float x, float y, float 
     AdvancedSpoofingResult result = {false, "Sensor", "gyroscope", "",
                             std::to_string(x) + "," + std::to_string(y) + "," + std::to_string(z), "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string cmd = "sensor set gyroscope " + std::to_string(x) + ":" + std::to_string(y) + ":" + std::to_string(z);
     adb.executeShellCommand(cmd);
@@ -457,7 +472,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofMagnetometer(float x, float y, flo
     AdvancedSpoofingResult result = {false, "Sensor", "magnetometer", "",
                             std::to_string(x) + "," + std::to_string(y) + "," + std::to_string(z), "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string cmd = "sensor set magnetometer " + std::to_string(x) + ":" + std::to_string(y) + ":" + std::to_string(z);
     adb.executeShellCommand(cmd);
@@ -471,7 +486,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofMagnetometer(float x, float y, flo
 AdvancedSpoofingResult AdvancedSpoofing::spoofProximity(bool present) {
     AdvancedSpoofingResult result = {false, "Sensor", "proximity", "", present ? "near" : "far", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string cmd = "sensor set proximity " + std::string(present ? "near" : "far");
     adb.executeShellCommand(cmd);
@@ -485,7 +500,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofProximity(bool present) {
 AdvancedSpoofingResult AdvancedSpoofing::spoofLightSensor(float lux) {
     AdvancedSpoofingResult result = {false, "Sensor", "light", "", std::to_string(lux) + " lux", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string cmd = "sensor set light " + std::to_string(lux);
     adb.executeShellCommand(cmd);
@@ -499,7 +514,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofLightSensor(float lux) {
 AdvancedSpoofingResult AdvancedSpoofing::enableSensorSpoofing() {
     AdvancedSpoofingResult result = {false, "Sensor", "sensor_spoofing", "", "enabled", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("settings put system sensor_spoofing 1");
     adb.setProperty("persist.sys.sensor.spoof", "true");
@@ -515,7 +530,7 @@ AdvancedSpoofingResult AdvancedSpoofing::enableSensorSpoofing() {
 AdvancedSpoofingResult AdvancedSpoofing::disableSensorSpoofing() {
     AdvancedSpoofingResult result = {false, "Sensor", "sensor_spoofing", "", "disabled", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("settings put system sensor_spoofing 0");
     adb.setProperty("persist.sys.sensor.spoof", "false");
@@ -531,7 +546,7 @@ AdvancedSpoofingResult AdvancedSpoofing::disableSensorSpoofing() {
 AdvancedSpoofingResult AdvancedSpoofing::spoofUserAgent(const std::string& userAgent) {
     AdvancedSpoofingResult result = {false, "UserAgent", "default_ua", "", userAgent, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("settings put global user_agent \"" + userAgent + "\"");
     adb.setProperty("persist.sys.browser.user-agent", userAgent);
@@ -578,7 +593,7 @@ std::string AdvancedSpoofing::generateRandomUserAgent(const std::string& browser
 AdvancedSpoofingResult AdvancedSpoofing::spoofWebRTCLocalIP(const std::string& ip) {
     AdvancedSpoofingResult result = {false, "WebRTC", "webrtc.local.ip", "", ip, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.net.webrtc.local_ip", ip);
     adb.executeShellCommand("settings put global webrtc_local_ip " + ip);
@@ -592,7 +607,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofWebRTCLocalIP(const std::string& i
 AdvancedSpoofingResult AdvancedSpoofing::spoofWebRTCPublicIP(const std::string& ip) {
     AdvancedSpoofingResult result = {false, "WebRTC", "webrtc.public.ip", "", ip, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.net.webrtc.public_ip", ip);
     adb.executeShellCommand("settings put global webrtc_public_ip " + ip);
@@ -606,7 +621,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofWebRTCPublicIP(const std::string& 
 AdvancedSpoofingResult AdvancedSpoofing::enableWebRTCProxy() {
     AdvancedSpoofingResult result = {false, "WebRTC", "webrtc.proxy", "", "enabled", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.net.webrtc.proxy", "true");
     adb.executeShellCommand("settings put global webrtc_proxy_enabled 1");
@@ -622,7 +637,7 @@ AdvancedSpoofingResult AdvancedSpoofing::enableWebRTCProxy() {
 AdvancedSpoofingResult AdvancedSpoofing::disableWebRTCProxy() {
     AdvancedSpoofingResult result = {false, "WebRTC", "webrtc.proxy", "", "disabled", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.net.webrtc.proxy", "false");
     adb.executeShellCommand("settings put global webrtc_proxy_enabled 0");
@@ -638,7 +653,7 @@ AdvancedSpoofingResult AdvancedSpoofing::disableWebRTCProxy() {
 AdvancedSpoofingResult AdvancedSpoofing::spoofWidevineLevel(int level) {
     AdvancedSpoofingResult result = {false, "Widevine", "widevine.level", "", "L" + std::to_string(level), "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string levelStr;
     switch (level) {
@@ -663,7 +678,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofWidevineLevel(int level) {
 AdvancedSpoofingResult AdvancedSpoofing::spoofHDCPLevel(const std::string& level) {
     AdvancedSpoofingResult result = {false, "Widevine", "hdcp.level", "", level, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.sys.hdcp.level", level);
     adb.executeShellCommand("settings put global hdcp_level " + level);
@@ -679,7 +694,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofHDCPLevel(const std::string& level
 AdvancedSpoofingResult AdvancedSpoofing::enableDRMEmulation() {
     AdvancedSpoofingResult result = {false, "DRM", "drm.emulation", "", "enabled", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("drm enable emulation");
     adb.setProperty("persist.sys.drm.emulation", "true");
@@ -695,7 +710,7 @@ AdvancedSpoofingResult AdvancedSpoofing::enableDRMEmulation() {
 AdvancedSpoofingResult AdvancedSpoofing::disableDRMEmulation() {
     AdvancedSpoofingResult result = {false, "DRM", "drm.emulation", "", "disabled", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("drm disable emulation");
     adb.setProperty("persist.sys.drm.emulation", "false");
@@ -711,7 +726,7 @@ AdvancedSpoofingResult AdvancedSpoofing::disableDRMEmulation() {
 AdvancedSpoofingResult AdvancedSpoofing::spoofSafetyNetResponse(const std::map<std::string, std::string>& response) {
     AdvancedSpoofingResult result = {false, "SafetyNet", "safety.net.response", "", "custom", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     for (const auto& [key, value] : response) {
         std::string propName = "persist.safetynet." + key;
@@ -732,7 +747,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofSafetyNetResponse(const std::map<s
 AdvancedSpoofingResult AdvancedSpoofing::spoofPlayIntegrityResult(const std::string& nonce, const std::string& result) {
     AdvancedSpoofingResult result_ = {false, "PlayIntegrity", "play.integrity", "", result, "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.play.integrity.nonce", nonce);
     adb.setProperty("persist.play.integrity.result", result);
@@ -749,7 +764,7 @@ AdvancedSpoofingResult AdvancedSpoofing::spoofPlayIntegrityResult(const std::str
 AdvancedSpoofingResult AdvancedSpoofing::enableBasicIntegrity() {
     AdvancedSpoofingResult result = {false, "PlayIntegrity", "basic.integrity", "", "true", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.play.integrity.basic", "true");
     adb.executeShellCommand("settings put global basic_integrity 1");
@@ -763,7 +778,7 @@ AdvancedSpoofingResult AdvancedSpoofing::enableBasicIntegrity() {
 AdvancedSpoofingResult AdvancedSpoofing::enableDeviceIntegrity() {
     AdvancedSpoofingResult result = {false, "PlayIntegrity", "device.integrity", "", "true", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.play.integrity.device", "true");
     adb.executeShellCommand("settings put global device_integrity 1");
@@ -780,7 +795,7 @@ AdvancedSpoofingResult AdvancedSpoofing::enableDeviceIntegrity() {
 AdvancedSpoofingResult AdvancedSpoofing::enableNoCtsMismatch() {
     AdvancedSpoofingResult result = {false, "PlayIntegrity", "cts.mismatch", "", "false", "", ""};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("persist.play.integrity.cts", "false");
     adb.executeShellCommand("settings put global cts_mismatch 0");
@@ -842,7 +857,7 @@ AdvancedSpoofingResult AdvancedSpoofing::loadBlocklist(const std::string& filepa
 bool AdvancedSpoofing::resetAll() {
     Logger::getInstance().info("Resetting all spoofing changes...");
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     for (const auto& entry : m_originalValues) {
         adb.setProperty(entry.first, entry.second);

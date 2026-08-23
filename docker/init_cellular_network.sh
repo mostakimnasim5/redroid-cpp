@@ -36,9 +36,42 @@ NETWORK_TYPE="${NETWORK_TYPE:-LTE}"
 PROXY_HOST="${PROXY_HOST:-}"
 PROXY_PORT="${PROXY_PORT:-}"
 PROXY_TYPE="${PROXY_TYPE:-socks5}"
-TIMEZONE="${TIMEZONE:-America/New_York}"
-GPS_LAT="${GPS_LAT:-40.7128}"
-GPS_LON="${GPS_LON:--74.0060}"
+
+# Country-derived defaults (timezone/GPS) — mirrors the C++
+# IPTimezoneConverter country database so the container's timezone,
+# SIM country and GPS coordinates always agree with the proxy country.
+# Explicit TIMEZONE/GPS_LAT/GPS_LON env vars still win (operator override).
+country_defaults() {
+    case "$1" in
+        US) echo "America/New_York 40.7128 -74.0060" ;;
+        GB) echo "Europe/London 51.5074 -0.1278" ;;
+        DE) echo "Europe/Berlin 52.5200 13.4050" ;;
+        FR) echo "Europe/Paris 48.8566 2.3522" ;;
+        BD) echo "Asia/Dhaka 23.8103 90.4125" ;;
+        IN) echo "Asia/Kolkata 28.6139 77.2090" ;;
+        PK) echo "Asia/Karachi 33.6844 73.0479" ;;
+        JP) echo "Asia/Tokyo 35.6762 139.6503" ;;
+        KR) echo "Asia/Seoul 37.5665 126.9780" ;;
+        SG) echo "Asia/Singapore 1.3521 103.8198" ;;
+        CN) echo "Asia/Shanghai 31.2304 121.4737" ;;
+        AU) echo "Australia/Sydney -33.8688 151.2093" ;;
+        BR) echo "America/Sao_Paulo -23.5505 -46.6333" ;;
+        AE) echo "Asia/Dubai 25.2048 55.2708" ;;
+        SA) echo "Asia/Riyadh 23.8859 45.0792" ;;
+        TR) echo "Europe/Istanbul 41.0082 28.9784" ;;
+        RU) echo "Europe/Moscow 55.7558 37.6173" ;;
+        CA) echo "America/Toronto 43.6532 -79.3832" ;;
+        MX) echo "America/Mexico_City 19.4326 -99.1332" ;;
+        *)  echo "America/New_York 40.7128 -74.0060" ;;
+    esac
+}
+# shellcheck disable=SC2046
+set -- $(country_defaults "$COUNTRY_CODE")
+TZ_DEFAULT="$1"; GPS_LAT_DEFAULT="$2"; GPS_LON_DEFAULT="$3"
+
+TIMEZONE="${TIMEZONE:-$TZ_DEFAULT}"
+GPS_LAT="${GPS_LAT:-$GPS_LAT_DEFAULT}"
+GPS_LON="${GPS_LON:-$GPS_LON_DEFAULT}"
 
 # Generate cellular IP if not provided
 if [ -z "$CELLULAR_IP" ]; then

@@ -11,6 +11,7 @@
 #include <QMutex>
 
 namespace VirtualPhonePro {
+class ADBManager;
 
 enum class HypervisorType {
     NONE,
@@ -123,6 +124,11 @@ private:
     
     std::vector<std::string> m_originalProperties;
     std::map<std::string, std::string> m_modifiedProperties;
+
+    // Per-instance ADB routing — commands go to the serial bound at
+    // registry creation time, never the shared global selected device.
+    ADBManager& adbForInstance();
+    QString m_instanceId;
 };
 
 }

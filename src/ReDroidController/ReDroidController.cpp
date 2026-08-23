@@ -42,6 +42,7 @@
 #include "VirtualPhonePro/DeviceBehaviorManager.hpp"
 #include "VirtualPhonePro/AdvancedRealisticSimulation.hpp"
 #include "VirtualPhonePro/RealisticDeviceProfile.hpp"
+#include "VirtualPhonePro/EnhancedDeviceProfile.hpp"
 #include "VirtualPhonePro/FindMyDeviceManager.hpp"
 #include "VirtualPhonePro/NetworkProfileManager.hpp"
 #include "VirtualPhonePro/MagiskPatcher.hpp"
@@ -597,8 +598,30 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
         qDebug() << "binderfs available — container will mount its own binder namespace";
     } else {
         // Older WSL2 kernel: fall back to host binder device passthrough.
-        // All instances share the host binder context — acceptable for
-        // single-instance use, problematic for multiple concurrent instances.
+        // All instances share the host binder context — Android IPC leaks
+        // across container boundaries. Refuse to start a second instance
+        // rather than silently corrupt IPC state; single-instance use is
+        // still permitted.
+        int activeCount = 0;
+        for (const InstanceInfo& other : m_instances) {
+            if (other.state == InstanceState::Starting ||
+                other.state == InstanceState::Running  ||
+                other.state == InstanceState::Paused) {
+                ++activeCount;
+            }
+        }
+        if (activeCount > 0) {
+            qCritical() << "startInstance: kernel lacks binderfs and another"
+                        << "instance is already active — multi-instance"
+                        << "requires binderfs for per-container binder"
+                        << "isolation. Refusing to start" << instanceId;
+            emit error(QStringLiteral(
+                "Cannot start multiple instances on this host: kernel lacks "
+                "binderfs. Instances would share the host binder context "
+                "(Android IPC leaks across containers). Use a kernel with "
+                "binderfs (5.7+), or run one instance at a time."));
+            return false;
+        }
         qWarning() << "binderfs not available — falling back to host /dev/binder passthrough";
         auto addDeviceIfExists = [&](const QString& hostPath, const QString& containerPath) {
             if (QFileInfo::exists(hostPath) || QFileInfo(hostPath).isSymLink()) {
@@ -624,6 +647,14 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     args << "-h" << QString("android-%1").arg(instanceId);
     
     // Environment variables for device properties
+    // VPP_COUNTRY_CODE lets in-pipeline spoofing (timezone, locale, carrier)
+    // resolve this instance's assigned region via IPTimezoneConverter.
+    // Country comes from the profile's SIM configuration, defaulting to US.
+    QString countryEnv = profile.sim.country.trimmed().toUpper();
+    if (countryEnv.isEmpty()) {
+        countryEnv = QStringLiteral("US");
+    }
+    args << "-e" << QString("VPP_COUNTRY_CODE=%1").arg(countryEnv);
     args << "-e" << QString("VPP_DEVICE_MANUFACTURER=%1").arg(profile.build.manufacturer);
     args << "-e" << QString("VPP_DEVICE_BRAND=%1").arg(profile.build.brand);
     args << "-e" << QString("VPP_DEVICE_MODEL=%1").arg(profile.build.model);
@@ -1056,34 +1087,29 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         return false;
     }
 
-    // =========================================================================
-    // Fix 6: Select this instance on the shared global ADBManager.
-    //
-    // Several anti-detection singletons (HypervisorBypass, SafetyNetAdvancedBypass,
-    // RealPhoneHardening, AdvancedSpoofing, HardwareFingerprintSpoofer,
-    // NetworkStackSpoofer) issue ADB commands through the process-global
-    // ADBManager instance rather than through ReDroidController's
-    // instanceId-aware executeShell(). ADBManager routes those commands to
-    // m_selectedDevice — which, if never set, defaults to "any connected
-    // device". In a multi-instance setup that means spoofing intended for
-    // instance A could silently land on instance B.
-    //
-    // We connect this instance's adb endpoint and select it on the global
-    // manager before any global-ADB module runs, so every singleton below
-    // operates on the correct container.
-    // =========================================================================
-    // =========================================================================
-    // Global ADBManager serialisation lock.
-    // applyCompleteRealism() calls 11 phases that all route through the
-    // global ADBManager singleton (getInstance()). Without this lock, two
-    // concurrent launches can interleave selectDevice() calls, causing
-    // Phase-N of instance-A to fire commands at instance-B's serial.
-    // The lock is held for the entire realism pipeline of one instance;
-    // other instances queue behind it. Each instance's pipeline takes
-    // ~5-15 s, so contention is brief relative to the 90-180 s boot wait
-    // that already precedes this call.
-    // =========================================================================
-    QMutexLocker globalAdbLock(&m_globalAdbMutex);
+    // Per-instance ADB binding: HypervisorBypass / SafetyNetAdvancedBypass /
+    // RealPhoneHardening (per-instance registries) and AdvancedSpoofing /
+    // NetworkStackSpoofer (stack objects bound via setInstanceId()) all pin
+    // their ADB commands to this instance's adb serial, so no global
+    // serialization is needed here — instances can run their realism
+    // pipelines in parallel without cross-instance spoofing leaks.
+
+    // Resolve this instance's country early — timezone, locale and carrier
+    // settings throughout the pipeline must match it (see IPTimezoneConverter,
+    // the single source of truth). The container receives its country via the
+    // VPP_COUNTRY_CODE env var (defaults to "US" when unset).
+    QString countryCode = executeAdbSync(
+        instanceId, {"shell", "printenv", "VPP_COUNTRY_CODE"}, 3000).trimmed().toUpper();
+    if (countryCode.isEmpty()) {
+        countryCode = "US";
+    }
+    auto instanceLocale = VirtualPhonePro::IPTimezoneConverter::getInstance()
+                              .getLocaleByCountryCode(countryCode.toStdString());
+    const QString instanceTimezone = QString::fromStdString(instanceLocale.timezone);
+    const QString instanceLocaleStr = QString::fromStdString(instanceLocale.locale);
+    qDebug() << "[Realism] Country:" << countryCode
+             << "| Timezone:" << instanceTimezone
+             << "| Locale:" << instanceLocaleStr;
 
     {
         const QString adbSerial = getAdbSerial(instanceId);
@@ -1236,6 +1262,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // and mobile operator identity. These are checked by banking apps that
     // correlate network-layer fingerprints with device identity.
     VirtualPhonePro::NetworkStackSpoofer netSpoofer;
+    netSpoofer.setInstanceId(instanceId);
     if (netSpoofer.initialize()) {
         netSpoofer.setDeviceTTL();                        // real device TTL=64
         netSpoofer.spoofMACAddress("A4:50:46:XX:XX:XX"); // Samsung OUI prefix
@@ -1592,14 +1619,22 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // capability strings, and the audio sample-rate/channel layout. On a
     // stock ReDroid image the GPU renderer reports "Android Emulator
     // OpenGL ES Translator" / "SwiftShader", which is an instant fail. We
-    // rewrite the EGL/Vulkan/GLES property surface to look like a real
-    // Adreno GPU and pin the audio HAL to a common Qualcomm layout.
+    // rewrite the EGL/Vulkan/GLES property surface to match the profile's
+    // real GPU and pin the audio HAL to a realistic layout.
+    // GPU identity must match the device profile's SoC: Qualcomm devices
+    // (Samsung/Xiaomi/OnePlus/Huawei flagships) ship Adreno, Google Tensor
+    // ships ARM Immortalis. A single hardcoded GPU string makes every
+    // instance share one fingerprint and contradicts the spoofed build props.
+    EnhancedHardwareInfo gpuHw;
+    gpuHw.generateForDevice(manufacturer);
+
     AdvancedSpoofing advSpoof;
+    advSpoof.setInstanceId(instanceId);
     if (advSpoof.initialize()) {
-        advSpoof.spoofGPURenderer("Adreno (TM) 740");
-        advSpoof.spoofGPUVendor("Qualcomm");
-        advSpoof.spoofOpenGLVersion("OpenGL ES 3.2 V@0490.0 (GIT@1abcdef, I0a0a0a0a0a, 1700000000) (Date:01/01/24)");
-        advSpoof.spoofVulkanVersion("1.3.0");
+        advSpoof.spoofGPURenderer(gpuHw.gpuRenderer.toStdString());
+        advSpoof.spoofGPUVendor(gpuHw.gpuVendor.toStdString());
+        advSpoof.spoofOpenGLVersion(gpuHw.gpuVersion.toStdString());
+        advSpoof.spoofVulkanVersion(gpuHw.vulkanVersion.toStdString());
         // WebRTC leaks the local IP (canvas/audio fingerprinting supplements
         // this). Pin a private IP that matches the spoofed network identity.
         advSpoof.spoofWebRTCLocalIP("192.168.1.42");
@@ -1616,10 +1651,14 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // Pin the EGL/Vulkan/GLES property surface directly. AdvancedSpoofing's
     // GPU_PROPERTIES list targets ro.* GL flags; these debug.* / ro.* keys
     // are what the WebView's Canvas2D/WebGL backend actually queries.
+    // The EGL/Vulkan HAL name must match the profile GPU vendor:
+    // Qualcomm -> "adreno", ARM (Tensor) -> "mali".
+    const bool isArmGpu = gpuHw.gpuVendor.compare("ARM", Qt::CaseInsensitive) == 0;
+    const QString eglHal = isArmGpu ? QStringLiteral("mali") : QStringLiteral("adreno");
     QStringList canvasWebglCommands = {
         // EGL renderer string read by WebGL getParameter(RENDERER)
-        "setprop ro.hardware.egl adreno",
-        "setprop ro.hardware.vulkan adreno",
+        "setprop ro.hardware.egl " + eglHal,
+        "setprop ro.hardware.vulkan " + eglHal,
         // OpenGL ES / Vulkan versions queried by fingerprinters
         "setprop ro.opengles.version 196610",     // 3.2
         // HWUI renderer — affects Canvas2D rasterisation output
@@ -1798,7 +1837,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     {
         RealisticDeviceProfile& rdp = RealisticDeviceProfile::instance();
         QJsonObject profileAudit = rdp.generateCompleteProfile(
-            manufacturer, model, "14");
+            manufacturer, model, "14", countryCode);
         QStringList missing = rdp.getMissingFields(profileAudit);
         if (missing.isEmpty()) {
             qDebug() << "  ✓ Device profile complete — all" << profileAudit.size()
@@ -2197,6 +2236,10 @@ QString ReDroidController::getLogs(const QString& instanceId, int tail) {
 
 QString ReDroidController::getAdbSerial(const QString& instanceId) const {
     return m_adbSerials.value(instanceId, QString("127.0.0.1:%1").arg(m_instances.value(instanceId).adbPort));
+}
+
+QString ReDroidController::adbSerialFor(const QString& instanceId) const {
+    return getAdbSerial(instanceId);
 }
 
 QString ReDroidController::getContainerName(const QString& instanceId) const {

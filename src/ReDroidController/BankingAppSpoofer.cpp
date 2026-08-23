@@ -7,6 +7,7 @@
 
 #include "VirtualPhonePro/BankingAppSpoofer.hpp"
 #include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/IPTimezoneConverter.hpp"
 
 #include <QDebug>
 #include <QFile>
@@ -1431,8 +1432,23 @@ bool BankingAppSpoofer::applyCompleteBankingSetup(const QString& instanceId) {
     disableUSBDebugging(instanceId);
     disableOEMUnlock(instanceId);
     hideUSBState(instanceId);
-    setTimezone(instanceId, "America/New_York");
-    setLocale(instanceId, "en_US");
+    // Timezone/locale must match the instance's assigned country — a
+    // hardcoded "America/New_York" on an instance whose proxy/carrier is
+    // non-US is an instant IP-vs-timezone mismatch red flag. The country
+    // is passed into the container via the VPP_COUNTRY_CODE env var and
+    // resolved through IPTimezoneConverter (single source of truth).
+    QString countryCode = executeCommandSync(instanceId, "printenv VPP_COUNTRY_CODE").trimmed().toUpper();
+    if (countryCode.isEmpty()) {
+        countryCode = "US";
+    }
+    auto localeInfo = VirtualPhonePro::IPTimezoneConverter::getInstance()
+                          .getLocaleByCountryCode(countryCode.toStdString());
+    QString timezone = QString::fromStdString(localeInfo.timezone);
+    QString locale = QString::fromStdString(localeInfo.locale);
+    qDebug() << "[BankingSpoofer] Timezone/locale for country" << countryCode
+             << "->" << timezone << "/" << locale;
+    setTimezone(instanceId, timezone);
+    setLocale(instanceId, locale);
     bypassMockLocationDetection(instanceId);
     bypassBenchmarkDetection(instanceId);
     

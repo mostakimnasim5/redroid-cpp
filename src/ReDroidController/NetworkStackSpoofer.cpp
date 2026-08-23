@@ -1,5 +1,6 @@
 #include "VirtualPhonePro/NetworkStackSpoofer.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/Logger.hpp"
 #include <sstream>
 #include <random>
@@ -9,6 +10,20 @@ namespace VirtualPhonePro {
 NetworkStackSpoofer& NetworkStackSpoofer::getInstance() {
     static NetworkStackSpoofer instance;
     return instance;
+}
+
+ADBManager& NetworkStackSpoofer::adbForInstance() const {
+    // Per-instance ADB context: commands are pinned to the adb serial bound
+    // to this instance, so spoofing never leaks onto another container.
+    // Falls back to the global manager only when no instanceId was bound.
+    if (m_instanceId.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    const QString serial = ReDroidController::instance().adbSerialFor(m_instanceId);
+    if (serial.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    return ADBManager::getInstanceFor(serial.toStdString());
 }
 
 NetworkStackSpoofer::NetworkStackSpoofer()
@@ -43,7 +58,7 @@ NetworkStackSpoofer::~NetworkStackSpoofer() {
 bool NetworkStackSpoofer::initialize() {
     Logger::getInstance().info("Initializing Network Stack Spoofer...");
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     if (!adb.isConnected()) {
         Logger::getInstance().warning("ADB not connected - network spoofing limited");
     }
@@ -103,7 +118,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::disableStackSpoofing() {
 NetworkSpoofResult2 NetworkStackSpoofer::setCongestionControl(const std::string& algorithm) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set TCP congestion control algorithm
     adb.executeShellCommand("sysctl -w net.ipv4.tcp_congestion_control=" + algorithm);
@@ -129,7 +144,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::setBbrProfile() {
 NetworkSpoofResult2 NetworkStackSpoofer::spoofTTL(int ttl) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set default TTL for all interfaces
     adb.executeShellCommand("iptables -t mangle -A POSTROUTING -j TTL --ttl-set " + std::to_string(ttl));
@@ -159,7 +174,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::setDeviceTTL() {
 NetworkSpoofResult2 NetworkStackSpoofer::enableWindowScaling() {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("sysctl -w net.ipv4.tcp_window_scaling=1");
     
@@ -175,7 +190,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::enableWindowScaling() {
 NetworkSpoofResult2 NetworkStackSpoofer::disableWindowScaling() {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("sysctl -w net.ipv4.tcp_window_scaling=0");
     
@@ -191,7 +206,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::disableWindowScaling() {
 NetworkSpoofResult2 NetworkStackSpoofer::enableTimestamps() {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("sysctl -w net.ipv4.tcp_timestamps=1");
     
@@ -207,7 +222,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::enableTimestamps() {
 NetworkSpoofResult2 NetworkStackSpoofer::disableTimestamps() {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("sysctl -w net.ipv4.tcp_timestamps=0");
     
@@ -223,7 +238,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::disableTimestamps() {
 NetworkSpoofResult2 NetworkStackSpoofer::enableSACK() {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("sysctl -w net.ipv4.tcp_sack=1");
     
@@ -239,7 +254,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::enableSACK() {
 NetworkSpoofResult2 NetworkStackSpoofer::disableSACK() {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("sysctl -w net.ipv4.tcp_sack=0");
     
@@ -255,7 +270,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::disableSACK() {
 NetworkSpoofResult2 NetworkStackSpoofer::setMTU(int mtu) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set MTU for common interfaces
     adb.executeShellCommand("ip link set wlan0 mtu " + std::to_string(mtu));
@@ -281,7 +296,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::setMobileMTU() {
 NetworkSpoofResult2 NetworkStackSpoofer::setCustomDNS(const std::vector<std::string>& dnsServers) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string dnsStr;
     for (size_t i = 0; i < dnsServers.size(); ++i) {
@@ -310,7 +325,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::setCloudflareDNS() {
 NetworkSpoofResult2 NetworkStackSpoofer::spoofUserAgent(const std::string& userAgent) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Store user agent for apps to use
     adb.executeShellCommand("settings put global user_agent " + userAgent);
@@ -345,7 +360,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::setSafariUserAgent() {
 NetworkSpoofResult2 NetworkStackSpoofer::spoofMACAddress(const std::string& mac) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Validate MAC format
     if (mac.length() != 17) {
@@ -395,7 +410,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::setSamsungMAC() {
 NetworkSpoofResult2 NetworkStackSpoofer::spoofInterfaceName() {
     NetworkSpoofResult2 result = {false, "", "", {}};
 
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
 
     // Real Android exposes the data interface as wlan0; containers/emulators
     // often expose eth0, which is a network-layer fingerprint. Rewrite the
@@ -415,7 +430,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::spoofInterfaceName() {
 NetworkSpoofResult2 NetworkStackSpoofer::spoofMobileOperator(const std::string& name) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("settings put global operator_name " + name);
     adb.executeShellCommand("settings put secure carrier_names " + name);
@@ -429,7 +444,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::spoofMobileOperator(const std::string& 
 NetworkSpoofResult2 NetworkStackSpoofer::spoofMobileCountryCode(int mcc) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("settings put global mcc " + std::to_string(mcc));
     
@@ -442,7 +457,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::spoofMobileCountryCode(int mcc) {
 NetworkSpoofResult2 NetworkStackSpoofer::spoofMobileNetworkCode(int mnc) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand("settings put global mnc " + std::to_string(mnc));
     
@@ -455,7 +470,7 @@ NetworkSpoofResult2 NetworkStackSpoofer::spoofMobileNetworkCode(int mnc) {
 NetworkSpoofResult2 NetworkStackSpoofer::spoofNetworkType(const std::string& type) {
     NetworkSpoofResult2 result = {false, "", "", {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Network type spoofing
     if (type == "5G") {
@@ -569,7 +584,7 @@ void NetworkStackSpoofer::applyAllChanges() {
 }
 
 void NetworkStackSpoofer::restoreOriginalSettings() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Restore iptables TTL rules
     adb.executeShellCommand("iptables -t mangle -F");

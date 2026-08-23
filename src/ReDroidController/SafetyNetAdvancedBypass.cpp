@@ -1,6 +1,7 @@
 #include "VirtualPhonePro/SafetyNetAdvancedBypass.hpp"
 #include "VirtualPhonePro/IPTimezoneConverter.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/Logger.hpp"
 #include "VirtualPhonePro/VirtualSecurityChip.hpp"
 #include "VirtualPhonePro/CryptoEmulator.hpp"
@@ -51,6 +52,7 @@ SafetyNetAdvancedBypass& SafetyNetAdvancedBypass::getInstanceFor(const QString& 
     QMutexLocker lock(&s_safetyMutex);
     if (!s_safetyRegistry.contains(instanceId)) {
         s_safetyRegistry[instanceId] = new SafetyNetAdvancedBypass();
+        s_safetyRegistry[instanceId]->m_instanceId = instanceId;
     }
     return *s_safetyRegistry[instanceId];
 }
@@ -60,6 +62,22 @@ void SafetyNetAdvancedBypass::removeInstance(const QString& instanceId) {
     if (s_safetyRegistry.contains(instanceId)) {
         delete s_safetyRegistry.take(instanceId);
     }
+}
+
+ADBManager& SafetyNetAdvancedBypass::adbForInstance() {
+    // Per-instance ADB context: returns the ADBManager pre-bound to this
+    // module's instanceId's adb serial, so every setprop/shell command is
+    // pinned to the correct container and can never leak onto another
+    // running instance (cross-instance spoofing leak fix). Falls back to
+    // the legacy global manager only for the getInstance() singleton path.
+    if (m_instanceId.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    const QString serial = ReDroidController::instance().adbSerialFor(m_instanceId);
+    if (serial.isEmpty()) {
+        return ADBManager::getInstance();
+    }
+    return ADBManager::getInstanceFor(serial.toStdString());
 }
 
 SafetyNetAdvancedBypass::SafetyNetAdvancedBypass()
@@ -100,7 +118,7 @@ SafetyNetAdvancedBypass::~SafetyNetAdvancedBypass() {
 bool SafetyNetAdvancedBypass::initialize() {
     Logger::getInstance().info("Initializing SafetyNet Advanced Bypass...");
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     if (!adb.isConnected()) {
         Logger::getInstance().error("ADB not connected - SafetyNet bypass requires ADB");
         return false;
@@ -205,7 +223,7 @@ SafetyNetResult SafetyNetAdvancedBypass::bypassRootDetection() {
     hideSuperSU();
     
     // Set system properties to hide root
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     adb.setProperty("ro.debuggable", "0");
     adb.setProperty("ro.secure", "1");
     
@@ -224,7 +242,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideRootBinary() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide common root binary locations
     adb.executeShellCommand(std::string("mount -o rw,remount /system 2>/dev/null || true"));
@@ -242,7 +260,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideMagisk() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide Magisk files
     adb.executeShellCommand(std::string("chattr -i /sbin/.magisk 2>/dev/null || true"));
@@ -269,7 +287,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setGreenBootState() {
 SafetyNetResult SafetyNetAdvancedBypass::setVerifiedBootState(SafetyNetBootState state) {
     SafetyNetResult result = {.success = false, .message = "", .error = "", .token = {}, .details = {}};
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     std::string stateStr;
     switch (state) {
@@ -304,7 +322,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setSELinuxEnforcing() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.executeShellCommand(std::string("setenforce 1"));
     adb.setProperty("ro.build.selinux", "1");
@@ -323,7 +341,7 @@ SafetyNetResult SafetyNetAdvancedBypass::enableDMVerity() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.build.type", "user");
     adb.setProperty("ro.build.tags", "release-keys");
@@ -342,7 +360,7 @@ SafetyNetResult SafetyNetAdvancedBypass::disableDebugFlags() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Disable all debug flags
     adb.setProperty("ro.debuggable", "0");
@@ -370,7 +388,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setReleaseKeys() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.build.tags", "release-keys");
     adb.setProperty("ro.build.type", "user");
@@ -394,7 +412,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setLatestSecurityPatch() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
 
     // Use the current month's security patch date so the device does not
     // present a stale patch (a hard red flag for Play Integrity / banking apps).
@@ -528,7 +546,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setDeviceSecure() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.secure", "1");
     adb.setProperty("ro.build.selinux", "1");
@@ -545,7 +563,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setScreenLocked() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Check if screen lock is enabled
     std::string lockStatus = adb.executeShellCommand(std::string("settings get secure lock_screen_lock_out"));
@@ -565,7 +583,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setEncryptionEnabled() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.crypto.state", "encrypted");
     adb.setProperty("ro.crypto.type", "file");
@@ -584,7 +602,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setBootloaderLocked() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.boot.locked", "1");
     adb.setProperty("ro.bootloader.locked", "1");
@@ -603,7 +621,7 @@ SafetyNetResult SafetyNetAdvancedBypass::applySamsungProfile() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Samsung-specific properties
     adb.setProperty("ro.product.manufacturer", "samsung");
@@ -624,7 +642,7 @@ SafetyNetResult SafetyNetAdvancedBypass::applyGoogleProfile() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Google Pixel properties
     adb.setProperty("ro.product.manufacturer", "Google");
@@ -666,7 +684,7 @@ SafetyNetResult SafetyNetAdvancedBypass::validateAllChecks() {
     SafetyNetResult result{};
     result.success = false;
     
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     int passedChecks = 0;
     int totalChecks = 8;
@@ -763,7 +781,7 @@ SafetyNetResult SafetyNetAdvancedBypass::getStatus() {
 }
 
 void SafetyNetAdvancedBypass::prepareBypassEnvironment() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Mount system as writable
     adb.executeShellCommand(std::string("mount -o rw,remount /system 2>/dev/null || true"));
@@ -787,7 +805,7 @@ void SafetyNetAdvancedBypass::prepareBypassEnvironment() {
 }
 
 void SafetyNetAdvancedBypass::applyIntegrityToken() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set integrity-related system properties
     QStringList integrityProps = {
@@ -822,7 +840,7 @@ void SafetyNetAdvancedBypass::applyIntegrityToken() {
 }
 
 void SafetyNetAdvancedBypass::restoreSystemState() {
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Restore backed up properties
     for (const auto& pair : m_backupValues) {
@@ -860,7 +878,7 @@ std::string SafetyNetAdvancedBypass::encryptPayload() {
 SafetyNetResult SafetyNetAdvancedBypass::hideSUBinary() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide SU binary locations
     QStringList commands = {
@@ -889,7 +907,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSUBinary() {
 SafetyNetResult SafetyNetAdvancedBypass::hideSuperSU() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide SuperSU files
     QStringList commands = {
@@ -914,7 +932,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSuperSU() {
 SafetyNetResult SafetyNetAdvancedBypass::installRootCloak() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // RootCloak hides root from specific apps
     // We can't install the actual module, but we can hide root indicators
@@ -929,7 +947,7 @@ SafetyNetResult SafetyNetAdvancedBypass::installRootCloak() {
 SafetyNetResult SafetyNetAdvancedBypass::useMagiskHide() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Configure Magisk Hide settings
     QStringList commands = {
@@ -950,7 +968,7 @@ SafetyNetResult SafetyNetAdvancedBypass::useMagiskHide() {
 SafetyNetResult SafetyNetAdvancedBypass::bypassVerifiedBoot() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set verified boot state to green
     adb.setProperty("ro.boot.verifiedbootstate", "green");
@@ -972,7 +990,7 @@ SafetyNetResult SafetyNetAdvancedBypass::bypassVerifiedBoot() {
 SafetyNetResult SafetyNetAdvancedBypass::hideDebugSymbols() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide debug symbols
     adb.setProperty("ro.debuggable", "0");
@@ -990,7 +1008,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideDebugSymbols() {
 SafetyNetResult SafetyNetAdvancedBypass::hideSystemProperties() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // List of properties to hide/modify for safety
     QStringList props = {
@@ -1017,7 +1035,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSystemProperties() {
 SafetyNetResult SafetyNetAdvancedBypass::spoofBuildTags() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.build.tags", "release-keys");
     adb.setProperty("ro.build.type", "user");
@@ -1034,7 +1052,7 @@ SafetyNetResult SafetyNetAdvancedBypass::spoofBuildTags() {
 SafetyNetResult SafetyNetAdvancedBypass::bypassPlayServicesChecks() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set Play Services related properties
     QStringList props = {
@@ -1061,7 +1079,7 @@ SafetyNetResult SafetyNetAdvancedBypass::bypassPlayServicesChecks() {
 SafetyNetResult SafetyNetAdvancedBypass::hideGMS() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // For banking apps, we want GMS visible but not detected as spoofed
     // Don't actually hide GMS, just ensure it looks legitimate
@@ -1076,7 +1094,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideGMS() {
 SafetyNetResult SafetyNetAdvancedBypass::spoofGMSVersion() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set GMS version to a recent stable version
     adb.setProperty("ro.gms.version", "230604034");
@@ -1092,7 +1110,7 @@ SafetyNetResult SafetyNetAdvancedBypass::spoofGMSVersion() {
 SafetyNetResult SafetyNetAdvancedBypass::disableSafetyNet() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set SafetyNet to pass without actual bypass
     adb.setProperty("ro.build.version.ctssdk", "15");
@@ -1140,7 +1158,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hookPlayIntegrityAPI() {
 SafetyNetResult SafetyNetAdvancedBypass::setMockResponse(const std::string& api, const std::string& response) { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Store mock response for the API
     QString key = QString::fromStdString(api) + "_mock_response";
@@ -1156,7 +1174,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setMockResponse(const std::string& api,
 SafetyNetResult SafetyNetAdvancedBypass::hideSystemMounts() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide system mount information that might indicate tampering
     adb.executeShellCommand(std::string("mount -o ro,remount /system 2>/dev/null || true"));
@@ -1170,7 +1188,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSystemMounts() {
 SafetyNetResult SafetyNetAdvancedBypass::hideSystemBinaries() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Protect critical system binaries
     QStringList protectedBinaries = {
@@ -1192,7 +1210,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideSystemBinaries() {
 SafetyNetResult SafetyNetAdvancedBypass::checkForDangerousApps() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // List of apps that might trigger banking app detections
     QStringList dangerousApps = {
@@ -1225,7 +1243,7 @@ SafetyNetResult SafetyNetAdvancedBypass::checkForDangerousApps() {
 SafetyNetResult SafetyNetAdvancedBypass::hideXposed() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide Xposed framework
     QStringList commands = {
@@ -1252,7 +1270,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideXposed() {
 SafetyNetResult SafetyNetAdvancedBypass::hideFrida() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Hide Frida server and related files
     QStringList commands = {
@@ -1277,7 +1295,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideFrida() {
 SafetyNetResult SafetyNetAdvancedBypass::setBatteryHealth(const std::string& health) { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Map health string to Android health constant
     QString healthCmd;
@@ -1304,7 +1322,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setBatteryHealth(const std::string& hea
 SafetyNetResult SafetyNetAdvancedBypass::setBatteryStatus(const std::string& status) { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Map status to Android status constant
     QString statusCmd;
@@ -1330,7 +1348,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setBatteryStatus(const std::string& sta
 SafetyNetResult SafetyNetAdvancedBypass::disablePowerSaving() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Disable power saving features
     QStringList commands = {
@@ -1352,7 +1370,7 @@ SafetyNetResult SafetyNetAdvancedBypass::disablePowerSaving() {
 SafetyNetResult SafetyNetAdvancedBypass::checkMemoryTampering() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Check for memory tampering indicators
     QString memPermissions = QString::fromStdString(adb.executeShellCommand(std::string("cat /proc/self/status | grep -i seccomp")));
@@ -1369,7 +1387,7 @@ SafetyNetResult SafetyNetAdvancedBypass::checkMemoryTampering() {
 SafetyNetResult SafetyNetAdvancedBypass::hideDebuggableProcess() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Ensure no processes are debuggable
     adb.setProperty("ro.debuggable", "0");
@@ -1385,7 +1403,7 @@ SafetyNetResult SafetyNetAdvancedBypass::hideDebuggableProcess() {
 SafetyNetResult SafetyNetAdvancedBypass::secureMemoryAllocation() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Configure secure memory allocation
     QStringList sysctls = {
@@ -1405,7 +1423,7 @@ SafetyNetResult SafetyNetAdvancedBypass::secureMemoryAllocation() {
 SafetyNetResult SafetyNetAdvancedBypass::setKeyguardSecure() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Ensure lock screen is secure
     QStringList commands = {
@@ -1443,7 +1461,7 @@ SafetyNetResult SafetyNetAdvancedBypass::applyMinimalProfile() {
 SafetyNetResult SafetyNetAdvancedBypass::spoofAPILevel(int level) { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     adb.setProperty("ro.build.version.sdk", std::to_string(level));
     adb.setProperty("ro.build.version.preview_sdk", std::to_string(level));
@@ -1469,7 +1487,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setAPILevel34() {
 SafetyNetResult SafetyNetAdvancedBypass::spoofBuildVersion() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set build version properties
     adb.setProperty("ro.build.version.incremental", "1234567890");
@@ -1488,7 +1506,7 @@ SafetyNetResult SafetyNetAdvancedBypass::spoofBuildVersion() {
 SafetyNetResult SafetyNetAdvancedBypass::prepareHardwareAttestation() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set Keymaster version
     adb.setProperty("ro.keymaster.version", "4");
@@ -1510,7 +1528,7 @@ SafetyNetResult SafetyNetAdvancedBypass::prepareHardwareAttestation() {
 SafetyNetResult SafetyNetAdvancedBypass::setHardwareAttestationKey() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Generate and set attestation key hash
     std::string keyHash = generateNonce();
@@ -1539,7 +1557,7 @@ SafetyNetResult SafetyNetAdvancedBypass::generateAttestationCertificate() {
 SafetyNetResult SafetyNetAdvancedBypass::setKeystoreFlags() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Set keystore/strongbox flags
     QStringList keystoreProps = {
@@ -1599,7 +1617,7 @@ SafetyNetResult SafetyNetAdvancedBypass::setRedBootState() {
 SafetyNetResult SafetyNetAdvancedBypass::spoofTCPOptions() { 
     SafetyNetResult result{};
     result.success = false;
-    auto& adb = ADBManager::getInstance();
+    auto& adb = adbForInstance();
     
     // Configure TCP/IP stack for real device appearance
     QStringList tcpProps = {

@@ -900,7 +900,7 @@ void RealisticProfileGenerator::correlateGeoValues(RawDeviceProfileData& profile
         }
     }
     
-    // Timezone - stored as pair<string,string> with {"tz", "America/New_York"}
+    // Timezone - stored as pair<string,string> with {"tz", "<iana-tz>"} (per-region zones from CARRIER_DATABASE; US spans its 4 zones)
     if (regionData.find("timezones") != regionData.end()) {
         const auto& timezones = regionData.at("timezones");
         if (!timezones.empty()) {

@@ -6,6 +6,7 @@
 
 #include "VirtualPhonePro/DeepDeviceSpoofer.hpp"
 #include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/IPTimezoneConverter.hpp"
 
 #include <QDebug>
 #include <QFile>
@@ -512,7 +513,22 @@ ro.boot.flash.locked=1
 }
 
 bool DeepDeviceSpoofer::spoofDefaultProp(const QString& instanceId) {
-    QString content = R"(
+    // Timezone/country/language must match the instance's assigned country
+    // (from the VPP_COUNTRY_CODE env var) — a hardcoded America/New_York on a
+    // non-US instance breaks IP-vs-timezone consistency. Resolved through
+    // IPTimezoneConverter, the single source of truth.
+    ReDroidController& ctrl = ReDroidController::instance();
+    QString countryCode = ctrl.executeShell(instanceId, "printenv VPP_COUNTRY_CODE").trimmed().toUpper();
+    if (countryCode.isEmpty()) {
+        countryCode = "US";
+    }
+    auto localeInfo = VirtualPhonePro::IPTimezoneConverter::getInstance()
+                          .getLocaleByCountryCode(countryCode.toStdString());
+    const QString tz = QString::fromStdString(localeInfo.timezone);
+    const QString country = QString::fromStdString(localeInfo.countryCode);
+    const QString language = QString::fromStdString(localeInfo.language);
+
+    QString content = QString(R"(
 ro.secure=1
 ro.allow.mock.location=0
 ro.debuggable=0
@@ -520,14 +536,14 @@ ro.zygote=zygote32
 ro.config.low_ram=false
 ro.ril.gprsClass=10
 ro.config.media_sound=1
-persist.sys.timezone=America/New_York
+persist.sys.timezone=%1
 persist.sys.localip=
-persist.sys.country=US
-persist.sys.language=en
+persist.sys.country=%2
+persist.sys.language=%3
 ro.setupwizard.mode=OPTIONAL
 ro.setupwizard.enable_by_default=true
-)";
-    
+)").arg(tz, country, language);
+
     return writeFile(instanceId, "/default.prop", content);
 }
 
