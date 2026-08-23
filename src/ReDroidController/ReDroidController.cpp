@@ -887,11 +887,16 @@ bool ReDroidController::stopInstance(const QString& instanceId, bool force) {
     // Stop continuous sensor injection
     VirtualPhonePro::SensorInjector::instance().stop(instanceId);
 
-    // Clean up per-instance ADBManager (frees the -s bound connection)
-    if (m_adbSerials.contains(instanceId)) {
-        VirtualPhonePro::ADBManager::removeInstance(
-            m_adbSerials[instanceId].toStdString());
+    // Clean up per-instance ADBManager (frees the -s bound connection).
+    // Uses the serial captured at the top of this function — m_adbSerials
+    // has already been erased by now, so a lookup here would never fire.
+    if (!adbSerial.isEmpty()) {
+        VirtualPhonePro::ADBManager::removeInstance(adbSerial.toStdString());
     }
+
+    // Free the per-instance deterministic RNG state (device seeds,
+    // Gaussian generators, gesture profiles)
+    VirtualPhonePro::TimingAttackPrevention::instance().removeDeviceSeed(instanceId);
 
     emit instanceStateChanged(instanceId, InstanceState::Stopped);
     emit operationCompleted(instanceId, "stop", true);

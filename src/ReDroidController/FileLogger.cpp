@@ -17,9 +17,7 @@ FileLogger& FileLogger::instance() {
 }
 
 FileLogger::FileLogger()
-    : m_logFile(nullptr)
-    , m_logStream(nullptr)
-    , m_minLevel(LogLevel::INFO)
+    : m_minLevel(LogLevel::INFO)
     , m_logToFile(true)
     , m_logToConsole(true)
     , m_maxFileSize(10 * 1024 * 1024) // 10MB
@@ -124,29 +122,26 @@ void FileLogger::writeToFile(const QString& message) {
 void FileLogger::openLogFile() {
     if (m_logFile) return;
     
-    m_logFile = new QFile(m_logFilePath);
+    m_logFile = std::make_unique<QFile>(m_logFilePath);
     
     if (m_logFile->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        m_logStream = new QTextStream(m_logFile);
+        m_logStream = std::make_unique<QTextStream>(m_logFile.get());
         m_currentFileSize = m_logFile->size();
     } else {
         qWarning() << "Failed to open log file:" << m_logFilePath;
-        delete m_logFile;
-        m_logFile = nullptr;
+        m_logFile.reset();
     }
 }
 
 void FileLogger::closeLogFile() {
     if (m_logStream) {
         m_logStream->flush();
-        delete m_logStream;
-        m_logStream = nullptr;
+        m_logStream.reset();
     }
     
     if (m_logFile) {
         m_logFile->close();
-        delete m_logFile;
-        m_logFile = nullptr;
+        m_logFile.reset();
     }
 }
 
