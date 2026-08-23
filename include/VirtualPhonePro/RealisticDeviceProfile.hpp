@@ -527,11 +527,14 @@ class RealisticDeviceProfile {
 public:
     static RealisticDeviceProfile& instance();
     
-    // Generate complete realistic profile
+    // Generate complete realistic profile. countryCode selects the
+    // timezone/locale/carrier (via IPTimezoneConverter) so the profile is
+    // consistent with the instance's assigned proxy/IP region.
     QJsonObject generateCompleteProfile(
         const QString& manufacturer,
         const QString& model,
-        const QString& androidVersion = "14"
+        const QString& androidVersion = "14",
+        const QString& countryCode = "US"
     );
     
     // Generate specific device types
@@ -555,14 +558,14 @@ private:
     
     // Internal generators
     CompleteDeviceIdentity generateIdentity(const QString& manufacturer);
-    CompleteCarrierConfig generateCarrier();
+    CompleteCarrierConfig generateCarrier(const QString& countryCode = "US");
     CompleteHardwareSpec generateHardware(const QString& manufacturer);
     CompleteBuildInfo generateBuild(const QString& manufacturer, const QString& model, const QString& androidVersion);
     CompleteSecurityConfig generateSecurity(const QString& manufacturer);
     CompleteSensorCalibration generateSensors();
     CompleteNetworkConfig generateNetwork();
     CompleteLocationConfig generateLocation();
-    CompleteTimingConfig generateTiming();
+    CompleteTimingConfig generateTiming(const QString& countryCode = "US");
     
     // Helper methods
     QString generateFingerprint(const QString& manufacturer, const QString& model, const QString& androidVersion);

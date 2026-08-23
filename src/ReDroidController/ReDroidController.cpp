@@ -625,6 +625,14 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     args << "-h" << QString("android-%1").arg(instanceId);
     
     // Environment variables for device properties
+    // VPP_COUNTRY_CODE lets in-pipeline spoofing (timezone, locale, carrier)
+    // resolve this instance's assigned region via IPTimezoneConverter.
+    // Country comes from the profile's SIM configuration, defaulting to US.
+    QString countryEnv = profile.sim.country.trimmed().toUpper();
+    if (countryEnv.isEmpty()) {
+        countryEnv = QStringLiteral("US");
+    }
+    args << "-e" << QString("VPP_COUNTRY_CODE=%1").arg(countryEnv);
     args << "-e" << QString("VPP_DEVICE_MANUFACTURER=%1").arg(profile.build.manufacturer);
     args << "-e" << QString("VPP_DEVICE_BRAND=%1").arg(profile.build.brand);
     args << "-e" << QString("VPP_DEVICE_MODEL=%1").arg(profile.build.model);
@@ -1085,6 +1093,23 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // that already precedes this call.
     // =========================================================================
     QMutexLocker globalAdbLock(&m_globalAdbMutex);
+
+    // Resolve this instance's country early — timezone, locale and carrier
+    // settings throughout the pipeline must match it (see IPTimezoneConverter,
+    // the single source of truth). The container receives its country via the
+    // VPP_COUNTRY_CODE env var (defaults to "US" when unset).
+    QString countryCode = executeAdbSync(
+        instanceId, {"shell", "printenv", "VPP_COUNTRY_CODE"}, 3000).trimmed().toUpper();
+    if (countryCode.isEmpty()) {
+        countryCode = "US";
+    }
+    auto instanceLocale = VirtualPhonePro::IPTimezoneConverter::getInstance()
+                              .getLocaleByCountryCode(countryCode.toStdString());
+    const QString instanceTimezone = QString::fromStdString(instanceLocale.timezone);
+    const QString instanceLocaleStr = QString::fromStdString(instanceLocale.locale);
+    qDebug() << "[Realism] Country:" << countryCode
+             << "| Timezone:" << instanceTimezone
+             << "| Locale:" << instanceLocaleStr;
 
     {
         const QString adbSerial = getAdbSerial(instanceId);
@@ -1810,7 +1835,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     {
         RealisticDeviceProfile& rdp = RealisticDeviceProfile::instance();
         QJsonObject profileAudit = rdp.generateCompleteProfile(
-            manufacturer, model, "14");
+            manufacturer, model, "14", countryCode);
         QStringList missing = rdp.getMissingFields(profileAudit);
         if (missing.isEmpty()) {
             qDebug() << "  ✓ Device profile complete — all" << profileAudit.size()

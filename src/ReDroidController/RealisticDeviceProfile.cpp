@@ -6,11 +6,13 @@
 
 #include "VirtualPhonePro/RealisticDeviceProfile.hpp"
 #include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
+#include "VirtualPhonePro/IPTimezoneConverter.hpp"
 
 #include <QUuid>
 #include <QCryptographicHash>
 #include <QRandomGenerator>
 #include <QDateTime>
+#include <QTimeZone>
 #include <QDebug>
 #include <QJsonObject>
 
@@ -536,23 +538,36 @@ CompleteDeviceIdentity RealisticDeviceProfile::generateIdentity(const QString& m
     return identity;
 }
 
-CompleteCarrierConfig RealisticDeviceProfile::generateCarrier() {
+CompleteCarrierConfig RealisticDeviceProfile::generateCarrier(const QString& countryCode) {
     CompleteCarrierConfig carrier;
-    
-    QStringList carriers = {"T-Mobile", "AT&T", "Verizon", "Sprint", "US Cellular", "MetroPCS"};
-    QStringList countries = {"US", "US", "US", "US", "US", "US"};
-    QStringList mccs = {"310", "310", "311", "310", "312", "310"};
-    QStringList mncs = {"260", "410", "480", "120", "030", "260"};
-    
-    int idx = static_cast<int>(QRandomGenerator::global()->bounded(carriers.size()));
-    carrier.carrierName = carriers[idx];
-    carrier.carrierCountry = countries[idx];
-    carrier.mcc = mccs[idx];
-    carrier.mnc = mncs[idx];
+
+    const QString cc = countryCode.toUpper();
+
+    // Carrier identity comes from the IPTimezoneConverter country database so
+    // that MCC/operator always match the instance's assigned country — a US
+    // carrier on a non-US timezone (or vice versa) is an instant red flag.
+    if (!cc.isEmpty() && cc != "US") {
+        auto locale = IPTimezoneConverter::getInstance().getLocaleByCountryCode(cc.toStdString());
+        carrier.carrierName = QString::fromStdString(locale.carrier);
+        carrier.carrierCountry = cc;
+        carrier.mcc = QString::fromStdString(locale.mcc);
+        carrier.mnc = generateNumeric(2);  // MNC varies per operator plan
+    } else {
+        QStringList carriers = {"T-Mobile", "AT&T", "Verizon", "Sprint", "US Cellular", "MetroPCS"};
+        QStringList countries = {"US", "US", "US", "US", "US", "US"};
+        QStringList mccs = {"310", "310", "311", "310", "312", "310"};
+        QStringList mncs = {"260", "410", "480", "120", "030", "260"};
+
+        int idx = static_cast<int>(QRandomGenerator::global()->bounded(carriers.size()));
+        carrier.carrierName = carriers[idx];
+        carrier.carrierCountry = countries[idx];
+        carrier.mcc = mccs[idx];
+        carrier.mnc = mncs[idx];
+    }
     carrier.carrierId = QString::number(static_cast<int>(QRandomGenerator::global()->bounded(1000)));
     carrier.carrierType = "postpaid";
-    carrier.simOperatorName = carriers[idx];
-    carrier.simCountry = countries[idx];
+    carrier.simOperatorName = carrier.carrierName;
+    carrier.simCountry = carrier.carrierCountry;
     carrier.simSerialNumber = "CN" + generateNumeric(12);
     carrier.networkType = "LTE";
     carrier.phoneType = "GSM";
@@ -999,11 +1014,26 @@ CompleteLocationConfig RealisticDeviceProfile::generateLocation() {
     return loc;
 }
 
-CompleteTimingConfig RealisticDeviceProfile::generateTiming() {
+CompleteTimingConfig RealisticDeviceProfile::generateTiming(const QString& countryCode) {
     CompleteTimingConfig timing;
-    
+
     qint64 now = QDateTime::currentMSecsSinceEpoch();
-    
+
+    // Timezone comes from the IPTimezoneConverter country database (the
+    // single source of truth) so the wall clock always matches the
+    // instance's assigned country — every instance used to be pinned to
+    // "America/New_York" regardless of its carrier/proxy country.
+    auto locale = IPTimezoneConverter::getInstance().getLocaleByCountryCode(
+        countryCode.isEmpty() ? "US" : countryCode.toStdString());
+    QTimeZone tz(QString::fromStdString(locale.timezone).toUtf8());
+    qint64 offsetSec = tz.isValid() ? tz.standardTimeOffset(now / 1000) : 0;
+    timing.timeZoneOffset = static_cast<int>(offsetSec * 1000);
+    timing.timeZoneId = QString::fromStdString(locale.timezone);
+    const QString nitzGmt = QStringLiteral("GMT%1%2:%3")
+        .arg(offsetSec < 0 ? "-" : "+")
+        .arg(std::abs(offsetSec) / 3600, 2, 10, QLatin1Char('0'))
+        .arg((std::abs(offsetSec) % 3600) / 60, 2, 10, QLatin1Char('0'));
+
     // System Time
     timing.systemTime = now;
     timing.systemTimeNanos = now * 1000000;
@@ -1019,14 +1049,12 @@ CompleteTimingConfig RealisticDeviceProfile::generateTiming() {
     
     // Wall Clock
     timing.wallClockTime = now;
-    timing.timeZoneOffset = -18000000; // EST: -5 hours in ms
-    timing.timeZoneId = "America/New_York";
     timing.autoTime = true;
     timing.autoTimeZone = true;
-    
+
     // NITZ
     timing.nitzTime = "+00 000000 00";
-    timing.nitzTimeZone = "GMT+00:00";
+    timing.nitzTimeZone = nitzGmt;
     
     // Drift
     timing.timeDrift = static_cast<int>(QRandomGenerator::global()->bounded(100)) - 50;
@@ -1042,21 +1070,25 @@ CompleteTimingConfig RealisticDeviceProfile::generateTiming() {
 QJsonObject RealisticDeviceProfile::generateCompleteProfile(
     const QString& manufacturer,
     const QString& model,
-    const QString& androidVersion
+    const QString& androidVersion,
+    const QString& countryCode
 ) {
     QJsonObject profile;
-    
-    // Generate all components
+
+    // Generate all components — carrier, timezone and locale all derive
+    // from the instance's country so the fingerprint is internally
+    // consistent (IPTimezoneConverter is the single source of truth).
     profile["identity"] = generateIdentity(manufacturer).toJson();
-    profile["carrier"] = generateCarrier().toJson();
+    profile["carrier"] = generateCarrier(countryCode).toJson();
     profile["hardware"] = generateHardware(manufacturer).toJson();
     profile["build"] = generateBuild(manufacturer, model, androidVersion).toJson();
     profile["security"] = generateSecurity(manufacturer).toJson();
     profile["sensors"] = generateSensors().toJson();
     profile["network"] = generateNetwork().toJson();
     profile["location"] = generateLocation().toJson();
-    profile["timing"] = generateTiming().toJson();
-    
+    profile["timing"] = generateTiming(countryCode).toJson();
+    profile["countryCode"] = countryCode;
+
     // Metadata
     profile["profileVersion"] = "4.0.0";
     profile["generatedAt"] = QDateTime::currentDateTime().toString(Qt::ISODate);
