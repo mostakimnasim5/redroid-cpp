@@ -116,10 +116,13 @@ evasion capability — the latter warrants a conversation with the user.
 
 ## Audit Addendum (2026-08-22)
 - Latest CI: `Build and Test` = failure; `Docker Build` = success (run 03:02Z).
-- Legacy dead entry points: `src/main.cpp` (standalone CLI), `src/mainwindow.cpp`,
-  `src/qtmain.cpp`, `src/AutoStartDialog.cpp` duplicate the Qt6 GUI entry in `src/GUI/main.cpp`.
+- Legacy dead entry points REMOVED (Fix 12, 2026-08-23): `src/main.cpp` (standalone
+  CLI + its BUILD_CLI CMake option), `src/mainwindow.{h,cpp}`, `src/AutoStartDialog.{h,cpp}`,
+  `src/GUI/main.cpp`, and the never-included `src/CMakeLists.txt`. The single live entry
+  point is `src/qtmain.cpp` (target `ReDroidCPP` in the root CMakeLists.txt); the live
+  main window is `src/GUI/MainWindow.{h,cpp}`.
 - Admin auth is client-side: AdminLoginWindow.cpp compares plaintext Firestore
   `password` field — broken auth model (firebase key + plaintext pass in public repo).
 - `VirtualSecurityChip.cpp` calls stub `RAND_bytes` (rand()-based) for key material.
-- CLI `src/main.cpp` uses `rand()` IMEI/serial/MAC gen (predictable identities).
+- (Resolved by removal) CLI `src/main.cpp` used `rand()` IMEI/serial/MAC gen — file deleted in Fix 12.
 - ~71 TODO/FIXME markers; ~15 duplicate `.h`/`.hpp` header pairs.

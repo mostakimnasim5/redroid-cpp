@@ -122,7 +122,6 @@ endif()
 # Qt6 GUI Application
 # ==============================================================================
 option(BUILD_QT6_GUI "Build Qt6 GUI application" ON)
-option(BUILD_CLI "Build CLI tool" OFF)
 option(BUNDLE_QT "Bundle Qt DLLs with executable" OFF)
 
 if(BUILD_QT6_GUI)
@@ -588,26 +587,6 @@ endif()
 endif() # BUILD_QT6_GUI
 
 # ==============================================================================
-# CLI Tool (Optional)
-# ==============================================================================
-if(BUILD_CLI)
-    set(CLI_SOURCES src/main.cpp)
-    
-    add_executable(redroid-cli ${CLI_SOURCES})
-    
-    target_include_directories(redroid-cli PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-    )
-    
-    find_package(Threads REQUIRED)
-    target_link_libraries(redroid-cli PRIVATE Threads::Threads)
-    
-    if(WIN32)
-        target_link_libraries(redroid-cli PRIVATE ws2_32 advapi32 userenv)
-    endif()
-endif()
-
-# ==============================================================================
 # Installation
 # ==============================================================================
 install(TARGETS ReDroidCPP DESTINATION bin)
@@ -671,7 +650,6 @@ message(STATUS "  Compiler:     ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "  C++ Standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build Type:   ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Qt6 GUI:      ${BUILD_QT6_GUI}")
-message(STATUS "  CLI Tool:     ${BUILD_CLI}")
 if(WIN32)
 message(STATUS "  Output:       ${CMAKE_BINARY_DIR}/bin/ReDroidCPP.exe")
 else()
