@@ -1,7 +1,6 @@
 #include "DashboardWindow.h"
 
 #include <QApplication>
-#include <QRandomGenerator>
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QFormLayout>
@@ -27,6 +26,8 @@
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/AppCloner.hpp"
 #include "VirtualPhonePro/NetworkConfigManager.hpp"
+#include "VirtualPhonePro/ProfileGeneratorFactory.hpp"
+#include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
 #include "SettingsDialog.h"
 
 namespace VirtualPhonePro {
@@ -193,34 +194,47 @@ void NewPhoneDialog::onManufacturerChanged(const QString& manufacturer) {
 void NewPhoneDialog::onRandomizeProfile() {
     m_manufacturer = m_manufacturerCombo->currentText();
     m_androidVersion = m_androidVersionCombo->currentText();
-    
-    // Generate unique IMEI
-    QStringList samsungTacs = {"35875107", "35746608", "35746609"};
-    QString tac = samsungTacs[QRandomGenerator::global()->bounded(samsungTacs.size())];
-    for (int i = 0; i < 6; i++) tac += QString::number(QRandomGenerator::global()->bounded(10));
-    
-    int sum = 0;
-    bool alternate = true;
-    for (int i = tac.length() - 1; i >= 0; i--) {
-        int n = tac[i].digitValue();
-        if (alternate) {
-            n *= 2;
-            if (n > 9) n -= 9;
-        }
-        sum += n;
-        alternate = !alternate;
+
+    if (!generateDeterministicIdentity()) {
+        QMessageBox::warning(this, "Identity Generation",
+            "Could not allocate a unique profile index. "
+            "Please check the application's config directory.");
+        return;
     }
-    int checkDigit = (10 - (sum % 10)) % 10;
-    m_imeiEdit->setText(tac + QString::number(checkDigit));
-    
-    // Generate serial
-    m_serialEdit->setText("R" + QString::number(100000 + QRandomGenerator::global()->bounded(900000)) + "X78");
-    
-    // Generate Android ID
-    QString hexChars = "0123456789ABCDEF";
-    QString androidId;
-    for (int i = 0; i < 16; i++) androidId += hexChars[QRandomGenerator::global()->bounded(16)];
-    m_androidIdEdit->setText(androidId);
+
+    m_imeiEdit->setText(QString::fromStdString(m_identity.imei1));
+    m_serialEdit->setText(QString::fromStdString(m_identity.serial_number));
+    m_androidIdEdit->setText(QString::fromStdString(m_identity.android_id));
+}
+
+bool NewPhoneDialog::generateDeterministicIdentity() {
+    // Identity is derived from the hardware-anchored deterministic engine
+    // (Master_Seed = HMAC-SHA256(HWID + License_Key, "PROFILE_" + Index)),
+    // never from process-random sources. Each call consumes a fresh persisted
+    // index, and any candidate colliding with the local uniqueness registry
+    // is rejected and retried with the next index.
+    auto generator = createHardwareAnchoredProfileGenerator();
+    if (!generator) {
+        return false;
+    }
+
+    UniqueDeviceGenerator& registry = UniqueDeviceGenerator::instance();
+    for (int attempt = 0; attempt < 100; ++attempt) {
+        const uint32_t index = allocateNextProfileIndex();
+        if (index == 0) {
+            return false; // index space exhausted or persistence failure
+        }
+
+        DeviceIdentityProfile candidate = generator->generateProfile(index);
+        const QString imei = QString::fromStdString(candidate.imei1);
+        const QString serial = QString::fromStdString(candidate.serial_number);
+        if (registry.isIMEIUnique(imei) && registry.isSerialUnique(serial)) {
+            m_identity = std::move(candidate);
+            m_profileIndex = index;
+            return true;
+        }
+    }
+    return false;
 }
 
 void NewPhoneDialog::onProxyModeChanged(int index) {
@@ -272,7 +286,13 @@ void NewPhoneDialog::onOk() {
     m_proxyUsername = m_proxyUsernameEdit->text().trimmed();
     m_proxyPassword = m_proxyPasswordEdit->text();
     
-    // Create profile
+    // Create profile — requires a successfully generated deterministic identity
+    if (m_identity.imei1.empty()) {
+        QMessageBox::warning(this, "Validation",
+            "Device identity was not generated. Please click Randomize and try again.");
+        return;
+    }
+
     m_profile = DeviceProfile();
     m_profile.name = m_manufacturer + " " + m_modelCombo->currentText();
     m_profile.manufacturer = m_manufacturer;
@@ -280,10 +300,26 @@ void NewPhoneDialog::onOk() {
     m_profile.build.manufacturer = m_manufacturer;
     m_profile.build.model = m_modelCombo->currentText().replace(" ", "_");
     m_profile.build.androidVersion = m_androidVersion.toInt();
-    m_profile.identity.imei = m_imeiEdit->text();
-    m_profile.identity.serialNumber = m_serialEdit->text();
-    m_profile.identity.androidId = m_androidIdEdit->text();
-    
+
+    // Full deterministic identity from the hardware-anchored engine
+    m_profile.identity.imei = QString::fromStdString(m_identity.imei1);
+    m_profile.identity.imei2 = QString::fromStdString(m_identity.imei2);
+    m_profile.identity.serialNumber = QString::fromStdString(m_identity.serial_number);
+    m_profile.identity.androidId = QString::fromStdString(m_identity.android_id);
+    m_profile.identity.gsfId = QString::fromStdString(m_identity.gsf_id);
+    m_profile.identity.advertisingId = QString::fromStdString(m_identity.advertising_id);
+    m_profile.mac.wifiMac = QString::fromStdString(m_identity.wifi_mac);
+    m_profile.mac.bluetoothMac = QString::fromStdString(m_identity.bluetooth_mac);
+    m_profile.sim.iccid = QString::fromStdString(m_identity.iccid1);
+    m_profile.sim.imsi = QString::fromStdString(m_identity.imsi1);
+
+    // Record the issued identity so future allocations can detect collisions
+    QJsonObject uniqueIds;
+    uniqueIds["imei"] = m_profile.identity.imei;
+    uniqueIds["serialNumber"] = m_profile.identity.serialNumber;
+    uniqueIds["androidId"] = m_profile.identity.androidId;
+    UniqueDeviceGenerator::instance().registerInstance(m_instanceId, uniqueIds);
+
     accept();
 }
 
