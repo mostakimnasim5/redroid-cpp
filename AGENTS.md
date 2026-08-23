@@ -34,17 +34,23 @@ root/emulator checks, TLS fingerprinting, canvas/WebGL fingerprinting, etc.
 - `src/GUI/FirebaseHelper.cpp` — Firestore REST client for admin/user access control
 
 ## Known Security Issues (from audit)
-1. **CRITICAL — Hardcoded Firebase API key** in `src/ReDroidController/ConfigManager.cpp:98`
-   (`AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA`) committed to git, despite
-   config.example.json explicitly warning "NEVER commit your actual API keys!".
-   Must be rotated + removed.
-2. **HIGH — Insecure PRNG in openssl_stub.h**: `RAND_bytes()` uses `rand()` (non-CSPRNG).
-   Any code path reaching this for crypto is broken. (UniqueDeviceGenerator.cpp uses
-   Windows CryptGenRandom instead, which is safe — verify stub isn't used for secrets.)
-3. **MEDIUM — Command injection**: `ADBManager::executeShellCommand` and
-   `ReDroidController::executeShell` concatenate property/value into shell strings
-   (`"setprop " + property + " \"" + value + "\""`) without sanitization.
-4. **MEDIUM — Inconsistent error handling**, raw pointers in places, missing
+1. ~~CRITICAL — Hardcoded Firebase API key~~ **FIXED (fix/security-1)**: credentials
+   now come from `REDROID_FB_PROJECT_ID` / `REDROID_FB_API_KEY` env vars (or user
+   config file); only placeholders ship in source. The old key must still be rotated
+   in Firebase Console (manual owner action).
+2. ~~HIGH — Insecure PRNG in openssl_stub.h~~ **FIXED (fix/security-1)**: `RAND_bytes()`
+   uses BCryptGenRandom (Windows) / getrandom()+/dev/urandom (POSIX);
+   VirtualSecurityChip mt19937 fallback removed (RAII std::vector + random_device
+   last resort).
+3. ~~MEDIUM — Command injection~~ **FIXED (fix/security-1)** for
+   `ADBManager::setProperty`/`getProperty` (strict name/value validation, reject+log).
+   NOTE: `ReDroidController::executeShell` and other string-concat shell sites remain
+   unsanitized — future hardening target.
+4. ~~MEDIUM — Admin auth plaintext compare~~ **FIXED (fix/security-1)**:
+   AdminLoginWindow verifies salted SHA-256 (`passwordSalt`+`passwordHash` fields)
+   with constant-time compare; legacy plaintext docs fail closed. Owner must migrate
+   existing admin Firestore docs to hashed credentials.
+5. **MEDIUM — Inconsistent error handling**, raw pointers in places, missing
    QProcess timeouts in some paths.
 
 ## Git / Remote
