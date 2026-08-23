@@ -598,8 +598,30 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
         qDebug() << "binderfs available — container will mount its own binder namespace";
     } else {
         // Older WSL2 kernel: fall back to host binder device passthrough.
-        // All instances share the host binder context — acceptable for
-        // single-instance use, problematic for multiple concurrent instances.
+        // All instances share the host binder context — Android IPC leaks
+        // across container boundaries. Refuse to start a second instance
+        // rather than silently corrupt IPC state; single-instance use is
+        // still permitted.
+        int activeCount = 0;
+        for (const InstanceInfo& other : m_instances) {
+            if (other.state == InstanceState::Starting ||
+                other.state == InstanceState::Running  ||
+                other.state == InstanceState::Paused) {
+                ++activeCount;
+            }
+        }
+        if (activeCount > 0) {
+            qCritical() << "startInstance: kernel lacks binderfs and another"
+                        << "instance is already active — multi-instance"
+                        << "requires binderfs for per-container binder"
+                        << "isolation. Refusing to start" << instanceId;
+            emit error(QStringLiteral(
+                "Cannot start multiple instances on this host: kernel lacks "
+                "binderfs. Instances would share the host binder context "
+                "(Android IPC leaks across containers). Use a kernel with "
+                "binderfs (5.7+), or run one instance at a time."));
+            return false;
+        }
         qWarning() << "binderfs not available — falling back to host /dev/binder passthrough";
         auto addDeviceIfExists = [&](const QString& hostPath, const QString& containerPath) {
             if (QFileInfo::exists(hostPath) || QFileInfo(hostPath).isSymLink()) {
