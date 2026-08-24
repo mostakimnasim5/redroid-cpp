@@ -575,6 +575,11 @@ private:
     // to a shared fixed IP. Same profile -> same IP across reboots; two
     // profiles never share an address.
     QString deterministicLocalIP(const DeviceProfile& profile) const;
+
+    // Push + exec docker/init_cellular_network.sh inside the container with
+    // the profile-derived CELLULAR_IP/GATEWAY/carrier env. Non-fatal: a
+    // missing script or failed push only skips the step.
+    bool applyCellularNetworkScript(const QString& instanceId, const DeviceProfile& profile);
     
     QString convertToWSL2Path(const QString& windowsPath) const;
     QString convertToWindowsPath(const QString& wsl2Path) const;

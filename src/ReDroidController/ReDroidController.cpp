@@ -1371,6 +1371,15 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
                  << "rules + " << webrtcCmds.size() << "WebRTC rules)";
     }
 
+    // ── Cellular interface init (docker/init_cellular_network.sh) ───────────
+    // The script was shipped in docker/ but never executed (grep-verified: no
+    // caller in entrypoint.sh / Dockerfile.custom / compose / C++). Run it
+    // now, post-boot, with the profile-derived deterministic CELLULAR_IP /
+    // GATEWAY / carrier env so the in-container telephony surface matches the
+    // boot-time environment and the WebRTC-pinned local IP. Non-fatal by
+    // design: missing script or failed push only skips this step.
+    applyCellularNetworkScript(instanceId, profile);
+
     // ── HttpClient: verify proxy connectivity from inside the container ───────
     // HttpClient is instance-based (not a singleton). We create one per call,
     // pointing it through the container's ADB shell to ip-api.com, confirming
@@ -2177,6 +2186,71 @@ QString ReDroidController::deterministicLocalIP(const DeviceProfile& profile) co
     const int b3 = static_cast<int>((h >> 8) & 0xFF);
     const int b4 = static_cast<int>((h >> 16) % 253) + 2; // avoid .0/.1/.255
     return QStringLiteral("10.%1.%2.%3").arg(b2).arg(b3).arg(b4);
+}
+
+bool ReDroidController::applyCellularNetworkScript(const QString& instanceId, const DeviceProfile& profile) {
+    // Locate the cellular-init script shipped with the repo/installation.
+    const QStringList candidates = {
+        m_appDir + QStringLiteral("/docker/init_cellular_network.sh"),
+        m_appDir + QStringLiteral("/../docker/init_cellular_network.sh"),
+        QDir::currentPath() + QStringLiteral("/docker/init_cellular_network.sh"),
+    };
+    QString scriptPath;
+    for (const QString& candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            scriptPath = candidate;
+            break;
+        }
+    }
+    if (scriptPath.isEmpty()) {
+        qWarning() << "[Cellular] init_cellular_network.sh not found (looked near"
+                   << m_appDir << ") — skipping cellular interface setup for" << instanceId;
+        return false;
+    }
+
+    const QString remotePath = QStringLiteral("/data/local/tmp/init_cellular_network.sh");
+    if (!pushFile(instanceId, scriptPath, remotePath)) {
+        qWarning() << "[Cellular] Failed to push init_cellular_network.sh to" << instanceId;
+        return false;
+    }
+
+    const QString cellularIp = deterministicLocalIP(profile);
+    const QStringList parts = cellularIp.split(QLatin1Char('.'));
+    const QString gateway = (parts.size() == 4)
+        ? QStringLiteral("%1.%2.%3.1").arg(parts[0], parts[1], parts[2])
+        : QStringLiteral("10.0.0.1");
+    QString country = profile.sim.country.trimmed().toUpper();
+    if (country.isEmpty()) {
+        country = QStringLiteral("US");
+    }
+    // GPS 0.0/0.0 means "unset" — leave empty so the script's country
+    // defaults apply instead of pinning the device to the Gulf of Guinea.
+    QString gpsLat, gpsLon;
+    if (profile.gps.latitude != 0.0 || profile.gps.longitude != 0.0) {
+        gpsLat = QString::number(profile.gps.latitude, 'f', 6);
+        gpsLon = QString::number(profile.gps.longitude, 'f', 6);
+    }
+
+    // Env mirrors the docker-run -e values so the in-container script and the
+    // boot-time environment tell the same story. Empty carrier/MCC/MNC values
+    // fall through to the script's own ${VAR:-default} chain. PROXY_* is
+    // intentionally unset — the script's redsocks section is gated on
+    // PROXY_HOST and the controller manages proxying separately (PAC +
+    // global proxy), so the two never fight over iptables.
+    const QString env = QStringLiteral(
+        "CELLULAR_IP='%1' GATEWAY='%2' COUNTRY_CODE='%3' CARRIER_NAME='%4' "
+        "MCC='%5' MNC='%6' GPS_LAT='%7' GPS_LON='%8' VPP_IMEI='%9' VPP_ANDROID_ID='%10'")
+        .arg(cellularIp, gateway, country, profile.sim.carrier,
+             profile.sim.mcc, profile.sim.mnc,
+             gpsLat, gpsLon,
+             profile.identity.imei, profile.identity.androidId);
+
+    executeShell(instanceId,
+                 QStringLiteral("chmod 755 %1 && %2 sh %1").arg(remotePath, env),
+                 120000);
+    qDebug() << "  ✓ Cellular network init applied (IP" << cellularIp
+             << "gw" << gateway << "carrier" << profile.sim.carrier << ")";
+    return true;
 }
 
 bool ReDroidController::pushFile(const QString& instanceId, const QString& localPath, const QString& remotePath) {
