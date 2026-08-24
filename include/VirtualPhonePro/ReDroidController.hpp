@@ -313,7 +313,7 @@ public:
      * @param model Device model
      * @return true if applied successfully
      */
-    bool applyCompleteRealism(const QString& instanceId, const QString& manufacturer, const QString& model);
+    bool applyCompleteRealism(const QString& instanceId, const QString& manufacturer, const QString& model, const DeviceProfile& profile);
     
     /**
      * @brief Apply individual property

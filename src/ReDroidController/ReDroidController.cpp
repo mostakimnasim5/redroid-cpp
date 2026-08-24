@@ -45,6 +45,7 @@
 #include "VirtualPhonePro/EnhancedDeviceProfile.hpp"
 #include "VirtualPhonePro/FindMyDeviceManager.hpp"
 #include "VirtualPhonePro/NetworkProfileManager.hpp"
+#include "VirtualPhonePro/ProfileGeneratorFactory.hpp"
 #include "VirtualPhonePro/MagiskPatcher.hpp"
 #include "VirtualPhonePro/WebhookManager.hpp"
 #include "VirtualPhonePro/TestingFramework.hpp"
@@ -693,6 +694,24 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     args << "-e" << QString("VPP_MNC=%1").arg(profile.sim.mnc);
     args << "-e" << QString("VPP_GPS_LAT=%1").arg(profile.gps.latitude);
     args << "-e" << QString("VPP_GPS_LON=%1").arg(profile.gps.longitude);
+
+    // Cellular identity — init_cellular_network.sh consumes CELLULAR_IP/GATEWAY.
+    // Pass the profile-anchored deterministic local IP (deriveLocalIP unit) so
+    // rmnet0, WebRTC and the routing story are consistent and stable across
+    // reboots. The script's own fallback is also deterministic (seeded), never
+    // random.
+    QString cellularIp = profile.network.ipAddress;
+    if (cellularIp.isEmpty()) {
+        cellularIp = QStringLiteral("10.0.2.15");
+    }
+    QString cellularGateway = QStringLiteral("10.0.0.1");
+    const QStringList ipParts = cellularIp.split(QLatin1Char('.'));
+    if (ipParts.size() == 4) {
+        cellularGateway = QStringLiteral("%1.%2.%3.1")
+                              .arg(ipParts[0], ipParts[1], ipParts[2]);
+    }
+    args << "-e" << QString("CELLULAR_IP=%1").arg(cellularIp);
+    args << "-e" << QString("GATEWAY=%1").arg(cellularGateway);
     
     // GPU mode (swiftshader for Windows compatibility)
     args << "-e" << "REDROID_GPU_MODE=swiftshader";
@@ -839,7 +858,7 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // adb serial (per-instance ADBManager), so concurrent batch deploys do
     // not leak commands across containers.
     // =========================================================================
-    if (!applyCompleteRealism(instanceId, profile.build.manufacturer, profile.build.model)) {
+    if (!applyCompleteRealism(instanceId, profile.build.manufacturer, profile.build.model, profile)) {
         qWarning() << "[Realism] Pipeline failed for" << instanceId
                    << "— instance is running but realism is incomplete";
         emit error(QStringLiteral("Instance %1 started, but the realism "
@@ -1102,7 +1121,7 @@ bool ReDroidController::applyProfile(const QString& instanceId, const DeviceProf
     return true;
 }
 
-bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QString& manufacturer, const QString& model) {
+bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QString& manufacturer, const QString& model, const DeviceProfile& profile) {
     qDebug() << "[Realism] ════════════════════════════════════════════════════════════";
     qDebug() << "[Realism]  ULTIMATE BANKING EDITION v3.0";
     qDebug() << "[Realism] ════════════════════════════════════════════════════════════";
@@ -1689,8 +1708,11 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         advSpoof.spoofOpenGLVersion(gpuHw.gpuVersion.toStdString());
         advSpoof.spoofVulkanVersion(gpuHw.vulkanVersion.toStdString());
         // WebRTC leaks the local IP (canvas/audio fingerprinting supplements
-        // this). Pin a private IP that matches the spoofed network identity.
-        advSpoof.spoofWebRTCLocalIP("192.168.1.42");
+        // this). Pin the profile's deterministic local IP (deriveLocalIP,
+        // Master_Seed-anchored) so the WebRTC surface, rmnet0 address and DHCP
+        // story all tell the same tale — a hardcoded shared IP would make
+        // every instance share one fingerprint and mismatch the derived identity.
+        advSpoof.spoofWebRTCLocalIP(profile.network.ipAddress.toStdString());
         // Widevine L1 + HDCP 2.3 — required by DRM-protected banking app
         // content (e.g. in-app video KYC).
         advSpoof.spoofWidevineLevel(1);
