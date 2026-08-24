@@ -285,10 +285,20 @@ CellularNetworkConfig NetworkProfileManager::generateCellularConfig(const Networ
             break;
     }
     
+    // Deterministic profile-anchored cellular IP: FNV-1a of the profile
+    // identity. Same profile -> same IP across reboots; different profiles ->
+    // different IPs. Never process-random.
+    const QString ipSeed = !profile.profileId.isEmpty() ? profile.profileId
+                                                        : profile.instanceId;
+    quint32 ipHash = 2166136261u;  // FNV-1a offset basis
+    for (const QChar c : ipSeed) {
+        ipHash ^= c.unicode();
+        ipHash *= 16777619u;       // FNV prime
+    }
     config.ipAddress = QString("10.%1.%2.%3")
-        .arg(QRandomGenerator::global()->bounded(1, 255))
-        .arg(QRandomGenerator::global()->bounded(1, 255))
-        .arg(QRandomGenerator::global()->bounded(2, 254));
+        .arg(ipHash % 256)
+        .arg((ipHash >> 8) % 256)
+        .arg((ipHash >> 16) % 253 + 2);
     config.subnetMask = "255.255.255.0";
     config.gateway = QString("10.%1.%2.1")
         .arg(config.ipAddress.split(".")[1])

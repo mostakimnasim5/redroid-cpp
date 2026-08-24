@@ -73,11 +73,30 @@ TIMEZONE="${TIMEZONE:-$TZ_DEFAULT}"
 GPS_LAT="${GPS_LAT:-$GPS_LAT_DEFAULT}"
 GPS_LON="${GPS_LON:-$GPS_LON_DEFAULT}"
 
-# Generate cellular IP if not provided
+# Cellular IP: the caller (ReDroidController) passes the profile-anchored
+# deterministic IP via the CELLULAR_IP env var. Only derive a fallback here
+# when the env var is missing — and even then deterministically (seeded from
+# the profile's IMEI / Android ID), never from $RANDOM, so reboots keep the
+# same address and the identity stays consistent.
 if [ -z "$CELLULAR_IP" ]; then
-    CELLULAR_IP="10.${RANDOM%256}.${RANDOM%256}.${RANDOM%256%200+50}"
+    SEED="${VPP_IMEI:-${VPP_ANDROID_ID:-}}"
+    if [ -n "$SEED" ]; then
+        H=$(echo -n "$SEED" | cksum | awk '{print $1}')
+        B2=$(( H % 256 ))
+        B3=$(( (H / 256) % 256 ))
+        B4=$(( (H / 65536) % 253 + 2 ))
+        CELLULAR_IP="10.${B2}.${B3}.${B4}"
+        log "CELLULAR_IP not provided — derived deterministic fallback $CELLULAR_IP from profile seed"
+    else
+        CELLULAR_IP="10.0.2.15"
+        log "CELLULAR_IP not provided and no profile seed — using fixed fallback $CELLULAR_IP"
+    fi
 fi
-GATEWAY="${GATEWAY:-10.0.0.1}"
+# Gateway defaults to the .1 address of the cellular subnet so the routing
+# story is always consistent with the assigned cellular IP.
+if [ -z "$GATEWAY" ]; then
+    GATEWAY="$(echo "$CELLULAR_IP" | awk -F. '{print $1"."$2"."$3".1"}')"
+fi
 
 log "Country: $COUNTRY_CODE"
 log "Carrier: $CARRIER_NAME"

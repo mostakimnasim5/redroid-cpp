@@ -694,6 +694,24 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     args << "-e" << QString("VPP_MNC=%1").arg(profile.sim.mnc);
     args << "-e" << QString("VPP_GPS_LAT=%1").arg(profile.gps.latitude);
     args << "-e" << QString("VPP_GPS_LON=%1").arg(profile.gps.longitude);
+
+    // Cellular identity — init_cellular_network.sh consumes CELLULAR_IP/GATEWAY.
+    // Pass the profile-anchored deterministic local IP (deriveLocalIP unit) so
+    // rmnet0, WebRTC and the routing story are consistent and stable across
+    // reboots. The script's own fallback is also deterministic (seeded), never
+    // random.
+    QString cellularIp = profile.network.ipAddress;
+    if (cellularIp.isEmpty()) {
+        cellularIp = QStringLiteral("10.0.2.15");
+    }
+    QString cellularGateway = QStringLiteral("10.0.0.1");
+    const QStringList ipParts = cellularIp.split(QLatin1Char('.'));
+    if (ipParts.size() == 4) {
+        cellularGateway = QStringLiteral("%1.%2.%3.1")
+                              .arg(ipParts[0], ipParts[1], ipParts[2]);
+    }
+    args << "-e" << QString("CELLULAR_IP=%1").arg(cellularIp);
+    args << "-e" << QString("GATEWAY=%1").arg(cellularGateway);
     
     // GPU mode (swiftshader for Windows compatibility)
     args << "-e" << "REDROID_GPU_MODE=swiftshader";
