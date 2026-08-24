@@ -8,6 +8,7 @@
 
 #include "VirtualPhonePro/AppCloner.hpp"
 #include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
+#include "VirtualPhonePro/ProfileGeneratorFactory.hpp"
 #include "VirtualPhonePro/DeviceProfile.hpp"
 #include "VirtualPhonePro/ReDroidController.hpp"
 
@@ -254,7 +255,6 @@ bool AppCloner::installToWorkProfile(const QString& instanceId,
 
 QString AppCloner::cloneInstance(const QString& instanceId) {
     ReDroidController& ctrl = ReDroidController::instance();
-    UniqueDeviceGenerator& gen = UniqueDeviceGenerator::instance();
 
     InstanceInfo src = ctrl.getInstanceInfo(instanceId);
     if (src.instanceId.isEmpty()) {
@@ -268,27 +268,43 @@ QString AppCloner::cloneInstance(const QString& instanceId) {
 
     DeviceProfile profile = DeviceProfile::load(profilesDir + "/" + instanceId + ".json");
 
-    // Regenerate every identity-bearing field so the clone presents as a
-    // completely distinct physical device.
-    QString mfr = profile.manufacturer;
-    profile.id            = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    profile.identity.imei         = gen.generateUniqueIMEI(mfr);
-    profile.identity.imei2        = gen.generateUniqueIMEI(mfr);
-    profile.identity.serialNumber = gen.generateUniqueSerial(mfr);
-    profile.identity.androidId    = gen.generateUniqueAndroidId();
-    profile.identity.gsfId        = gen.generateUniqueGSFId();
-    profile.identity.advertisingId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    profile.sim.iccid             = gen.generateUniqueICCID();
-    profile.mac.wifiMac           = gen.generateUniqueMAC();
-    profile.mac.bluetoothMac      = gen.generateUniqueBluetoothMAC();
-    profile.network.wifiMac       = profile.mac.wifiMac;
-    profile.network.bluetoothMac  = profile.mac.bluetoothMac;
+    // Identity comes from the same hardware-anchored deterministic engine the
+    // GUI single-create and batch-deploy paths use (Master_Seed =
+    // HMAC-SHA256(HWID + License_Key, "PROFILE_" + Index)). Each clone
+    // consumes a fresh persisted profile index, so uniqueness is
+    // deterministic — never process-random (QRandomGenerator/QUuid).
+    const HardwareAnchoredIdentity identity = generateUniqueHardwareAnchoredIdentity();
+    if (!identity.ok) {
+        qWarning() << "AppCloner::cloneInstance: could not allocate a unique"
+                      " deterministic identity (profile-index space exhausted"
+                      " or persistence failure)";
+        return {};
+    }
 
-    QString newId = gen.generateInstanceId();
+    profile.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    applyIdentityToDeviceProfile(profile, identity.identity);
+
+    // The engine derives no ethernet MAC, but the field is consumed per
+    // container (NET_ETHERNET_MAC). Derive it deterministically from engine
+    // material: first 6 bytes of the device key, locally-administered unicast
+    // (same scheme as MultiInstanceManager::cloneProfile).
+    const QByteArray keyBytes = QByteArray::fromHex(
+        QByteArray::fromStdString(identity.identity.device_key));
+    if (keyBytes.size() >= 6) {
+        QByteArray mac = keyBytes.left(6);
+        mac[0] = static_cast<char>((static_cast<quint8>(mac[0]) | 0x02) & 0xFE);
+        profile.mac.ethernetMac = QString::fromLatin1(mac.toHex(':')).toUpper();
+    }
+
+    QString newId = UniqueDeviceGenerator::instance().generateInstanceId();
     if (!profile.save(profilesDir + "/" + newId + ".json")) {
         qWarning() << "AppCloner::cloneInstance: failed to save cloned profile";
         return {};
     }
+
+    // Record the issued identity so future allocations (GUI, batch, or clone)
+    // can detect collisions against this instance.
+    registerIssuedIdentity(newId, profile);
 
     if (!ctrl.startInstance(newId, profile)) {
         qWarning() << "AppCloner::cloneInstance: failed to start cloned instance";
