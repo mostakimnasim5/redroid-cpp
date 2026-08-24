@@ -1340,10 +1340,56 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         netSpoofer.setDeviceTTL();                        // real device TTL=64
         netSpoofer.spoofMACAddress("A4:50:46:XX:XX:XX"); // Samsung OUI prefix
         netSpoofer.spoofInterfaceName();                  // wlan0 not eth0
-        netSpoofer.spoofMobileOperator("T-Mobile");
-        netSpoofer.spoofMobileCountryCode(310);           // US MCC
-        netSpoofer.spoofMobileNetworkCode(260);           // T-Mobile MNC
-        netSpoofer.spoofNetworkType("4G");
+
+        // ── Mobile-carrier identity (Cellular only) ──────────────────────────
+        // A no-SIM WiFi phone (ISP/residential proxy, GUI mode 1) must NOT
+        // advertise operator_name / mcc / mnc / preferred_network_mode — those
+        // props would contradict the absent-SIM story applyWifiNetwork()
+        // writes, and banking apps cross-check them. Transport-level spoofing
+        // (TTL/MAC/interface name/UA + applySamsungNetworkProfile below) stays
+        // shared: every real Android phone exposes those regardless of
+        // WiFi vs cellular.
+        if (netKind == SyncNetworkKind::Cellular) {
+            // Source the carrier from the SAME deterministic selection the
+            // proxy auto-sync path applies (syncFromProxy ->
+            // getCarrierForLocation, seeded by instanceId): prefer the carrier
+            // already recorded for this instance (post-sync truth, proxy-geo
+            // country), else derive it from the instance country. Never
+            // hardcode T-Mobile/310/260 here.
+            VirtualPhonePro::CarrierConfig carrier;
+            {
+                const QJsonObject stateCarrier =
+                    VirtualPhonePro::LocaleTimezoneManager::instance()
+                        .getStateAsJson(instanceId)
+                        .value(QStringLiteral("carrier")).toObject();
+                carrier.name = stateCarrier.value(QStringLiteral("name")).toString();
+                carrier.mcc  = stateCarrier.value(QStringLiteral("mcc")).toString();
+                carrier.mnc  = stateCarrier.value(QStringLiteral("mnc")).toString();
+            }
+            const VirtualPhonePro::CarrierConfig derived =
+                VirtualPhonePro::LocaleTimezoneManager::instance()
+                    .getCarrierForLocation(countryCode, QString(), instanceId);
+            if (carrier.name.isEmpty()) carrier.name = derived.name;
+            if (carrier.mcc.isEmpty())  carrier.mcc  = derived.mcc;
+            if (carrier.mnc.isEmpty())  carrier.mnc  = derived.mnc;
+            // getStateAsJson() does not persist networkType; the derived
+            // entry carries it (same seed -> same carrier row).
+            carrier.networkType = derived.networkType.isEmpty()
+                                      ? QStringLiteral("LTE")
+                                      : derived.networkType;
+
+            netSpoofer.spoofMobileOperator(carrier.name.toStdString());
+            netSpoofer.spoofMobileCountryCode(carrier.mcc.toInt());
+            netSpoofer.spoofMobileNetworkCode(carrier.mnc.toInt());
+            netSpoofer.spoofNetworkType(carrier.networkType.toStdString());
+            qDebug() << "  ✓ Mobile carrier identity:" << carrier.name
+                     << "MCC/MNC" << carrier.mcc + "/" + carrier.mnc
+                     << carrier.networkType;
+        } else {
+            qDebug() << "  ✓ Mobile carrier identity skipped (WiFi kind —"
+                        " no operator/MCC/MNC on a no-SIM ISP-proxy phone)";
+        }
+
         netSpoofer.spoofUserAgent(
             "Mozilla/5.0 (Linux; Android 14; " +
             model.toStdString() +
