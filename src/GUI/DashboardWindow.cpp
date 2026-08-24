@@ -95,6 +95,15 @@ void NewPhoneDialog::setupUI() {
     QFormLayout* proxyDetailsLayout = new QFormLayout(m_proxyDetailsWidget);
     proxyDetailsLayout->setContentsMargins(0, 10, 0, 0);
     
+    // Proxy protocol type. Default SOCKS5: mobile (mode 2) and ISP/residential
+    // (mode 1) proxies are almost always SOCKS5 endpoints, and the lower layers
+    // (assignProxy PAC, LocaleTimezoneManager QNetworkProxy) already honor it.
+    m_proxyTypeCombo = new QComboBox(this);
+    m_proxyTypeCombo->addItem("HTTP",   "http");
+    m_proxyTypeCombo->addItem("SOCKS5", "socks5");
+    m_proxyTypeCombo->setCurrentIndex(1);  // SOCKS5 default
+    proxyDetailsLayout->addRow("Proxy Type:", m_proxyTypeCombo);
+
     m_proxyHostEdit = new QLineEdit(this);
     m_proxyHostEdit->setPlaceholderText("e.g., 192.168.1.100 or proxy.example.com");
     proxyDetailsLayout->addRow("Proxy Host:", m_proxyHostEdit);
@@ -936,7 +945,7 @@ void DashboardWindow::onNewPhoneClicked() {
                 proxyConfig.port = dialog.getProxyPort();
                 proxyConfig.username = dialog.getProxyUsername();
                 proxyConfig.password = dialog.getProxyPassword();
-                proxyConfig.type = "http"; // Default to HTTP proxy
+                proxyConfig.type = dialog.getProxyType(); // "http" or "socks5" (SOCKS5 default)
                 
                 if (proxyConfig.isValid()) {
                     // Map the GUI network mode to the access-network kind:
