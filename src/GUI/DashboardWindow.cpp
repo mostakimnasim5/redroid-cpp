@@ -233,10 +233,11 @@ void NewPhoneDialog::onProxyModeChanged(int index) {
         m_useProxy = true;
         m_proxyHostEdit->setPlaceholderText("Enter proxy IP or hostname");
     } else if (mode == 2) {
-        // With Mobile Proxy (Same Device IP) - hide proxy details, use device IP
-        m_proxyDetailsWidget->setVisible(false);
+        // With Mobile Proxy (Same Device IP) - proxy details are REQUIRED so
+        // the carrier/timezone/locale auto-sync can resolve the exit IP.
+        m_proxyDetailsWidget->setVisible(true);
         m_useProxy = true;
-        // The IP will be set to the same as the device's IP in the controller
+        m_proxyHostEdit->setPlaceholderText("Mobile proxy gateway host (required)");
     }
 }
 
@@ -249,10 +250,16 @@ void NewPhoneDialog::onOk() {
     
     // Validate proxy if using proxy mode
     int mode = m_proxyModeCombo->itemData(m_proxyModeCombo->currentIndex()).toInt();
-    if (mode == 1) {
+    if (mode == 1 || mode == 2) {
+        // Both proxy modes require a proxy host — mode 2 (mobile proxy) must
+        // not be assignable with an empty proxy, or auto-sync would resolve
+        // against the host IP and produce an inconsistent device identity.
         QString proxyHost = m_proxyHostEdit->text().trimmed();
         if (proxyHost.isEmpty()) {
-            QMessageBox::warning(this, "Validation", "Please enter a proxy host address");
+            QMessageBox::warning(this, "Validation",
+                mode == 2
+                    ? "Please enter the mobile proxy gateway address (required for this network mode)"
+                    : "Please enter a proxy host address");
             return;
         }
     }
