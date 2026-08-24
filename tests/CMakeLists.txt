@@ -97,6 +97,13 @@ set(REDROID_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/Database/FingerprintEngine.cpp
     ${CMAKE_SOURCE_DIR}/src/Android/SensorInjector.cpp
     ${CMAKE_SOURCE_DIR}/src/Android/FileSystemRealism.cpp
+    # Hardware-anchored identity engine: MultiInstanceManager/AppCloner (in
+    # this list) reference generateUniqueHardwareAnchoredIdentity(),
+    # applyIdentityToDeviceProfile() and registerIssuedIdentity() — without
+    # these three sources the test executables fail to link (LNK2001).
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeviceProfileGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/HardwareId.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/ProfileGeneratorFactory.cpp
 )
 
 # =========================================================
@@ -223,7 +230,6 @@ add_test(NAME Validation COMMAND Test_Validation)
 # =========================================================
 add_executable(Test_ProfileGenerator
     Test_ProfileGenerator.cpp
-    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeviceProfileGenerator.cpp
     ${REDROID_TEST_SOURCES}
     # Add all Q_OBJECT headers so AUTOMOC can process them
     ${CMAKE_SOURCE_DIR}/include/VirtualPhonePro/ReDroidController.hpp
