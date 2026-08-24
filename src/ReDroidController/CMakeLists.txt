@@ -185,6 +185,8 @@ set(REDCONTROLLER_HEADERS
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/CryptoUtils.hpp
     # NEW: Device Profile Generator
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeviceProfileGenerator.hpp
+    # NEW: Deterministic per-profile local/cellular IP (single source)
+    ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/DeterministicIP.hpp
     # NEW: Hardware ID + hardware-anchored generator factory
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/HardwareId.hpp
     ${PROJECT_INCLUDE_DIR}/VirtualPhonePro/ProfileGeneratorFactory.hpp

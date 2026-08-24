@@ -1,4 +1,5 @@
 #include "VirtualPhonePro/ReDroidController.hpp"
+#include "VirtualPhonePro/DeterministicIP.hpp"
 #include "VirtualPhonePro/UniqueDeviceGenerator.hpp"
 #include "VirtualPhonePro/AndroidRealismEngine.hpp"
 #include "VirtualPhonePro/TimingAttackPrevention.hpp"
@@ -702,12 +703,7 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // random. deterministicLocalIP() guarantees a unique per-profile address
     // even for factory-built profiles whose network.ipAddress is empty.
     QString cellularIp = deterministicLocalIP(profile);
-    QString cellularGateway = QStringLiteral("10.0.0.1");
-    const QStringList ipParts = cellularIp.split(QLatin1Char('.'));
-    if (ipParts.size() == 4) {
-        cellularGateway = QStringLiteral("%1.%2.%3.1")
-                              .arg(ipParts[0], ipParts[1], ipParts[2]);
-    }
+    QString cellularGateway = gatewayForLocalIP(cellularIp);
     args << "-e" << QString("CELLULAR_IP=%1").arg(cellularIp);
     args << "-e" << QString("GATEWAY=%1").arg(cellularGateway);
     
@@ -2159,33 +2155,13 @@ bool ReDroidController::disableMockLocation(const QString& instanceId) {
 // ============================================================================
 
 QString ReDroidController::deterministicLocalIP(const DeviceProfile& profile) const {
-    const QString ip = profile.network.ipAddress.trimmed();
-    if (!ip.isEmpty()) {
-        return ip;
-    }
-
-    // Factory-built profiles (createSamsungS24Ultra/createRandom/...) leave
-    // network.ipAddress empty. Derive a stable 10.x.x.x from the profile's
-    // identity (FNV-1a — the same primitive the carrier selection uses) so
-    // the address is unique per profile and stable across reboots, instead
-    // of every such profile sharing one fixed fallback.
-    QString seed = profile.identity.imei;
-    if (seed.isEmpty()) seed = profile.identity.androidId;
-    if (seed.isEmpty()) seed = profile.identity.serialNumber;
-    if (seed.isEmpty()) seed = profile.id;
-    if (seed.isEmpty()) seed = profile.name;
-
-    quint64 h = 14695981039346656037ULL; // FNV-1a 64-bit offset basis
-    const QByteArray bytes = seed.toUtf8();
-    for (const char c : bytes) {
-        h ^= static_cast<quint64>(static_cast<quint8>(c));
-        h *= 1099511628211ULL; // FNV prime
-    }
-
-    const int b2 = static_cast<int>(h & 0xFF);
-    const int b3 = static_cast<int>((h >> 8) & 0xFF);
-    const int b4 = static_cast<int>((h >> 16) % 253) + 2; // avoid .0/.1/.255
-    return QStringLiteral("10.%1.%2.%3").arg(b2).arg(b3).arg(b4);
+    // Single HWID-anchored source — see DeterministicIP.hpp for the contract.
+    return deterministicLocalIPFromIdentity(profile.network.ipAddress,
+                                            profile.identity.imei,
+                                            profile.identity.androidId,
+                                            profile.identity.serialNumber,
+                                            profile.id,
+                                            profile.name);
 }
 
 bool ReDroidController::applyCellularNetworkScript(const QString& instanceId, const DeviceProfile& profile) {
@@ -2215,10 +2191,7 @@ bool ReDroidController::applyCellularNetworkScript(const QString& instanceId, co
     }
 
     const QString cellularIp = deterministicLocalIP(profile);
-    const QStringList parts = cellularIp.split(QLatin1Char('.'));
-    const QString gateway = (parts.size() == 4)
-        ? QStringLiteral("%1.%2.%3.1").arg(parts[0], parts[1], parts[2])
-        : QStringLiteral("10.0.0.1");
+    const QString gateway = gatewayForLocalIP(cellularIp);
     QString country = profile.sim.country.trimmed().toUpper();
     if (country.isEmpty()) {
         country = QStringLiteral("US");
