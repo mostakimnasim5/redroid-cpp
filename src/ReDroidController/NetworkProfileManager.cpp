@@ -357,24 +357,32 @@ QMap<QString, QString> NetworkProfileManager::generateTelephonyProperties(const 
 QStringList NetworkProfileManager::generateTransportHookCommands(const QString& instanceId,
                                                                   const NetworkProfile& profile) {
     QStringList commands;
-    
-    commands.append("# Disable ethernet interface appearance");
-    commands.append("ip link set eth0 down 2>/dev/null || true");
-    commands.append("ip link set eth0 name cellular0 2>/dev/null || true");
-    commands.append("ip link set cellular0 up 2>/dev/null || true");
-    
-    commands.append("# Setup cellular interface");
-    commands.append("ip link set wlan0 down 2>/dev/null || true");
-    commands.append("ip link set wlan0 name rmnet0 2>/dev/null || true");
-    commands.append("ip link set rmnet0 up 2>/dev/null || true");
-    
-    commands.append("# Configure IP");
-    commands.append("ip addr add " + profile.cellular.ipAddress + "/24 dev rmnet0 2>/dev/null || true");
-    
-    commands.append("# Set routing for cellular");
-    commands.append("ip route del default 2>/dev/null || true");
-    commands.append("ip route add default via " + profile.cellular.gateway + " dev rmnet0 2>/dev/null || true");
-    
+
+    // Interface rename only on images that actually expose a wlan0 (custom
+    // cellular-ready builds). A stock ReDroid netns has no wlan0: renaming
+    // eth0 there serves no purpose, and deleting the default route while
+    // rmnet0 does not exist would orphan container connectivity (and ADB
+    // with it). Mirrors the wlan0 gate in init_cellular_network.sh.
+    commands.append("# Rename interfaces only when a wlan0 exists (stock ReDroid netns has none)");
+    commands.append("if ip link show wlan0 >/dev/null 2>&1; then "
+                    "ip link set eth0 down 2>/dev/null; "
+                    "ip link set eth0 name cellular0 2>/dev/null; "
+                    "ip link set cellular0 up 2>/dev/null; "
+                    "ip link set wlan0 down 2>/dev/null; "
+                    "ip link set wlan0 name rmnet0 2>/dev/null; "
+                    "ip link set rmnet0 up 2>/dev/null; "
+                    "fi");
+
+    if (!profile.cellular.ipAddress.isEmpty()) {
+        commands.append("# Configure IP");
+        commands.append("ip addr add " + profile.cellular.ipAddress + "/24 dev rmnet0 2>/dev/null || true");
+
+        // Atomic replace: if the rmnet0 route cannot be installed the
+        // original default route stays in place — never delete-then-add.
+        commands.append("# Set routing for cellular (atomic replace keeps original route on failure)");
+        commands.append("ip route replace default via " + profile.cellular.gateway + " dev rmnet0 2>/dev/null || true");
+    }
+
     return commands;
 }
 
