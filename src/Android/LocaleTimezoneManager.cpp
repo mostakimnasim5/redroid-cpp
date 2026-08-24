@@ -473,6 +473,46 @@ bool LocaleTimezoneManager::applyCarrier(const QString& instanceId, const Carrie
              << "(" << carrier.mcc << carrier.mnc << ")";
     return true;
 }
+
+bool LocaleTimezoneManager::applyWifiNetwork(const QString& instanceId, const WifiNetworkConfig& wifi) {
+    ReDroidController& ctrl = ReDroidController::instance();
+
+    QStringList commands = {
+        // Transport: WiFi on, mobile data off — an ISP/residential-proxy
+        // phone has no SIM, so cellular data must not appear active.
+        "settings put global wifi_on 1",
+        "settings put global mobile_data 0",
+        "svc wifi enable",
+        "svc data disable",
+
+        // WiFi identity — deterministic per profile (SSID/BSSID/etc. were
+        // derived from the profile-anchored seed by generateWifiNetworkConfig).
+        QString("setprop net.wifi.ssid \"%1\"").arg(wifi.ssid),
+        QString("setprop net.wifi.bssid %1").arg(wifi.bssid),
+        QString("setprop net.wifi.gateway %1").arg(wifi.gateway),
+        QString("setprop net.wifi.frequency %1").arg(wifi.frequency),
+        QString("setprop net.wifi.link_speed %1").arg(wifi.linkSpeedMbps),
+        QString("setprop net.wifi.rssi %1").arg(wifi.signalDbm),
+        QString("setprop net.dns1 %1").arg(wifi.dns1),
+        QString("setprop net.dns2 %1").arg(wifi.dns2),
+
+        // No-SIM story: SIM-operator props stay empty, exactly like a real
+        // WiFi-only / SIM-less phone reports them.
+        "setprop gsm.sim.operator.numeric \"\"",
+        "setprop gsm.sim.operator.alpha \"\"",
+        "setprop gsm.sim.operator.iso-country \"\"",
+        "setprop gsm.sim.state ABSENT",
+    };
+
+    for (const QString& cmd : commands) {
+        ctrl.executeShell(instanceId, cmd);
+    }
+
+    qDebug() << "WiFi network applied for" << instanceId << ":" << wifi.ssid
+             << "(" << wifi.bssid << "," << wifi.frequency << ","
+             << wifi.linkSpeedMbps << "Mbps," << wifi.signalDbm << "dBm )";
+    return true;
+}
 #endif // LTM_NO_CONTROLLER
 
 
@@ -481,8 +521,9 @@ bool LocaleTimezoneManager::applyCarrier(const QString& instanceId, const Carrie
 // ============================================================================
 
 #ifndef LTM_NO_CONTROLLER
-bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
-    qDebug() << "Starting auto-sync from proxy for:" << instanceId;
+bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId, SyncNetworkKind kind) {
+    qDebug() << "Starting auto-sync from proxy for:" << instanceId
+             << "(kind:" << (kind == SyncNetworkKind::WiFi ? "WiFi" : "Cellular") << ")";
 
     ProxyInfo proxy = getProxy(instanceId);
     if (!proxy.isValid || proxy.host.isEmpty()) {
@@ -542,7 +583,15 @@ bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
 
     applyLocale(instanceId, locale);
     applyTimezone(instanceId, geo.timezone);
-    applyCarrier(instanceId, carrier);
+    if (kind == SyncNetworkKind::WiFi) {
+        // ISP/residential proxy: the phone is on home/office WiFi — locale,
+        // timezone and region track the proxy country exactly as before, but
+        // there is NO SIM/carrier story. applyCarrier() is skipped and a
+        // deterministic WiFi identity is applied instead.
+        applyWifiNetwork(instanceId, generateWifiNetworkConfig(instanceId, geo.countryCode));
+    } else {
+        applyCarrier(instanceId, carrier);
+    }
 
     // Update state
     {
@@ -551,6 +600,7 @@ bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
             m_instanceStates[instanceId]->geoLocation = geo;
             m_instanceStates[instanceId]->locale = locale;
             m_instanceStates[instanceId]->carrier = carrier;
+            m_instanceStates[instanceId]->networkKind = kind;
             m_instanceStates[instanceId]->isSynced = true;
             m_instanceStates[instanceId]->lastSyncTime = QDateTime::currentMSecsSinceEpoch();
         }
@@ -572,7 +622,7 @@ bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
 
 
 #ifndef LTM_NO_CONTROLLER
-bool LocaleTimezoneManager::resyncFromProxy(const QString& instanceId) {
+bool LocaleTimezoneManager::resyncFromProxy(const QString& instanceId, SyncNetworkKind kind) {
     qDebug() << "[ReSync] Checking proxy exit IP for rotation:" << instanceId;
 
     ProxyInfo proxy = getProxy(instanceId);
@@ -620,7 +670,16 @@ bool LocaleTimezoneManager::resyncFromProxy(const QString& instanceId) {
              << "for" << instanceId << "— re-running full sync"
              << "(" << stored.ipAddress << "->" << current.ipAddress << ")";
 
-    return syncFromProxy(instanceId);
+    // Honor the kind recorded by the previous sync; the parameter only
+    // matters for an instance that has never been synced.
+    SyncNetworkKind effectiveKind = kind;
+    {
+        QMutexLocker locker(&m_mutex);
+        if (m_instanceStates.contains(instanceId))
+            effectiveKind = m_instanceStates[instanceId]->networkKind;
+    }
+
+    return syncFromProxy(instanceId, effectiveKind);
 }
 #endif // LTM_NO_CONTROLLER
 
@@ -1128,6 +1187,50 @@ QJsonObject LocaleTimezoneManager::getStateAsJson(const QString& instanceId) con
     state["carrier"] = carrier;
     
     return state;
+}
+
+// ============================================================================
+// WiFi network identity (ISP/residential proxy mode) — pure logic, no
+// instance access, so it stays outside LTM_NO_CONTROLLER and is unit-testable.
+// ============================================================================
+
+WifiNetworkConfig LocaleTimezoneManager::generateWifiNetworkConfig(const QString& seed,
+                                                                   const QString& countryCode) const {
+    WifiNetworkConfig cfg;
+
+    // Profile-anchored deterministic hash (same scheme as the script-side
+    // cksum derivation): same seed -> same identity across reboots; two
+    // profiles -> two identities. Nothing here is random.
+    const quint32 h1 = qHash(seed + "-wifi");           // identity bytes
+    const quint32 h2 = qHash(seed + "-wifi-band");      // band/speed/signal
+
+    // Home router SSID — a realistic, non-branded local network name.
+    cfg.ssid = QString("Home_WiFi_%1").arg(h1 % 10000, 4, 10, QLatin1Char('0'));
+
+    // BSSID: locally administered unicast MAC (02:xx:xx:xx:xx:xx).
+    cfg.bssid = QString("02:%1:%2:%3:%4:%5")
+        .arg((h1 >> 8)  & 0xFF, 2, 16, QLatin1Char('0'))
+        .arg((h1 >> 16) & 0xFF, 2, 16, QLatin1Char('0'))
+        .arg((h1 >> 24) & 0xFF, 2, 16, QLatin1Char('0'))
+        .arg((h2 >> 8)  & 0xFF, 2, 16, QLatin1Char('0'))
+        .arg((h2 >> 16) & 0xFF, 2, 16, QLatin1Char('0'))
+        .toUpper();
+
+    // RFC1918 home gateway — third octet seeded so profiles differ.
+    const int subnet = 1 + (h1 % 254);
+    cfg.gateway = QString("192.168.%1.1").arg(subnet);
+    cfg.dns1 = cfg.gateway;                    // typical home router DNS
+    cfg.dns2 = QStringLiteral("8.8.8.8");
+
+    // Band/speed/signal — realistic home WiFi ranges, deterministic.
+    const bool fiveGhz = (h2 % 3) != 0;        // ~2/3 of modern APs are 5 GHz
+    cfg.frequency = fiveGhz ? QStringLiteral("5 GHz") : QStringLiteral("2.4 GHz");
+    cfg.linkSpeedMbps = fiveGhz ? (433 + (h2 % 4) * 100)   // 433/533/633/733
+                                : (72  + (h2 % 4) * 72);   // 72/144/216/288
+    cfg.signalDbm = -65 + (h2 % 15);           // -65..-51 dBm, strong home signal
+
+    Q_UNUSED(countryCode);  // identity is per-profile; country does not vary it
+    return cfg;
 }
 
 } // namespace VirtualPhonePro
