@@ -68,9 +68,10 @@ void Test_CarrierSelection::multiCarrierVariety() {
 
 void Test_CarrierSelection::documentedCarriers() {
     LocaleTimezoneManager& ltm = LocaleTimezoneManager::instance();
-    const QStringList us = {"T-Mobile","AT&T","Verizon","US Cellular"};
+    const QStringList us = {"T-Mobile","AT&T","Verizon","US Cellular",
+                            "Metro by T-Mobile","AT&T FirstNet"};
     const QStringList gb = {"EE","O2","Vodafone UK","Three UK"};
-    const QStringList in = {"Jio","Airtel","Vi"};
+    const QStringList in = {"Jio","Airtel","Vi","BSNL"};
     const QStringList bd = {"Grameenphone","Robi","Banglalink","Teletalk"};
 
     for (int i = 0; i < 50; ++i) {
@@ -81,7 +82,7 @@ void Test_CarrierSelection::documentedCarriers() {
         QVERIFY2(bd.contains(ltm.getCarrierForLocation("BD","",s).name), "BD carrier not documented");
     }
     // MCC must match the country (US=310/311, GB=234, IN=404/405, BD=470).
-    QVERIFY(QStringList({"310","311"}).contains(ltm.getCarrierForLocation("US","","x").mcc));
+    QVERIFY(QStringList({"310","311","312","313"}).contains(ltm.getCarrierForLocation("US","","x").mcc));
     QCOMPARE(ltm.getCarrierForLocation("GB","","x").mcc, QString("234"));
     QVERIFY(QStringList({"404","405"}).contains(ltm.getCarrierForLocation("IN","","x").mcc));
     QCOMPARE(ltm.getCarrierForLocation("BD","","x").mcc, QString("470"));
