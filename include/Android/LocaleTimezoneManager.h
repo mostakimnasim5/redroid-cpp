@@ -99,6 +99,7 @@ public:
     // Geolocation Sync
     // =========================================================================
     
+#ifndef LTM_NO_CONTROLLER
     /**
      * @brief Query geolocation from proxy IP
      */
@@ -108,12 +109,14 @@ public:
      * @brief Query geolocation by IP directly
      */
     GeoLocation queryGeoLocationByIP(const QString& ip);
+#endif // LTM_NO_CONTROLLER
     
     /**
      * @brief Get current geolocation
      */
     GeoLocation getGeoLocation(const QString& instanceId) const;
     
+#ifndef LTM_NO_CONTROLLER
     /**
      * @brief Apply locale settings to instance
      */
@@ -128,6 +131,7 @@ public:
      * @brief Apply carrier configuration
      */
     bool applyCarrier(const QString& instanceId, const CarrierConfig& carrier);
+#endif // LTM_NO_CONTROLLER
     
     // =========================================================================
     // Auto Sync (Proxy -> Locale)
@@ -196,7 +200,9 @@ signals:
     void error(const QString& instanceId, const QString& message);
 
 private slots:
+#ifndef LTM_NO_CONTROLLER
     void onGeoQueryFinished(QNetworkReply* reply);
+#endif // LTM_NO_CONTROLLER
 
 private:
     LocaleTimezoneManager(QObject* parent = nullptr);
