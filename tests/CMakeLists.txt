@@ -296,6 +296,8 @@ add_test(NAME ProfileGenerator COMMAND Test_ProfileGenerator)
 add_executable(Test_CarrierSelection
     Test_CarrierSelection.cpp
     ${CMAKE_SOURCE_DIR}/src/Android/LocaleTimezoneManager.cpp
+    # Q_OBJECT header must be listed so AUTOMOC generates moc_LocaleTimezoneManager.cpp
+    ${CMAKE_SOURCE_DIR}/include/Android/LocaleTimezoneManager.h
 )
 
 target_compile_definitions(Test_CarrierSelection PRIVATE LTM_NO_CONTROLLER)
@@ -359,6 +361,8 @@ add_test(NAME WebRTCIPConsistency COMMAND Test_WebRTCIPConsistency)
 add_executable(Test_WifiNetworkIdentity
     Test_WifiNetworkIdentity.cpp
     ${CMAKE_SOURCE_DIR}/src/Android/LocaleTimezoneManager.cpp
+    # Q_OBJECT header must be listed so AUTOMOC generates moc_LocaleTimezoneManager.cpp
+    ${CMAKE_SOURCE_DIR}/include/Android/LocaleTimezoneManager.h
 )
 
 target_compile_definitions(Test_WifiNetworkIdentity PRIVATE LTM_NO_CONTROLLER)
