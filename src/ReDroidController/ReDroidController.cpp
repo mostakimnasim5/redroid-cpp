@@ -820,6 +820,33 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     QString devicesOutput = executeAdbSync(instanceId, {"devices"});
     info.adbConnected = devicesOutput.contains(adbSerial);
     m_instances[instanceId] = info;
+
+    // Unlock before the realism pipeline: applyCompleteRealism() emits signals
+    // and drives dozens of ADB round-trips, so it must not run under
+    // m_instancesMutex. The locker also guards the early-return paths above.
+    locker.unlock();
+
+    // =========================================================================
+    // Fix 13: Auto-apply the full realism pipeline on instance startup.
+    //
+    // Previously NO caller of startInstance() invoked applyCompleteRealism()
+    // or applyProfile() afterwards (grep-verified: zero call sites), so the
+    // entire 11-phase anti-detection stack — including FindMyDeviceManager
+    // and MagiskPatcher, which are wired ONLY inside applyCompleteRealism() —
+    // never ran. Fresh instances booted with stock ReDroid fingerprints.
+    //
+    // applyCompleteRealism() binds every spoofing module to this instance's
+    // adb serial (per-instance ADBManager), so concurrent batch deploys do
+    // not leak commands across containers.
+    // =========================================================================
+    if (!applyCompleteRealism(instanceId, profile.build.manufacturer, profile.build.model)) {
+        qWarning() << "[Realism] Pipeline failed for" << instanceId
+                   << "— instance is running but realism is incomplete";
+        emit error(QStringLiteral("Instance %1 started, but the realism "
+                                  "pipeline did not complete — detection "
+                                  "avoidance is degraded.")
+                       .arg(instanceId));
+    }
     
     // Start monitoring
     if (!m_monitoring) {
@@ -1435,36 +1462,40 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // =========================================================================
     // PHASE 5: UNIQUE DEVICE IDENTITY
     // =========================================================================
-    qDebug() << "\n[Phase 5] Generating Unique Device Identity...";
+    qDebug() << "\n[Phase 5] Applying Unique Device Identity...";
 
-    // ── FingerprintEngine — seed-based deterministic ID generation ────────────
-    // FingerprintEngine generates all IDs from a single master seed so that
-    // every reboot produces the same values (stability across sessions).
-    // This feeds PersistentIdentityManager below.
-    FingerprintEngine& fpe = FingerprintEngine::instance();
-    // Seed = SHA-256 of (instanceId + manufacturer + model) — unique per instance,
-    // stable across restarts of the same instance.
-    QString fpSeed = QString::fromStdString(
-        CryptoUtils::sha256((instanceId + manufacturer + model).toStdString()));
-
-    UniqueDeviceGenerator& deviceGen = UniqueDeviceGenerator::instance();
-    // generateFromSeed() derives all identity fields deterministically from
-    // the seed; the remaining fields come from UniqueDeviceGenerator.
-    DeviceFingerprint fpId = fpe.generateFromSeed(fpSeed);
-    QString uniqueIMEI         = fpId.imei1;
-    QString uniqueSerial       = deviceGen.generateUniqueSerial(manufacturer);
-    QString uniqueAndroidId    = fpId.androidId;
-    QString uniqueGSFId        = deviceGen.generateUniqueGSFId();
-    QString uniqueWifiMac      = fpId.wifiMac;
-    QString uniqueBluetoothMac = fpId.bluetoothMac;
-    QString uniqueICCID        = fpId.iccid1;
-    QString uniqueIMSI         = fpId.imsi1;
-    qDebug() << "  ✓ Unique Identity Generated (seed-based, stable across reboots)";
+    // ── Runtime identity MUST equal the profile identity ─────────────────────
+    // startInstance() already injected this instance's hardware-anchored
+    // deterministic identity (DeviceProfileGenerator, Master_Seed =
+    // HMAC-SHA256(HWID + License_Key, "PROFILE_" + Index)) via
+    // REDROID_PROP_*/VPP_* env vars and the mounted device.properties file.
+    // Previously this phase generated a SECOND, unrelated identity at runtime
+    // (FingerprintEngine seed + process-random UniqueDeviceGenerator) and
+    // overwrote ro.serialno / IMEI / androidId with it, so the runtime values
+    // contradicted the boot-time identity — a detectable inconsistency.
+    // Read the identity back from the instance itself: single source of truth.
+    const QString uniqueIMEI = executeAdbSync(
+        instanceId, {"shell", "getprop", "ro.gsm.device.imei"}, 3000).trimmed();
+    const QString uniqueSerial = executeAdbSync(
+        instanceId, {"shell", "getprop", "ro.serialno"}, 3000).trimmed();
+    const QString uniqueAndroidId = executeAdbSync(
+        instanceId, {"shell", "settings", "get", "secure", "android_id"}, 3000).trimmed();
+    const QString uniqueGSFId = executeAdbSync(
+        instanceId, {"shell", "printenv", "VPP_GSF_ID"}, 3000).trimmed();
+    const QString uniqueICCID = executeAdbSync(
+        instanceId, {"shell", "printenv", "VPP_ICCID"}, 3000).trimmed();
+    const QString uniqueIMSI = executeAdbSync(
+        instanceId, {"shell", "printenv", "VPP_IMSI"}, 3000).trimmed();
+    if (uniqueIMEI.isEmpty() || uniqueSerial.isEmpty() || uniqueAndroidId.isEmpty()) {
+        qWarning() << "  ⚠ Could not read back the boot-time identity for" << instanceId
+                   << "— Phase 9 will fall back to property writes only";
+    }
+    qDebug() << "  ✓ Runtime identity aligned with hardware-anchored profile identity";
 
     // ── Cryptographic device fingerprint ──────────────────────────────────────
     // CryptoUtils is a pure-static utility; it requires no singleton wiring.
-    // We use it here to generate a SHA-256 device fingerprint from the unique
-    // IDs generated above. This hash is stored as ro.boot.vbmeta.digest —
+    // We use it here to generate a SHA-256 device fingerprint from the
+    // instance's own identity. This hash is stored as ro.boot.vbmeta.digest —
     // the value Play Integrity reads when verifying Verified Boot integrity.
     {
         std::string fingerprintSrc =
@@ -1485,10 +1516,14 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     {
         PersistentIdentityManager& pim = PersistentIdentityManager::instance();
         pim.initialize(instanceId);
-        // Seed with the IDs generated above — PIM persists them to disk
-        // and restores them on subsequent startInstance() calls.
-        pim.setAndroidId(instanceId, uniqueAndroidId);
-        pim.setGSFId(instanceId, uniqueGSFId);
+        // Seed PIM with the instance's own boot-time identity — PIM persists
+        // it to disk and restores it on subsequent startInstance() calls.
+        // setAndroidId/setGSFId no-op when the value is empty (read-back
+        // failed), leaving PIM's own persisted/generated value in place.
+        if (!uniqueAndroidId.isEmpty())
+            pim.setAndroidId(instanceId, uniqueAndroidId);
+        if (!uniqueGSFId.isEmpty())
+            pim.setGSFId(instanceId, uniqueGSFId);
         pim.generateAllIdentities(instanceId); // fills any gaps (GAID, boot token…)
         pim.applyAllIdentities(instanceId);
         qDebug() << "  ✓ Persistent identity committed (AndroidId/GSFId/GAID stable across reboots)";
@@ -1698,26 +1733,38 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // PHASE 9: UNIQUE PROPERTIES APPLICATION
     // =========================================================================
     qDebug() << "\n[Phase 9] Applying Unique Properties...";
-    
-    QStringList uniqueCommands = {
-        QString("setprop ro.serialno %1").arg(uniqueSerial),
-        QString("setprop ro.gsm.device.imei %1").arg(uniqueIMEI),
-        QString("setprop persist.radio.imei %1").arg(uniqueIMEI),
-        QString("setprop ro.android_id %1").arg(uniqueAndroidId),
-        QString("setprop ro.gsfid.version %1").arg(uniqueGSFId),
-        QString("settings put secure android_id %1").arg(uniqueAndroidId),
-        QString("setprop persist.radio.iccid %1").arg(uniqueICCID),
-        QString("setprop persist.radio.imsi %1").arg(uniqueIMSI),
-        // ro.* props set via REDROID_PROP_ env vars at docker run time (before init)
-        // setprop cannot modify ro.* after boot - that requires resetprop (Magisk)
-        // These are kept as setprop attempts (may succeed on some ReDroid builds):
-        "setprop ro.kernel.qemu 0",
-        "setprop ro.boot.qemu 0",
-        "setprop ro.debuggable 0",
-        "setprop ro.secure 1",
-        "setprop ro.build.selinux.enforce 0",
-    };
-    
+
+    // Persist-writable copies of the identity. The ro.* mirrors were already
+    // injected before init via REDROID_PROP_* env vars in startInstance();
+    // these writes target the mutable persist.* / settings providers that
+    // apps actually query at runtime. Empty values (read-back failure in
+    // Phase 5) are skipped so we never blank out a valid property.
+    QStringList uniqueCommands;
+    if (!uniqueIMEI.isEmpty()) {
+        uniqueCommands << QString("setprop persist.radio.imei %1").arg(uniqueIMEI);
+    }
+    if (!uniqueAndroidId.isEmpty()) {
+        uniqueCommands << QString("settings put secure android_id %1").arg(uniqueAndroidId);
+    }
+    if (!uniqueGSFId.isEmpty()) {
+        uniqueCommands << QString("setprop persist.vpp.gsfid %1").arg(uniqueGSFId);
+    }
+    if (!uniqueICCID.isEmpty()) {
+        uniqueCommands << QString("setprop persist.radio.iccid %1").arg(uniqueICCID);
+    }
+    if (!uniqueIMSI.isEmpty()) {
+        uniqueCommands << QString("setprop persist.radio.imsi %1").arg(uniqueIMSI);
+    }
+    // Anti-detection flags — ro.* props were set via REDROID_PROP_ env vars
+    // at docker run time (before init); setprop cannot modify ro.* after
+    // boot without resetprop (Magisk). These are kept as best-effort
+    // attempts (may succeed on some ReDroid builds):
+    uniqueCommands << "setprop ro.kernel.qemu 0"
+                   << "setprop ro.boot.qemu 0"
+                   << "setprop ro.debuggable 0"
+                   << "setprop ro.secure 1"
+                   << "setprop ro.build.selinux.enforce 0";
+
     for (const QString& cmd : uniqueCommands) {
         executeShell(instanceId, cmd);
     }
@@ -1748,9 +1795,6 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     batteryConfig.avgTemp = 28.0f + (timingSeed.baseSeed % 15);
     timing.initializeBattery(instanceId, batteryConfig);
 
-    phoneHardening.setBatteryState(85, "Discharging", "USB");
-    phoneHardening.setBatteryTemperature("32");
-
     TouchPressureConfig pressureConfig;
     pressureConfig.avgPressure = 0.4f + (timingSeed.baseSeed % 100) / 200.0f;
     timing.setTouchPressureConfig(instanceId, pressureConfig);
@@ -1765,6 +1809,11 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     networkConfig.baseLatency = 30.0f + (timingSeed.baseSeed % 100);
     networkConfig.jitterStdDev = 10.0f;
     timing.setNetworkJitterConfig(instanceId, networkConfig);
+
+    // NOTE: RealPhoneHardening battery state is intentionally NOT set here.
+    // Phase 6 (BatteryPowerManager) is the single authority for the battery
+    // state — a second dumpsys battery write here was a double-apply that
+    // silently overrode the Phase 6 values with hardcoded ones.
     qDebug() << "  ✓ Simulation Systems Configured";
 
     // ── Carrier Network Simulator ─────────────────────────────────────────────
