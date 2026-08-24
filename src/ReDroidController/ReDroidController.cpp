@@ -1349,16 +1349,25 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // ── Network Profile Manager (transport hooks + WebRTC leak prevention) ────
     {
         NetworkProfileManager& npm = NetworkProfileManager::instance();
-        // generateTransportHookCommands() returns ADB shell commands that
-        // patch the container's iptables and hosts file to prevent TCP/IP
-        // fingerprinting and WebRTC IP leaks.
-        const QString adbSerial = getAdbSerial(instanceId);
+        // The single deterministic per-profile IP feeds every network
+        // surface: the rmnet0 bind (transport hooks), the WebRTC localip
+        // prop and the WebRTC pin below. m_profiles is never populated by
+        // any caller, so getProfile() returns a default NetworkProfile with
+        // an empty cellular.ipAddress — fill it from the profile here or
+        // the transport hooks would emit an empty "ip addr add".
+        const QString localIp = deterministicLocalIP(profile);
         NetworkProfile np = npm.getProfile(instanceId);
         np.instanceId = instanceId;
+        np.cellular.ipAddress = localIp;
+        np.cellular.gateway = gatewayForLocalIP(localIp);
         QStringList transportCmds = npm.generateTransportHookCommands(
             instanceId, np);
+        // Second parameter is the WebRTC local IP. It was mistakenly passed
+        // the ADB serial (e.g. "127.0.0.1:5555"), which set the
+        // net.rWbcmLe.localip prop to a host:port string instead of the
+        // profile IP.
         QStringList webrtcCmds = npm.generateWebRTCSetupCommands(
-            instanceId, adbSerial);
+            instanceId, localIp);
         for (const QString& cmd : transportCmds)
             executeShell(instanceId, cmd);
         for (const QString& cmd : webrtcCmds)
