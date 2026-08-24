@@ -55,6 +55,7 @@ public:
     
     // Proxy configuration
     bool useProxy() const { return m_useProxy; }
+    int getProxyMode() const { return m_proxyModeCombo->itemData(m_proxyModeCombo->currentIndex()).toInt(); }
     QString getProxyHost() const { return m_proxyHost; }
     int getProxyPort() const { return m_proxyPort; }
     QString getProxyUsername() const { return m_proxyUsername; }
