@@ -7,12 +7,63 @@
 #include "VirtualPhonePro/ReDroidController.hpp"
 
 #include <QDebug>
+#include <QEventLoop>
+#include <QNetworkProxy>
 #include <QNetworkRequest>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QDateTime>
 #include <QMutexLocker>
+#include <QTimer>
+
+namespace {
+
+// Blocking geo lookup against ip-api.com. When targetIp is empty, ip-api
+// resolves the caller's (exit) IP — this is what makes the proxy-tunnel path
+// possible. Returns an invalid GeoLocation on error.
+VirtualPhonePro::GeoLocation executeGeoQuery(QNetworkAccessManager& nam,
+                                             const QUrl& url,
+                                             int timeoutMs) {
+    VirtualPhonePro::GeoLocation location;
+    location.isValid = false;
+
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "VirtualPhonePro/2.0");
+    request.setTransferTimeout(timeoutMs);
+
+    QNetworkReply* reply = nam.get(request);
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    if (reply->error() == QNetworkReply::NoError) {
+        QByteArray data = reply->readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        QJsonObject json = doc.object();
+        if (json["status"].toString() == "success") {
+            location.ipAddress = json["query"].toString();
+            location.country = json["country"].toString();
+            location.countryCode = json["countryCode"].toString();
+            location.region = json["regionName"].toString();
+            location.city = json["city"].toString();
+            location.postalCode = json["zip"].toString();
+            location.timezone = json["timezone"].toString();
+            location.latitude = json["lat"].toDouble();
+            location.longitude = json["lon"].toDouble();
+            location.isp = json["isp"].toString();
+            location.org = json["org"].toString();
+            location.asn = json["as"].toString();
+            location.isValid = true;
+            location.queriedAt = QDateTime::currentMSecsSinceEpoch();
+        }
+    }
+
+    reply->deleteLater();
+    return location;
+}
+
+} // anonymous namespace
 
 namespace VirtualPhonePro {
 
@@ -183,12 +234,21 @@ bool LocaleTimezoneManager::queryGeolocation(const QString& instanceId) {
         return false;
     }
     
-    qDebug() << "Querying geolocation for proxy:" << proxy.host;
-    
-    // For SOCKS5/HTTP proxy, we need to use a service that detects the exit IP
-    // Since we're using a proxy, the IP we'll query should be the proxy's exit IP
-    
-    QUrl url(GEO_API_URL + proxy.host);
+    qDebug() << "Querying geolocation through proxy tunnel:" << proxy.host;
+
+    // Route the lookup THROUGH the proxy itself instead of sending the
+    // proxy/host IP to ip-api.com directly. An empty target IP makes
+    // ip-api resolve the exit IP seen at the far end of the tunnel —
+    // doing it directly would resolve the wrong (host/gateway) location
+    // and break country consistency.
+    QNetworkProxy qProxy = (proxy.type == "socks5")
+        ? QNetworkProxy(QNetworkProxy::Socks5Proxy, proxy.host, proxy.port,
+                        proxy.username, proxy.password)
+        : QNetworkProxy(QNetworkProxy::HttpProxy, proxy.host, proxy.port,
+                        proxy.username, proxy.password);
+    m_networkManager->setProxy(qProxy);
+
+    QUrl url(GEO_API_URL);  // empty target -> ip-api resolves our exit IP
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::UserAgentHeader, "VirtualPhonePro/2.0");
     // Qt6: QNetworkRequest has no setTimeout(); setTransferTimeout() is the
@@ -210,45 +270,12 @@ bool LocaleTimezoneManager::queryGeolocation(const QString& instanceId) {
 }
 
 GeoLocation LocaleTimezoneManager::queryGeoLocationByIP(const QString& ip) {
-    GeoLocation location;
-    location.isValid = false;
-    
-    QUrl url(GEO_API_URL + ip);
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader, "VirtualPhonePro/2.0");
-    
-    QNetworkReply* reply = m_networkManager->get(request);
-    
-    // Synchronous wait
-    QEventLoop loop;
-    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-    
-    if (reply->error() == QNetworkReply::NoError) {
-        QByteArray data = reply->readAll();
-        QJsonDocument doc = QJsonDocument::fromJson(data);
-        QJsonObject json = doc.object();
-        
-        if (json["status"].toString() == "success") {
-            location.ipAddress = json["query"].toString();
-            location.country = json["country"].toString();
-            location.countryCode = json["countryCode"].toString();
-            location.region = json["regionName"].toString();
-            location.city = json["city"].toString();
-            location.postalCode = json["zip"].toString();
-            location.timezone = json["timezone"].toString();
-            location.latitude = json["lat"].toDouble();
-            location.longitude = json["lon"].toDouble();
-            location.isp = json["isp"].toString();
-            location.org = json["org"].toString();
-            location.asn = json["as"].toString();
-            location.isValid = true;
-            location.queriedAt = QDateTime::currentMSecsSinceEpoch();
-        }
-    }
-    
-    reply->deleteLater();
-    return location;
+    // Direct (un-proxied) lookup for an explicit IP. syncFromProxy() uses
+    // this only as a fallback when tunnel-based resolution fails; the
+    // primary path resolves the proxy's true exit IP via an empty target.
+    QNetworkAccessManager nam;
+    nam.setProxy(QNetworkProxy(QNetworkProxy::NoProxy));
+    return executeGeoQuery(nam, QUrl(GEO_API_URL + ip), GEO_QUERY_TIMEOUT_MS);
 }
 
 GeoLocation LocaleTimezoneManager::getGeoLocation(const QString& instanceId) const {
@@ -430,60 +457,91 @@ bool LocaleTimezoneManager::applyCarrier(const QString& instanceId, const Carrie
 
 bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
     qDebug() << "Starting auto-sync from proxy for:" << instanceId;
-    
-    // Step 1: Query geolocation
-    if (!queryGeolocation(instanceId)) {
+
+    ProxyInfo proxy = getProxy(instanceId);
+    if (!proxy.isValid || proxy.host.isEmpty()) {
+        qWarning() << "[AutoSync] No proxy configured for" << instanceId
+                   << "— cannot sync";
+        emit error(instanceId, "No proxy configured");
         return false;
     }
-    
-    // Wait for geolocation query (synchronous for simplicity)
-    QEventLoop loop;
-    connect(this, &LocaleTimezoneManager::geoLocationUpdated, &loop, &QEventLoop::quit);
-    QTimer::singleShot(10000, &loop, &QEventLoop::quit);  // Timeout
-    loop.exec();
-    
-    // Step 2: Get geolocation
-    GeoLocation geo = getGeoLocation(instanceId);
-    if (!geo.isValid) {
-        qWarning() << "Invalid geolocation for" << instanceId;
-        emit error(instanceId, "Could not determine geolocation");
-        return false;
+
+    // PRIMARY PATH — tunnel the lookup through the configured proxy so
+    // ip-api.com sees the *exit IP*. Querying proxy.host directly from the
+    // host would resolve the wrong (gateway/host) location.
+    QNetworkProxy qProxy = (proxy.type == "socks5")
+        ? QNetworkProxy(QNetworkProxy::Socks5Proxy, proxy.host, proxy.port,
+                        proxy.username, proxy.password)
+        : QNetworkProxy(QNetworkProxy::HttpProxy, proxy.host, proxy.port,
+                        proxy.username, proxy.password);
+
+    GeoLocation geo;
+    {
+        QNetworkAccessManager nam;
+        nam.setProxy(qProxy);
+        QUrl url{QString(GEO_API_URL)};  // empty target -> exit IP
+        geo = executeGeoQuery(nam, url, GEO_QUERY_TIMEOUT_MS);
     }
-    
-    // Step 3: Generate locale
+
+    if (geo.isValid) {
+        qDebug() << "[AutoSync] Geolocation resolved via proxy tunnel:"
+                 << geo.ipAddress << "→" << geo.country;
+    } else {
+        // FALLBACK — tunnel failed; fall back to a direct geo lookup of the
+        // gateway IP instead of failing silently. Loud log either way.
+        qWarning() << "[AutoSync] Proxy-tunnel geolocation failed for" << instanceId
+                   << "— falling back to gateway IP lookup";
+        QNetworkAccessManager nam;
+        nam.setProxy(QNetworkProxy(QNetworkProxy::NoProxy));
+        QUrl url{QString(GEO_API_URL) + proxy.host};
+        geo = executeGeoQuery(nam, url, GEO_QUERY_TIMEOUT_MS);
+        if (!geo.isValid) {
+            qWarning() << "[AutoSync] Geolocation resolution failed for" << instanceId
+                       << "— instance keeps default locale/timezone/carrier";
+            emit error(instanceId, "Could not resolve geolocation via proxy");
+            return false;
+        }
+        qWarning() << "[AutoSync] Using gateway-IP geolocation fallback:"
+                   << geo.ipAddress << "→" << geo.country << "(accuracy degraded)";
+    }
+
+    // Generate locale + carrier from the resolved country
     LocaleConfig locale = getLocaleForCountry(geo.countryCode);
     locale.region = geo.countryCode;
     locale.localeString = locale.language + "_" + geo.countryCode;
-    
-    // Step 4: Get carrier
-    CarrierConfig carrier = getCarrierForLocation(geo.country, geo.region);
+
+    CarrierConfig carrier = getCarrierForLocation(geo.countryCode, geo.region);
     carrier.country = geo.country;
     carrier.countryCode = geo.countryCode;
-    
-    // Step 5: Apply all settings
+
     applyLocale(instanceId, locale);
     applyTimezone(instanceId, geo.timezone);
     applyCarrier(instanceId, carrier);
-    
+
     // Update state
     {
         QMutexLocker locker(&m_mutex);
         if (m_instanceStates.contains(instanceId)) {
+            m_instanceStates[instanceId]->geoLocation = geo;
             m_instanceStates[instanceId]->locale = locale;
             m_instanceStates[instanceId]->carrier = carrier;
             m_instanceStates[instanceId]->isSynced = true;
             m_instanceStates[instanceId]->lastSyncTime = QDateTime::currentMSecsSinceEpoch();
         }
     }
-    
+
     qDebug() << "Auto-sync completed for" << instanceId
              << "- Timezone:" << geo.timezone
              << "- Locale:" << locale.localeString
-             << "- Carrier:" << carrier.name;
-    
+             << "- Carrier:" << carrier.name
+             << "- MCC/MNC:" << carrier.mcc << "/" << carrier.mnc;
+
+    emit geoLocationUpdated(instanceId, geo);
     emit syncCompleted(instanceId, true);
     return true;
 }
+
+
 
 bool LocaleTimezoneManager::syncFromCoordinates(const QString& instanceId, double lat, double lon) {
     // For direct coordinate sync (when proxy is not available)
@@ -623,62 +681,120 @@ LocaleConfig LocaleTimezoneManager::getLocaleForCountry(const QString& countryCo
 }
 
 CarrierConfig LocaleTimezoneManager::getCarrierForLocation(const QString& country, const QString& region) const {
-    CarrierConfig carrier;
-    
-    // Default carriers by country
-    if (country == "United States" || country == "US") {
-        carrier.name = "T-Mobile";
-        carrier.shortName = "TMO";
-        carrier.mcc = "310";
-        carrier.mnc = "260";
-        carrier.networkType = "LTE";
-    } else if (country == "United Kingdom" || country == "GB") {
-        carrier.name = "EE";
-        carrier.shortName = "EE";
-        carrier.mcc = "234";
-        carrier.mnc = "33";
-        carrier.networkType = "LTE";
-    } else if (country == "Germany" || country == "DE") {
-        carrier.name = "Deutsche Telekom";
-        carrier.shortName = "DT";
-        carrier.mcc = "262";
-        carrier.mnc = "01";
-        carrier.networkType = "LTE";
-    } else if (country == "Japan" || country == "JP") {
-        carrier.name = "SoftBank";
-        carrier.shortName = "SBT";
-        carrier.mcc = "440";
-        carrier.mnc = "20";
-        carrier.networkType = "5G";
-    } else if (country == "India" || country == "IN") {
-        carrier.name = "Jio";
-        carrier.shortName = "JIO";
-        carrier.mcc = "405";
-        carrier.mnc = "800";
-        carrier.networkType = "4G";
-    } else if (country == "Bangladesh" || country == "BD") {
-        carrier.name = "Banglalink";
-        carrier.shortName = "BL";
-        carrier.mcc = "470";
-        carrier.mnc = "02";
-        carrier.networkType = "4G";
-    } else if (country == "China" || country == "CN") {
-        carrier.name = "China Mobile";
-        carrier.shortName = "CMCC";
-        carrier.mcc = "460";
-        carrier.mnc = "00";
-        carrier.networkType = "5G";
-    } else {
-        // Default
+    (void)region; // region intentionally unused — lookup is by country code
+
+    // Data-driven carrier table: one row per country with a realistic carrier
+    // and a documented MCC/MNC pair. Wrong combinations raise detection risk.
+    struct CarrierEntry {
+        const char* name;
+        const char* shortName;
+        const char* mcc;
+        const char* mnc;
+        const char* networkType;
+    };
+
+    static const QMap<QString, CarrierEntry> COUNTRY_CARRIERS = {
+        {"US", {"T-Mobile",          "TMO",      "310", "260", "LTE"}},
+        {"GB", {"EE",                "EE",       "234", "33",  "LTE"}},
+        {"DE", {"Deutsche Telekom",  "DT",       "262", "01",  "LTE"}},
+        {"FR", {"Orange",            "Orange",   "208", "01",  "LTE"}},
+        {"JP", {"SoftBank",          "SBT",      "440", "20",  "5G"}},
+        {"KR", {"SK Telecom",        "SKT",      "450", "05",  "5G"}},
+        {"IN", {"Jio",               "JIO",      "405", "874", "4G"}},
+        {"BD", {"Banglalink",        "BL",       "470", "02",  "4G"}},
+        {"CN", {"China Mobile",      "CMCC",     "460", "00",  "5G"}},
+        {"AU", {"Telstra",           "Telstra",  "505", "01",  "5G"}},
+        {"CA", {"Rogers",            "Rogers",   "302", "720", "LTE"}},
+        {"BR", {"Vivo",              "Vivo",     "724", "06",  "4G"}},
+        {"RU", {"MTS",               "MTS",      "250", "01",  "LTE"}},
+        {"AE", {"Etisalat",          "Etisalat", "424", "02",  "5G"}},
+        {"SG", {"Singtel",           "Singtel",  "525", "01",  "5G"}},
+        {"PK", {"Jazz",              "Jazz",     "410", "01",  "4G"}},
+        {"SA", {"STC",               "STC",      "420", "01",  "5G"}},
+        {"MX", {"Telcel",            "Telcel",   "334", "20",  "4G"}},
+        {"IT", {"TIM",               "TIM",      "222", "01",  "LTE"}},
+        {"ES", {"Movistar",          "Movistar", "214", "07",  "LTE"}},
+        {"NL", {"KPN",               "KPN",      "204", "08",  "LTE"}},
+        {"SE", {"Telia",             "Telia",    "240", "01",  "LTE"}},
+        {"NO", {"Telenor",           "Telenor",  "242", "01",  "LTE"}},
+        {"DK", {"TDC",               "TDC",      "238", "01",  "LTE"}},
+        {"FI", {"Elisa",             "Elisa",    "244", "05",  "LTE"}},
+        {"PL", {"Play",              "Play",     "260", "06",  "4G"}},
+        {"TH", {"AIS",               "AIS",      "520", "01",  "4G"}},
+        {"VN", {"Viettel",           "Viettel",  "452", "04",  "4G"}},
+        {"MY", {"Maxis",             "Maxis",    "502", "12",  "4G"}},
+        {"ID", {"Telkomsel",         "Telkomsel","510", "10",  "4G"}},
+        {"PH", {"Globe",             "Globe",    "515", "02",  "4G"}},
+        {"TW", {"Chunghwa",          "CHT",      "466", "92",  "4G"}},
+        {"HK", {"SmarTone",          "SmarTone", "454", "06",  "4G"}},
+        {"NZ", {"Spark",             "Spark",    "530", "01",  "4G"}},
+        {"ZA", {"Vodacom",           "Vodacom",  "655", "01",  "4G"}},
+        {"EG", {"Orange Egypt",      "Orange",   "602", "01",  "4G"}},
+        {"NG", {"MTN Nigeria",       "MTN",      "621", "20",  "4G"}},
+        {"KE", {"Safaricom",         "Safaricom","639", "02",  "4G"}},
+        {"AR", {"Movistar Argentina","Movistar", "722", "070", "4G"}},
+        {"CL", {"Movistar Chile",    "Movistar", "730", "02",  "4G"}},
+        {"CO", {"Claro Colombia",    "Claro",    "732", "101", "4G"}},
+        {"PE", {"Movistar Peru",     "Movistar", "716", "06",  "4G"}},
+    };
+
+    // Full country names (as returned by ip-api) -> ISO code, so legacy
+    // name-based callers still resolve correctly.
+    static const QMap<QString, QString> NAME_TO_CODE = {
+        {"United States", "US"},      {"United Kingdom", "GB"},
+        {"Germany", "DE"},            {"France", "FR"},
+        {"Japan", "JP"},              {"South Korea", "KR"},
+        {"India", "IN"},              {"Bangladesh", "BD"},
+        {"China", "CN"},              {"Australia", "AU"},
+        {"Canada", "CA"},             {"Brazil", "BR"},
+        {"Russia", "RU"},             {"United Arab Emirates", "AE"},
+        {"Singapore", "SG"},          {"Pakistan", "PK"},
+        {"Saudi Arabia", "SA"},       {"Mexico", "MX"},
+        {"Italy", "IT"},              {"Spain", "ES"},
+        {"Netherlands", "NL"},        {"Sweden", "SE"},
+        {"Norway", "NO"},             {"Denmark", "DK"},
+        {"Finland", "FI"},            {"Poland", "PL"},
+        {"Thailand", "TH"},           {"Vietnam", "VN"},
+        {"Malaysia", "MY"},           {"Indonesia", "ID"},
+        {"Philippines", "PH"},        {"Taiwan", "TW"},
+        {"Hong Kong", "HK"},          {"New Zealand", "NZ"},
+        {"South Africa", "ZA"},       {"Egypt", "EG"},
+        {"Nigeria", "NG"},            {"Kenya", "KE"},
+        {"Argentina", "AR"},          {"Chile", "CL"},
+        {"Colombia", "CO"},           {"Peru", "PE"},
+    };
+
+    QString code = country.trimmed();
+    if (code.length() != 2) {
+        auto it = NAME_TO_CODE.find(code);
+        if (it != NAME_TO_CODE.end()) code = it.value();
+    }
+    code = code.toUpper();
+
+    auto it = COUNTRY_CARRIERS.find(code);
+    if (it == COUNTRY_CARRIERS.end()) {
+        qWarning() << "[AutoSync] No carrier mapping for country" << country
+                   << "— using generic placeholder carrier (310/260)";
+        CarrierConfig carrier;
         carrier.name = "Carrier";
         carrier.shortName = "CAR";
         carrier.mcc = "310";
         carrier.mnc = "260";
         carrier.networkType = "LTE";
+        return carrier;
     }
-    
+
+    const CarrierEntry& e = it.value();
+    CarrierConfig carrier;
+    carrier.name = QString::fromLatin1(e.name);
+    carrier.shortName = QString::fromLatin1(e.shortName);
+    carrier.mcc = QString::fromLatin1(e.mcc);
+    carrier.mnc = QString::fromLatin1(e.mnc);
+    carrier.networkType = QString::fromLatin1(e.networkType);
     return carrier;
 }
+
+
 
 QJsonObject LocaleTimezoneManager::getStateAsJson(const QString& instanceId) const {
     QJsonObject state;

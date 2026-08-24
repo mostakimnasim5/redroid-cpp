@@ -2783,12 +2783,18 @@ bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig
 
         ltm.setProxy(instanceId, proxyInfo);
 
-        // syncFromProxy() → queryGeoLocation(proxy.host) → ip-api.com
-        // → applyTimezone(timezone) + applyLocale(locale) + applyCarrier()
+        // syncFromProxy() tunnels the ip-api.com lookup THROUGH the proxy
+        // (empty target IP → true exit IP), then applies timezone + locale +
+        // carrier + MCC/MNC. On failure it falls back internally to a direct
+        // gateway-IP lookup; both paths emit explicit logs.
         if (ltm.syncFromProxy(instanceId)) {
-            qDebug() << "[Proxy] Timezone + locale auto-synced from proxy IP";
+            qDebug() << "[Proxy] Timezone + locale + carrier auto-synced from proxy exit IP";
         } else {
-            qWarning() << "[Proxy] Timezone sync failed — instance will keep default timezone";
+            // Requirement: never fail silently — the warning below plus the
+            // [AutoSync] logs in LocaleTimezoneManager pinpoint the cause.
+            qWarning() << "[Proxy] Auto-sync failed — instance keeps default"
+                          " locale/timezone/carrier; check proxy connectivity"
+                          " and re-run assignProxy()";
         }
     }
 
