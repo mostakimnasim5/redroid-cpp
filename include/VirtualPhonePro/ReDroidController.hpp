@@ -685,7 +685,11 @@ namespace KeyCode {
     constexpr int VOLUME_UP = 24;
     constexpr int VOLUME_DOWN = 25;
     constexpr int ENTER = 66;
-    constexpr int DELETE = 67;
+    // "DELETE" collides with the X11 <X11/X.h> DELETE macro on Linux builds
+    // and with Windows <winuser.h> (via windows.h) DELETE (0x00010000L) on
+    // MSVC — any TU that pulls in either header before this one fails with
+    // C2059 'constant'. Renamed to DEL (the Android key name is DEL anyway).
+    constexpr int DEL = 67;
     constexpr int SPACE = 62;
 }
 
