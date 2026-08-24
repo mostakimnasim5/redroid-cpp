@@ -3063,9 +3063,19 @@ bool ReDroidController::configureNetworkIsolation(const QString& instanceId,
         }
     }
     
-    // Assign proxy if configured
+    // Assign proxy if configured. Preserve the access-network kind the GUI
+    // already recorded (assignProxy persists it and re-syncs via
+    // resyncFromProxy); omitting kind here would re-apply the Cellular
+    // default and flip an ISP/WiFi (mode 1) instance's carrier story.
     if (config.mode == NetworkMode::Proxy && config.proxy.isValid()) {
-        assignProxy(instanceId, config.proxy);
+        VirtualPhonePro::SyncNetworkKind preservedKind;
+        {
+            QMutexLocker locker(&m_instancesMutex);
+            preservedKind = m_instances.contains(instanceId)
+                    ? m_instances[instanceId].networkKind
+                    : VirtualPhonePro::SyncNetworkKind::Cellular;
+        }
+        assignProxy(instanceId, config.proxy, preservedKind);
     }
     
     // Apply leak prevention
