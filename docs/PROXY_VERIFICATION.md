@@ -62,6 +62,20 @@ No docker, no ADB against a live device, no network calls were used to produce t
 
 **Conclusion (static):** every hop is connected. The chain has no hardcoded proxy type, no unconditional carrier spoofing (see PR #1), no random IPs, and no kind-loss path.
 
+### Hop 6 — transparent routing + UDP policy (added in the proxy-routing-hardening PR)
+
+| Step | Location | Evidence |
+|------|----------|----------|
+| redsocks TCP redirect | `docker/init_cellular_network.sh:351-355` | `iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports 8123`; `-A OUTPUT -p tcp -j REDSOCKS` |
+| redsocks type from proxy type | `docker/init_cellular_network.sh:317-320` | `type = socks5;` when `PROXY_TYPE=socks5`, else `http-connect;` |
+| UDP hard-block (documented, no leak) | `docker/init_cellular_network.sh:357-362` and `:380-385` | redsocks2 has no working `redudp`/UDP-ASSOCIATE relay here, so **UDP is BLOCKED, not proxied**: final catch-all `iptables -A OUTPUT -p udp -j DROP` after the LAN-DNS allows — no UDP packet can bypass the proxy |
+| DNS via proxy | `docker/init_cellular_network.sh:327-337` | `dnstc` tunnels DNS to 8.8.8.8 through the proxy on 127.0.0.1:5300 |
+| Two run modes | `docker/init_cellular_network.sh:76-88` | `SKIP_CELLULAR_SETUP=1` when `CELLULAR_IP` empty → steps 2-6 (rmnet0/SIM/carrier/timezone/GPS) skipped, only proxy redirect + leak prevention run |
+| Kind-agnostic wiring | `src/ReDroidController/ReDroidController.cpp:2291-2316` (`applyProxyRouting`) + `:2999-3010` (called from `assignProxy` for BOTH kinds) | WiFi (mode 1) and Cellular (mode 2) get the identical redsocks TCP tunnel + UDP block; only SIM/carrier props differ |
+| Cellular run stays FULL | `src/ReDroidController/ReDroidController.cpp:2339-2346` | `applyCellularNetworkScript` keeps `CELLULAR_IP` set + `PROXY_*` unset, so the SKIP gate opens and no iptables fight |
+| Kind preserved through isolation | `src/ReDroidController/ReDroidController.cpp:3071-3078` | recorded `networkKind` read under mutex → `assignProxy(..., preservedKind)` — no Cellular fallback |
+| Propagation unit test | `tests/Test_ProxyTypeKindPropagation.cpp` + `tests/CMakeLists.txt:384-412` | `LTM_NO_CONTROLLER`-isolated: proxy-type round-trip via `setProxy`/state-JSON, mode→kind mapping, carrier-vs-wifi identity separation — **PASS** |
+
 ---
 
 ## 2. What was verified in the sandbox (static / isolated only)
@@ -70,6 +84,8 @@ No docker, no ADB against a live device, no network calls were used to produce t
 |-------|---------|--------|
 | Isolated carrier test | `ctest -R CarrierSelection` | **PASS** |
 | Isolated WiFi identity test | `ctest -R WifiNetworkIdentity` | **PASS** |
+| Isolated propagation test | `ctest -R ProxyTypeKindPropagation` | **PASS** |
+| WebRTC IP consistency test | `ctest -R WebRTCIPConsistency` | **PASS** |
 | Cellular init script syntax | `bash -n docker/init_cellular_network.sh` | **EXIT 0** |
 | Controller TU | `g++ -fsyntax-only src/ReDroidController/ReDroidController.cpp` | **EXIT 0** |
 | GUI TU | `g++ -fsyntax-only src/GUI/DashboardWindow.cpp` | **EXIT 0** |
@@ -93,6 +109,11 @@ following must run on your WSL2 + Docker host after creating a phone with a prox
    Settings → About → SIM status (cellular mode) or only WiFi info (wifi mode).
 3. **Live `getprop` spot-check:** `adb -s <serial> shell getprop | grep -E "gsm|localip"`
    — confirm the props match §1 hops 4-5 for the mode you launched.
+4. **Routing spot-check (new):** `adb -s <serial> shell iptables -t nat -L REDSOCKS`
+   should show the TCP `REDIRECT` to port 8123, and `adb -s <serial> shell iptables -L OUTPUT`
+   should show the final `-p udp -j DROP` (UDP blocked, not proxied). From inside the
+   phone, a UDP-only check (e.g. a QUIC/STUN probe) must fail rather than return the
+   real IP.
 
 ---
 
