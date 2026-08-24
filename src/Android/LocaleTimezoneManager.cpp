@@ -292,7 +292,12 @@ GeoLocation LocaleTimezoneManager::getGeoLocation(const QString& instanceId) con
 
 void LocaleTimezoneManager::onGeoQueryFinished(QNetworkReply* reply) {
     QString instanceId = reply->property("instanceId").toString();
-    
+
+    // queryGeolocation() routes this request through the instance's proxy on
+    // the shared m_networkManager. Reset it once the reply is in so later
+    // unrelated requests do not silently inherit the tunnel.
+    m_networkManager->setProxy(QNetworkProxy(QNetworkProxy::NoProxy));
+
     QMutexLocker locker(&m_mutex);
     
     if (!m_instanceStates.contains(instanceId)) {
