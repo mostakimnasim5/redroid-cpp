@@ -138,6 +138,20 @@ public:
      * @return true if successful
      */
     bool syncFromProxy(const QString& instanceId);
+
+    /**
+     * @brief Re-check the proxy's exit IP and re-sync if it changed.
+     *
+     * Mobile proxies rotate their exit IP over time. This queries the current
+     * exit IP through the same PRIMARY tunnel path as syncFromProxy() (proxy
+     * -> ip-api.com, empty target) and, when the exit IP differs from the
+     * stored geolocation (or the instance was never synced), re-runs the full
+     * syncFromProxy() so carrier/timezone/locale track the new egress.
+     *
+     * @return true if a re-sync was performed and succeeded; false when the
+     *         exit IP is unchanged (no-op) or the re-sync failed.
+     */
+    bool resyncFromProxy(const QString& instanceId);
     
     /**
      * @brief Sync using manual coordinates

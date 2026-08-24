@@ -543,6 +543,57 @@ bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
 
 
 
+bool LocaleTimezoneManager::resyncFromProxy(const QString& instanceId) {
+    qDebug() << "[ReSync] Checking proxy exit IP for rotation:" << instanceId;
+
+    ProxyInfo proxy = getProxy(instanceId);
+    if (!proxy.isValid || proxy.host.isEmpty()) {
+        qWarning() << "[ReSync] No proxy configured for" << instanceId
+                   << "— nothing to re-sync";
+        return false;
+    }
+
+    // PRIMARY tunnel path — same as syncFromProxy(): query ip-api.com THROUGH
+    // the proxy with an empty target so the true exit IP is resolved.
+    QNetworkProxy qProxy = (proxy.type == "socks5")
+        ? QNetworkProxy(QNetworkProxy::Socks5Proxy, proxy.host, proxy.port,
+                        proxy.username, proxy.password)
+        : QNetworkProxy(QNetworkProxy::HttpProxy, proxy.host, proxy.port,
+                        proxy.username, proxy.password);
+
+    GeoLocation current;
+    {
+        QNetworkAccessManager nam;
+        nam.setProxy(qProxy);
+        QUrl url{QString(GEO_API_URL)};  // empty target -> exit IP
+        current = executeGeoQuery(nam, url, GEO_QUERY_TIMEOUT_MS);
+    }
+
+    if (!current.isValid) {
+        qWarning() << "[ReSync] Could not resolve current exit IP through proxy"
+                   << "tunnel for" << instanceId << "— keeping existing identity";
+        return false;
+    }
+
+    const GeoLocation stored = getGeoLocation(instanceId);
+    const bool neverSynced = !stored.isValid;
+    const bool rotated = stored.isValid
+        && !current.ipAddress.isEmpty()
+        && current.ipAddress != stored.ipAddress;
+
+    if (!neverSynced && !rotated) {
+        qDebug() << "[ReSync] Exit IP unchanged (" << current.ipAddress
+                 << ") — identity stays as-is";
+        return false;  // no-op, nothing to re-apply
+    }
+
+    qDebug() << "[ReSync]" << (neverSynced ? "Never synced" : "Exit IP rotated")
+             << "for" << instanceId << "— re-running full sync"
+             << "(" << stored.ipAddress << "->" << current.ipAddress << ")";
+
+    return syncFromProxy(instanceId);
+}
+
 bool LocaleTimezoneManager::syncFromCoordinates(const QString& instanceId, double lat, double lon) {
     // For direct coordinate sync (when proxy is not available)
     
