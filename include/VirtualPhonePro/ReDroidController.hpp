@@ -588,7 +588,23 @@ private:
     // the profile-derived CELLULAR_IP/GATEWAY/carrier env. Non-fatal: a
     // missing script or failed push only skips the step.
     bool applyCellularNetworkScript(const QString& instanceId, const DeviceProfile& profile);
-    
+
+    /**
+     * @brief Apply ONLY the transparent proxy routing + leak prevention of the
+     *        shared init script (no cellular identity). Runs the script with
+     *        PROXY_* set and CELLULAR_IP empty, so the rmnet0/SIM/carrier steps
+     *        are skipped and only the redsocks TCP redirect + UDP block apply.
+     *        Kind-agnostic — used for both WiFi/ISP (mode 1) and Cellular
+     *        (mode 2) proxy instances so ALL container TCP traffic is tunneled.
+     */
+    bool applyProxyRouting(const QString& instanceId, const ProxyConfig& proxy);
+
+    // Shared helpers for the two script runners above: locate the shipped
+    // init script and push it into the container (returns the remote path,
+    // or empty on failure).
+    QString networkInitScriptPath() const;
+    QString pushNetworkInitScript(const QString& instanceId);
+
     QString convertToWSL2Path(const QString& windowsPath) const;
     QString convertToWindowsPath(const QString& wsl2Path) const;
     

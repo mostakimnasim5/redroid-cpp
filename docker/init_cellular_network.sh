@@ -73,12 +73,26 @@ TIMEZONE="${TIMEZONE:-$TZ_DEFAULT}"
 GPS_LAT="${GPS_LAT:-$GPS_LAT_DEFAULT}"
 GPS_LON="${GPS_LON:-$GPS_LON_DEFAULT}"
 
+# Two run modes, driven by CELLULAR_IP:
+#  * FULL (CELLULAR_IP non-empty): cellular identity (rmnet0 interface, SIM/
+#    telephony props, timezone, GPS) + proxy routing — ReDroidController's
+#    applyCellularNetworkScript() (Cellular kind) runs this.
+#  * PROXY-ONLY (CELLULAR_IP empty): skip steps 2-6 (no rmnet0, no SIM/carrier
+#    props) and run only the proxy redsocks redirect + leak prevention —
+#    applyProxyRouting() runs this for BOTH kinds, including WiFi/ISP (mode 1).
+if [ -z "$CELLULAR_IP" ]; then
+    SKIP_CELLULAR_SETUP=1
+else
+    SKIP_CELLULAR_SETUP=0
+fi
+log "Run mode: $([ "$SKIP_CELLULAR_SETUP" = "1" ] && echo "proxy-only (no cellular identity)" || echo "full (cellular + proxy)")"
+
 # Cellular IP: the caller (ReDroidController) passes the profile-anchored
 # deterministic IP via the CELLULAR_IP env var. Only derive a fallback here
 # when the env var is missing — and even then deterministically (seeded from
 # the profile's IMEI / Android ID), never from $RANDOM, so reboots keep the
 # same address and the identity stays consistent.
-if [ -z "$CELLULAR_IP" ]; then
+if [ -z "$CELLULAR_IP" ] && [ "$SKIP_CELLULAR_SETUP" = "0" ]; then
     SEED="${VPP_IMEI:-${VPP_ANDROID_ID:-}}"
     if [ -n "$SEED" ]; then
         H=$(echo -n "$SEED" | cksum | awk '{print $1}')
@@ -93,8 +107,9 @@ if [ -z "$CELLULAR_IP" ]; then
     fi
 fi
 # Gateway defaults to the .1 address of the cellular subnet so the routing
-# story is always consistent with the assigned cellular IP.
-if [ -z "$GATEWAY" ]; then
+# story is always consistent with the assigned cellular IP. Guarded on a
+# non-empty CELLULAR_IP: in proxy-only mode there is no cellular subnet.
+if [ -z "$GATEWAY" ] && [ -n "$CELLULAR_IP" ]; then
     GATEWAY="$(echo "$CELLULAR_IP" | awk -F. '{print $1"."$2"."$3".1"}')"
 fi
 
@@ -102,8 +117,15 @@ log "Country: $COUNTRY_CODE"
 log "Carrier: $CARRIER_NAME"
 log "MCC/MNC: $MCC$MNC"
 log "Network Type: $NETWORK_TYPE"
-log "Cellular IP: $CELLULAR_IP"
+log "Cellular IP: ${CELLULAR_IP:-<none — proxy-only mode>}"
 log "Proxy: ${PROXY_HOST:-None}"
+
+# Steps 2-6 are the CELLULAR identity (rmnet0 interface, SIM/telephony props,
+# DNS, timezone, GPS). They only run in FULL mode; proxy-only mode skips
+# straight to the proxy redirect + leak prevention below.
+if [ "$SKIP_CELLULAR_SETUP" = "1" ]; then
+    log "Skipping cellular identity steps 2-6 (proxy-only mode — no rmnet0/SIM/carrier)"
+else
 
 # ==============================================================================
 # STEP 2: Setup Cellular Interfaces
@@ -267,6 +289,8 @@ setprop persist.sys.gps.acc "5.0"
 
 log "GPS coordinates set: ${GPS_LAT}, ${GPS_LON}"
 
+fi  # SKIP_CELLULAR_SETUP (end of cellular identity steps 2-6)
+
 # ==============================================================================
 # STEP 7: Block IPv6
 # ==============================================================================
@@ -354,24 +378,37 @@ DNSTUNNEL
     # Apply to OUTPUT chain
     iptables -t nat -A OUTPUT -p tcp -j REDSOCKS 2>/dev/null || true
     
-    log "Proxy routing configured"
+    # UDP policy: redsocks2 (the build shipped in this image) has no working
+    # redudp/UDP-ASSOCIATE relay in this environment, so UDP cannot be
+    # transparently proxied here. Instead of silently letting UDP bypass the
+    # proxy (which would leak the REAL IP), unproxied UDP is hard-blocked in
+    # STEP 9 below. UDP is therefore BLOCKED, not proxied — documented tradeoff.
+    log "Proxy routing configured (TCP via redsocks; UDP blocked — no UDP leak, see STEP 9)"
 fi
 
 # ==============================================================================
-# STEP 9: DNS Leak Prevention
+# STEP 9: DNS + UDP Leak Prevention
 # ==============================================================================
-log "STEP 9: Configuring DNS leak prevention..."
+log "STEP 9: Configuring DNS + UDP leak prevention..."
 
 # Block STUN (used for WebRTC IP detection)
 iptables -A OUTPUT -p udp --dport 19302 -j DROP 2>/dev/null || true
 iptables -A OUTPUT -p udp --dport 3478 -j DROP 2>/dev/null || true
 
-# Additional leak prevention
+# DNS: allow LAN resolvers, block everything else (public DNS is answered by
+# redsocks dnstc on 127.0.0.1:5300 through the proxy)
 iptables -A OUTPUT -p udp --dport 53 -d 192.168.0.0/16 -j ACCEPT 2>/dev/null || true
 iptables -A OUTPUT -p udp --dport 53 -d 10.0.0.0/8 -j ACCEPT 2>/dev/null || true
 iptables -A OUTPUT -p udp --dport 53 -j DROP 2>/dev/null || true
 
-log "DNS leak prevention configured"
+# UDP leak prevention: this environment cannot transparently proxy UDP (no
+# working redudp relay in the shipped redsocks2 build). To guarantee no UDP
+# packet ever bypasses the proxy and reveals the real IP, ALL remaining
+# outbound UDP is dropped — UDP is BLOCKED, not proxied. STUN/QUIC/WebRTC-UDP
+# fall back to TCP through redsocks instead of leaking.
+iptables -A OUTPUT -p udp -j DROP 2>/dev/null || true
+
+log "DNS + UDP leak prevention configured (UDP blocked — no bypass possible)"
 
 # ==============================================================================
 # STEP 10: WebRTC Protection

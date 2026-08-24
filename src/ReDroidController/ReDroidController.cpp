@@ -2260,29 +2260,65 @@ QString ReDroidController::deterministicLocalIP(const DeviceProfile& profile) co
                                             profile.name);
 }
 
-bool ReDroidController::applyCellularNetworkScript(const QString& instanceId, const DeviceProfile& profile) {
-    // Locate the cellular-init script shipped with the repo/installation.
+QString ReDroidController::networkInitScriptPath() const {
     const QStringList candidates = {
         m_appDir + QStringLiteral("/docker/init_cellular_network.sh"),
         m_appDir + QStringLiteral("/../docker/init_cellular_network.sh"),
         QDir::currentPath() + QStringLiteral("/docker/init_cellular_network.sh"),
     };
-    QString scriptPath;
     for (const QString& candidate : candidates) {
-        if (QFileInfo::exists(candidate)) {
-            scriptPath = candidate;
-            break;
-        }
+        if (QFileInfo::exists(candidate))
+            return candidate;
     }
-    if (scriptPath.isEmpty()) {
-        qWarning() << "[Cellular] init_cellular_network.sh not found (looked near"
-                   << m_appDir << ") — skipping cellular interface setup for" << instanceId;
-        return false;
-    }
+    return QString();
+}
 
+QString ReDroidController::pushNetworkInitScript(const QString& instanceId) {
+    const QString scriptPath = networkInitScriptPath();
+    if (scriptPath.isEmpty()) {
+        qWarning() << "[Network] init_cellular_network.sh not found (looked near"
+                   << m_appDir << ") for" << instanceId;
+        return QString();
+    }
     const QString remotePath = QStringLiteral("/data/local/tmp/init_cellular_network.sh");
     if (!pushFile(instanceId, scriptPath, remotePath)) {
-        qWarning() << "[Cellular] Failed to push init_cellular_network.sh to" << instanceId;
+        qWarning() << "[Network] Failed to push init_cellular_network.sh to" << instanceId;
+        return QString();
+    }
+    return remotePath;
+}
+
+bool ReDroidController::applyProxyRouting(const QString& instanceId, const ProxyConfig& proxy) {
+    const QString remotePath = pushNetworkInitScript(instanceId);
+    if (remotePath.isEmpty())
+        return false;
+
+    // Run ONLY the transparent-redirect + leak-prevention steps of the shared
+    // init script: PROXY_HOST/PORT/TYPE/USER/PASS drive the redsocks TCP
+    // redirect + dnstc, and CELLULAR_IP is intentionally EMPTY so the script
+    // skips the rmnet0/cellular-identity steps (SKIP_CELLULAR_SETUP). This is
+    // kind-agnostic — the ISP/WiFi (mode 1) and mobile/Cellular (mode 2)
+    // instances tunnel TCP identically; only SIM/carrier props differ.
+    const QString env = QStringLiteral(
+        "CELLULAR_IP='' PROXY_HOST='%1' PROXY_PORT='%2' PROXY_TYPE='%3' "
+        "PROXY_USER='%4' PROXY_PASS='%5'")
+        .arg(proxy.host)
+        .arg(proxy.port)
+        .arg(proxy.type.isEmpty() ? QStringLiteral("socks5") : proxy.type)
+        .arg(proxy.username, proxy.password);
+
+    executeShell(instanceId,
+                 QStringLiteral("chmod 755 %1 && %2 sh %1").arg(remotePath, env),
+                 120000);
+    qDebug() << "[ProxyRouting] redsocks TCP redirect + UDP block applied via"
+             << proxy.type << "proxy" << proxy.host << ":" << proxy.port;
+    return true;
+}
+
+bool ReDroidController::applyCellularNetworkScript(const QString& instanceId, const DeviceProfile& profile) {
+    const QString remotePath = pushNetworkInitScript(instanceId);
+    if (remotePath.isEmpty()) {
+        qWarning() << "[Cellular] skipping cellular interface setup for" << instanceId;
         return false;
     }
 
@@ -2302,10 +2338,12 @@ bool ReDroidController::applyCellularNetworkScript(const QString& instanceId, co
 
     // Env mirrors the docker-run -e values so the in-container script and the
     // boot-time environment tell the same story. Empty carrier/MCC/MNC values
-    // fall through to the script's own ${VAR:-default} chain. PROXY_* is
-    // intentionally unset — the script's redsocks section is gated on
-    // PROXY_HOST and the controller manages proxying separately (PAC +
-    // global proxy), so the two never fight over iptables.
+    // fall through to the script's own ${VAR:-default} chain. PROXY_* stays
+    // unset here (this is the FULL cellular run — CELLULAR_IP is set); the
+    // proxy's redsocks redirect is applied separately by applyProxyRouting(),
+    // which runs the SAME script in proxy-only mode, so the two never fight
+    // over iptables. CELLULAR_IP non-empty is also what keeps the SKIP_CELLULAR_SETUP
+    // gate open for the rmnet0/SIM steps below.
     const QString env = QStringLiteral(
         "CELLULAR_IP='%1' GATEWAY='%2' COUNTRY_CODE='%3' CARRIER_NAME='%4' "
         "MCC='%5' MNC='%6' GPS_LAT='%7' GPS_LON='%8' VPP_IMEI='%9' VPP_ANDROID_ID='%10'")
@@ -2958,6 +2996,19 @@ bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig
             m_instances[instanceId].networkConfig.proxy = proxy;
             m_instances[instanceId].networkConfig.mode = NetworkMode::Proxy;
         }
+    }
+
+    // ── 5b. Transparent TCP redirect (redsocks) + UDP block, kind-agnostic ────
+    // The PAC/global settings above only cover proxy-aware apps. A banking app
+    // that ignores the system proxy (or uses QUIC) would otherwise talk direct
+    // and leak the real IP. Run the shared init script in proxy-only mode
+    // (CELLULAR_IP empty → SKIP_CELLULAR_SETUP, so NO rmnet0/SIM/carrier is
+    // touched) for BOTH WiFi (mode 1) and Cellular (mode 2): the redsocks
+    // iptables redirect tunnels all container TCP through the proxy, and the
+    // UDP block guarantees no UDP bypasses it. UDP is blocked, not proxied.
+    if (!applyProxyRouting(instanceId, proxy)) {
+        qWarning() << "[Proxy] redsocks redirect not applied (init script missing/push failed)"
+                      " — proxy-aware apps still route via PAC/global settings";
     }
 
     // ── 6. Auto-sync timezone + locale from proxy IP ──────────────────────────
