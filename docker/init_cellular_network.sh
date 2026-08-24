@@ -219,12 +219,19 @@ setprop persist.data.roaming "false"
 setprop ro.com.google.clientidbase "android-google"
 setprop persist.radio.mobile.data "true"
 
-# Cell Information
-CELL_ID=$((RANDOM % 65535))
-LAC=$((RANDOM % 65535))
+# Cell Information — deterministic per profile, never $RANDOM. A real phone
+# stays on the same cell across reboots, so the cell identity must be as
+# stable as the IP: seed it from the profile anchor (IMEI -> Android ID ->
+# CELLULAR_IP) with the same cksum scheme the CELLULAR_IP fallback uses.
+CELL_SEED="${VPP_IMEI:-${VPP_ANDROID_ID:-${CELLULAR_IP:-default-cell}}}"
+CELL_HASH=$(echo -n "${CELL_SEED}-cell" | cksum | awk '{print $1}')
+SIG_HASH=$(echo -n "${CELL_SEED}-sig" | cksum | awk '{print $1}')
+CELL_ID=$(( CELL_HASH % 65534 + 1 ))
+LAC=$(( (CELL_HASH / 65536) % 65534 + 1 ))
+SIGNAL=$(( -85 + SIG_HASH % 30 ))   # -85..-56 dBm, realistic LTE
 setprop gsm.cell.id "${CELL_ID}"
 setprop gsm.cell.location "${LAC}"
-setprop gsm.signal.strength "$((RANDOM % 30 - 85))"
+setprop gsm.signal.strength "${SIGNAL}"
 
 # Country Settings
 setprop ro.product.locale.region "${COUNTRY_CODE}"
