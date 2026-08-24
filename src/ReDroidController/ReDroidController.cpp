@@ -2772,7 +2772,8 @@ bool ReDroidController::deleteIsolatedNetwork(const QString& instanceId) {
     return result.success;
 }
 
-bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig& proxy) {
+bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig& proxy,
+                                    VirtualPhonePro::SyncNetworkKind kind) {
     if (!proxy.isValid()) {
         qWarning() << "Invalid proxy configuration";
         return false;
@@ -2890,17 +2891,27 @@ bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig
 
         ltm.setProxy(instanceId, proxyInfo);
 
+        // Persist the access-network kind on the instance record so
+        // applyCompleteRealism() (which runs earlier in startInstance) and
+        // any later rotation-driven re-sync both see the same kind. GUI
+        // mode 1 (ISP/residential) = WiFi, mode 2 (mobile) = Cellular.
+        {
+            QMutexLocker locker(&m_instancesMutex);
+            if (m_instances.contains(instanceId))
+                m_instances[instanceId].networkKind = kind;
+        }
+
         // syncFromProxy() tunnels the ip-api.com lookup THROUGH the proxy
         // (empty target IP → true exit IP), then applies timezone + locale +
-        // carrier + MCC/MNC. On failure it falls back internally to a direct
-        // gateway-IP lookup; both paths emit explicit logs.
+        // (carrier for Cellular kind, WiFi identity for WiFi kind). On
+        // failure it falls back internally to a direct gateway-IP lookup.
         // resyncFromProxy() runs the full sync when the exit IP is new or the
         // instance was never synced (both true right after a fresh
         // assign/change), and is a logged no-op when the exit IP is unchanged.
         // Using it here (instead of syncFromProxy()) means the SAME entry point
         // also serves proxy ROTATION: re-calling assignProxy() on an already-
         // proxied instance re-checks the exit IP and re-syncs only on change.
-        if (ltm.resyncFromProxy(instanceId)) {
+        if (ltm.resyncFromProxy(instanceId, kind)) {
             qDebug() << "[Proxy] Timezone + locale + carrier auto-synced from proxy exit IP";
         } else {
             // Requirement: never fail silently — the warning below plus the
