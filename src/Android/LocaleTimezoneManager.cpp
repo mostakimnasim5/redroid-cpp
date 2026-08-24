@@ -4,7 +4,9 @@
  */
 
 #include "Android/LocaleTimezoneManager.h"
+#ifndef LTM_NO_CONTROLLER
 #include "VirtualPhonePro/ReDroidController.hpp"
+#endif
 
 #include <QDebug>
 #include <QEventLoop>
@@ -219,6 +221,7 @@ ProxyInfo LocaleTimezoneManager::getProxy(const QString& instanceId) const {
 // Geolocation Sync
 // ============================================================================
 
+#ifndef LTM_NO_CONTROLLER
 bool LocaleTimezoneManager::queryGeolocation(const QString& instanceId) {
     QMutexLocker locker(&m_mutex);
     
@@ -268,7 +271,10 @@ bool LocaleTimezoneManager::queryGeolocation(const QString& instanceId) {
     
     return true;
 }
+#endif // LTM_NO_CONTROLLER
 
+
+#ifndef LTM_NO_CONTROLLER
 GeoLocation LocaleTimezoneManager::queryGeoLocationByIP(const QString& ip) {
     // Direct (un-proxied) lookup for an explicit IP. syncFromProxy() uses
     // this only as a fallback when tunnel-based resolution fails; the
@@ -277,6 +283,8 @@ GeoLocation LocaleTimezoneManager::queryGeoLocationByIP(const QString& ip) {
     nam.setProxy(QNetworkProxy(QNetworkProxy::NoProxy));
     return executeGeoQuery(nam, QUrl(GEO_API_URL + ip), GEO_QUERY_TIMEOUT_MS);
 }
+#endif // LTM_NO_CONTROLLER
+
 
 GeoLocation LocaleTimezoneManager::getGeoLocation(const QString& instanceId) const {
     QMutexLocker locker(&m_mutex);
@@ -290,6 +298,7 @@ GeoLocation LocaleTimezoneManager::getGeoLocation(const QString& instanceId) con
     return empty;
 }
 
+#ifndef LTM_NO_CONTROLLER
 void LocaleTimezoneManager::onGeoQueryFinished(QNetworkReply* reply) {
     QString instanceId = reply->property("instanceId").toString();
 
@@ -343,11 +352,14 @@ void LocaleTimezoneManager::onGeoQueryFinished(QNetworkReply* reply) {
     
     reply->deleteLater();
 }
+#endif // LTM_NO_CONTROLLER
+
 
 // ============================================================================
 // Apply Settings
 // ============================================================================
 
+#ifndef LTM_NO_CONTROLLER
 bool LocaleTimezoneManager::applyLocale(const QString& instanceId, const LocaleConfig& locale) {
     ReDroidController& ctrl = ReDroidController::instance();
     
@@ -381,7 +393,10 @@ bool LocaleTimezoneManager::applyLocale(const QString& instanceId, const LocaleC
     qDebug() << "Locale applied for" << instanceId << ":" << locale.localeString;
     return true;
 }
+#endif // LTM_NO_CONTROLLER
 
+
+#ifndef LTM_NO_CONTROLLER
 bool LocaleTimezoneManager::applyTimezone(const QString& instanceId, const QString& timezone) {
     ReDroidController& ctrl = ReDroidController::instance();
     
@@ -418,7 +433,10 @@ bool LocaleTimezoneManager::applyTimezone(const QString& instanceId, const QStri
     qDebug() << "Timezone applied for" << instanceId << ":" << timezone;
     return true;
 }
+#endif // LTM_NO_CONTROLLER
 
+
+#ifndef LTM_NO_CONTROLLER
 bool LocaleTimezoneManager::applyCarrier(const QString& instanceId, const CarrierConfig& carrier) {
     ReDroidController& ctrl = ReDroidController::instance();
     
@@ -455,11 +473,14 @@ bool LocaleTimezoneManager::applyCarrier(const QString& instanceId, const Carrie
              << "(" << carrier.mcc << carrier.mnc << ")";
     return true;
 }
+#endif // LTM_NO_CONTROLLER
+
 
 // ============================================================================
 // Auto Sync
 // ============================================================================
 
+#ifndef LTM_NO_CONTROLLER
 bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
     qDebug() << "Starting auto-sync from proxy for:" << instanceId;
 
@@ -545,9 +566,12 @@ bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
     emit syncCompleted(instanceId, true);
     return true;
 }
+#endif // LTM_NO_CONTROLLER
 
 
 
+
+#ifndef LTM_NO_CONTROLLER
 bool LocaleTimezoneManager::resyncFromProxy(const QString& instanceId) {
     qDebug() << "[ReSync] Checking proxy exit IP for rotation:" << instanceId;
 
@@ -598,7 +622,10 @@ bool LocaleTimezoneManager::resyncFromProxy(const QString& instanceId) {
 
     return syncFromProxy(instanceId);
 }
+#endif // LTM_NO_CONTROLLER
 
+
+#ifndef LTM_NO_CONTROLLER
 bool LocaleTimezoneManager::syncFromCoordinates(const QString& instanceId, double lat, double lon) {
     // For direct coordinate sync (when proxy is not available)
     
@@ -631,6 +658,8 @@ bool LocaleTimezoneManager::syncFromCoordinates(const QString& instanceId, doubl
     
     return true;
 }
+#endif // LTM_NO_CONTROLLER
+
 
 // ============================================================================
 // Utility Methods

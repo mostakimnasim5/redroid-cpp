@@ -289,6 +289,38 @@ endif()
 add_test(NAME ProfileGenerator COMMAND Test_ProfileGenerator)
 
 # =========================================================
+# Test 5: Carrier Selection (multi-carrier, deterministic, MCC/MNC validity)
+# Compiles ONLY LocaleTimezoneManager.cpp with LTM_NO_CONTROLLER to isolate
+# from ReDroidController (executes ADB / device shell). No network, no proxy.
+# =========================================================
+add_executable(Test_CarrierSelection
+    Test_CarrierSelection.cpp
+    ${CMAKE_SOURCE_DIR}/src/Android/LocaleTimezoneManager.cpp
+)
+
+target_compile_definitions(Test_CarrierSelection PRIVATE LTM_NO_CONTROLLER)
+
+target_link_libraries(Test_CarrierSelection PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+    Threads::Threads
+)
+
+target_include_directories(Test_CarrierSelection PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+if(WIN32)
+    set_target_properties(Test_CarrierSelection PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
+
+add_test(NAME CarrierSelection COMMAND Test_CarrierSelection)
+
+# =========================================================
 # Copy test profiles
 # =========================================================
 if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")
