@@ -567,6 +567,14 @@ private:
     QString getContainerName(const QString& instanceId) const;
     int allocateAdbPort();
     int tryReserveAdbPort(int port);
+
+    // Single deterministic, HWID-anchored source for a profile's local /
+    // cellular IP (10.x.x.x). Returns profile.network.ipAddress when set
+    // (hardware-anchored engine output); otherwise derives a stable address
+    // from the profile's identity so factory-built profiles never fall back
+    // to a shared fixed IP. Same profile -> same IP across reboots; two
+    // profiles never share an address.
+    QString deterministicLocalIP(const DeviceProfile& profile) const;
     
     QString convertToWSL2Path(const QString& windowsPath) const;
     QString convertToWindowsPath(const QString& wsl2Path) const;

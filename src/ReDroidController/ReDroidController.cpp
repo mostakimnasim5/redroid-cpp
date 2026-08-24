@@ -699,11 +699,9 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // Pass the profile-anchored deterministic local IP (deriveLocalIP unit) so
     // rmnet0, WebRTC and the routing story are consistent and stable across
     // reboots. The script's own fallback is also deterministic (seeded), never
-    // random.
-    QString cellularIp = profile.network.ipAddress;
-    if (cellularIp.isEmpty()) {
-        cellularIp = QStringLiteral("10.0.2.15");
-    }
+    // random. deterministicLocalIP() guarantees a unique per-profile address
+    // even for factory-built profiles whose network.ipAddress is empty.
+    QString cellularIp = deterministicLocalIP(profile);
     QString cellularGateway = QStringLiteral("10.0.0.1");
     const QStringList ipParts = cellularIp.split(QLatin1Char('.'));
     if (ipParts.size() == 4) {
@@ -1709,10 +1707,11 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
         advSpoof.spoofVulkanVersion(gpuHw.vulkanVersion.toStdString());
         // WebRTC leaks the local IP (canvas/audio fingerprinting supplements
         // this). Pin the profile's deterministic local IP (deriveLocalIP,
-        // Master_Seed-anchored) so the WebRTC surface, rmnet0 address and DHCP
+        // Master_Seed-anchored; deterministicLocalIP() covers factory-built
+        // profiles too) so the WebRTC surface, rmnet0 address and DHCP
         // story all tell the same tale — a hardcoded shared IP would make
         // every instance share one fingerprint and mismatch the derived identity.
-        advSpoof.spoofWebRTCLocalIP(profile.network.ipAddress.toStdString());
+        advSpoof.spoofWebRTCLocalIP(deterministicLocalIP(profile).toStdString());
         // Widevine L1 + HDCP 2.3 — required by DRM-protected banking app
         // content (e.g. in-app video KYC).
         advSpoof.spoofWidevineLevel(1);
@@ -2149,6 +2148,36 @@ bool ReDroidController::disableMockLocation(const QString& instanceId) {
 // ============================================================================
 // File Operations
 // ============================================================================
+
+QString ReDroidController::deterministicLocalIP(const DeviceProfile& profile) const {
+    const QString ip = profile.network.ipAddress.trimmed();
+    if (!ip.isEmpty()) {
+        return ip;
+    }
+
+    // Factory-built profiles (createSamsungS24Ultra/createRandom/...) leave
+    // network.ipAddress empty. Derive a stable 10.x.x.x from the profile's
+    // identity (FNV-1a — the same primitive the carrier selection uses) so
+    // the address is unique per profile and stable across reboots, instead
+    // of every such profile sharing one fixed fallback.
+    QString seed = profile.identity.imei;
+    if (seed.isEmpty()) seed = profile.identity.androidId;
+    if (seed.isEmpty()) seed = profile.identity.serialNumber;
+    if (seed.isEmpty()) seed = profile.id;
+    if (seed.isEmpty()) seed = profile.name;
+
+    quint64 h = 14695981039346656037ULL; // FNV-1a 64-bit offset basis
+    const QByteArray bytes = seed.toUtf8();
+    for (const char c : bytes) {
+        h ^= static_cast<quint64>(static_cast<quint8>(c));
+        h *= 1099511628211ULL; // FNV prime
+    }
+
+    const int b2 = static_cast<int>(h & 0xFF);
+    const int b3 = static_cast<int>((h >> 8) & 0xFF);
+    const int b4 = static_cast<int>((h >> 16) % 253) + 2; // avoid .0/.1/.255
+    return QStringLiteral("10.%1.%2.%3").arg(b2).arg(b3).arg(b4);
+}
 
 bool ReDroidController::pushFile(const QString& instanceId, const QString& localPath, const QString& remotePath) {
     QStringList args = {
