@@ -321,6 +321,37 @@ endif()
 add_test(NAME CarrierSelection COMMAND Test_CarrierSelection)
 
 # =========================================================
+# Test 6: WebRTC/Cellular/Local IP consistency
+# Compiles ONLY DeterministicIP.hpp (header-only — the exact code path used
+# by ReDroidController::deterministicLocalIP) + DeviceProfileGenerator.cpp
+# (self-contained, Qt-free HWID-anchored engine). No network, no proxy,
+# no ADB, no Docker.
+# =========================================================
+add_executable(Test_WebRTCIPConsistency
+    Test_WebRTCIPConsistency.cpp
+    ${CMAKE_SOURCE_DIR}/src/ReDroidController/DeviceProfileGenerator.cpp
+)
+
+target_link_libraries(Test_WebRTCIPConsistency PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Threads::Threads
+)
+
+target_include_directories(Test_WebRTCIPConsistency PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+if(WIN32)
+    set_target_properties(Test_WebRTCIPConsistency PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
+
+add_test(NAME WebRTCIPConsistency COMMAND Test_WebRTCIPConsistency)
+
+# =========================================================
 # Copy test profiles
 # =========================================================
 if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")
