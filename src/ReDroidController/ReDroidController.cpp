@@ -2809,7 +2809,13 @@ bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig
         // (empty target IP → true exit IP), then applies timezone + locale +
         // carrier + MCC/MNC. On failure it falls back internally to a direct
         // gateway-IP lookup; both paths emit explicit logs.
-        if (ltm.syncFromProxy(instanceId)) {
+        // resyncFromProxy() runs the full sync when the exit IP is new or the
+        // instance was never synced (both true right after a fresh
+        // assign/change), and is a logged no-op when the exit IP is unchanged.
+        // Using it here (instead of syncFromProxy()) means the SAME entry point
+        // also serves proxy ROTATION: re-calling assignProxy() on an already-
+        // proxied instance re-checks the exit IP and re-syncs only on change.
+        if (ltm.resyncFromProxy(instanceId)) {
             qDebug() << "[Proxy] Timezone + locale + carrier auto-synced from proxy exit IP";
         } else {
             // Requirement: never fail silently — the warning below plus the
