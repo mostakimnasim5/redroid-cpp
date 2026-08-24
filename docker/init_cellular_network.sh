@@ -110,28 +110,40 @@ log "Proxy: ${PROXY_HOST:-None}"
 # ==============================================================================
 log "STEP 2: Setting up cellular interfaces..."
 
-# Rename eth0 to cellular0 (hide ethernet appearance)
-ip link set eth0 down 2>/dev/null
-ip link set eth0 name cellular0 2>/dev/null
-ip link set cellular0 up 2>/dev/null
-log "Renamed eth0 -> cellular0"
+# Interface rename + route swap only on images that actually expose a
+# wlan0 (custom cellular-ready builds). On a stock ReDroid netns there is
+# no wlan0: renaming eth0 and deleting the default route would orphan the
+# container's connectivity (and ADB with it). Skip the L2 surgery there and
+# apply only the identity properties below.
+if ip link show wlan0 >/dev/null 2>&1; then
+    # Rename eth0 to cellular0 (hide ethernet appearance)
+    ip link set eth0 down 2>/dev/null
+    ip link set eth0 name cellular0 2>/dev/null
+    ip link set cellular0 up 2>/dev/null
+    log "Renamed eth0 -> cellular0"
 
-# Rename wlan0 to rmnet0 (mobile data interface naming)
-ip link set wlan0 down 2>/dev/null
-ip link set wlan0 name rmnet0 2>/dev/null
-ip link set rmnet0 up 2>/dev/null
-log "Renamed wlan0 -> rmnet0"
+    # Rename wlan0 to rmnet0 (mobile data interface naming)
+    ip link set wlan0 down 2>/dev/null
+    ip link set wlan0 name rmnet0 2>/dev/null
+    ip link set rmnet0 up 2>/dev/null
+    log "Renamed wlan0 -> rmnet0"
 
-# Configure cellular IP address
-ip addr add ${CELLULAR_IP}/24 dev rmnet0 broadcast + 2>/dev/null
-ip addr add ${CELLULAR_IP}/24 dev rmnet0 2>/dev/null || true
-log "Configured IP: ${CELLULAR_IP}/24 on rmnet0"
+    # Configure cellular IP address
+    ip addr add ${CELLULAR_IP}/24 dev rmnet0 broadcast + 2>/dev/null
+    ip addr add ${CELLULAR_IP}/24 dev rmnet0 2>/dev/null || true
+    log "Configured IP: ${CELLULAR_IP}/24 on rmnet0"
 
-# Set up routing
-ip route del default 2>/dev/null
-ip route add default via ${GATEWAY} dev rmnet0 2>/dev/null || true
-ip route add default via ${GATEWAY} dev rmnet0 2>/dev/null
-log "Set default route via ${GATEWAY}"
+    # Set up routing — atomic replace: if the rmnet0 route cannot be
+    # installed the original default route stays in place, so container
+    # connectivity is never orphaned.
+    if ip route replace default via ${GATEWAY} dev rmnet0 2>/dev/null; then
+        log "Set default route via ${GATEWAY}"
+    else
+        log "WARNING: rmnet0 route replace failed — keeping original default route"
+    fi
+else
+    log "No wlan0 in this netns — skipping interface rename/route swap; applying cellular identity props only"
+fi
 
 # ==============================================================================
 # STEP 3: Configure DNS
@@ -253,11 +265,11 @@ log "GPS coordinates set: ${GPS_LAT}, ${GPS_LON}"
 # ==============================================================================
 log "STEP 7: Blocking IPv6..."
 
-sysctl -w net.ipv6.conf.all.disable_ipv6=1
-sysctl -w net.ipv6.conf.default.disable_ipv6=1
-sysctl -w net.ipv6.conf.lo.disable_ipv6=1
-sysctl -w net.ipv6.conf.rmnet0.disable_ipv6=1
-sysctl -w net.ipv6.conf.cellular0.disable_ipv6=1
+sysctl -w net.ipv6.conf.all.disable_ipv6=1 2>/dev/null || true
+sysctl -w net.ipv6.conf.default.disable_ipv6=1 2>/dev/null || true
+sysctl -w net.ipv6.conf.lo.disable_ipv6=1 2>/dev/null || true
+sysctl -w net.ipv6.conf.rmnet0.disable_ipv6=1 2>/dev/null || true
+sysctl -w net.ipv6.conf.cellular0.disable_ipv6=1 2>/dev/null || true
 
 # Block IPv6 in iptables
 iptables -A OUTPUT -p ipv6 -j DROP 2>/dev/null || true
