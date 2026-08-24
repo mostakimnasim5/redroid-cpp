@@ -359,25 +359,44 @@ NetworkSpoofResult2 NetworkStackSpoofer::setSafariUserAgent() {
 
 NetworkSpoofResult2 NetworkStackSpoofer::spoofMACAddress(const std::string& mac) {
     NetworkSpoofResult2 result = {false, "", "", {}};
-    
+
     auto& adb = adbForInstance();
-    
+
+    // Accept "XX" pairs as wildcards: callers pass OUI prefixes like
+    // "A4:50:46:XX:XX:XX" to mean "keep the vendor OUI, randomize the NIC
+    // part". Previously the length check passed and the literal string was
+    // handed to `ip link set`, which rejected it — MAC spoofing silently
+    // failed on every instance.
+    std::string effectiveMac = mac;
+    if (effectiveMac.find('X') != std::string::npos ||
+        effectiveMac.find('x') != std::string::npos) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> nibble(0, 15);
+        static const char hexDigits[] = "0123456789ABCDEF";
+        for (char& c : effectiveMac) {
+            if (c == 'X' || c == 'x') {
+                c = hexDigits[nibble(gen)];
+            }
+        }
+    }
+
     // Validate MAC format
-    if (mac.length() != 17) {
+    if (effectiveMac.length() != 17) {
         result.error = "Invalid MAC address format";
         return result;
     }
-    
+
     // Spoof WiFi MAC
-    adb.executeShellCommand("ip link set wlan0 addr " + mac);
+    adb.executeShellCommand("ip link set wlan0 addr " + effectiveMac);
     adb.executeShellCommand("svc wifi disable && svc wifi enable");
-    
-    m_modifiedSettings["wifi_mac"] = mac;
-    
+
+    m_modifiedSettings["wifi_mac"] = effectiveMac;
+
     result.success = true;
-    result.message = "MAC address spoofed: " + mac;
-    result.details["mac"] = mac;
-    
+    result.message = "MAC address spoofed: " + effectiveMac;
+    result.details["mac"] = effectiveMac;
+
     return result;
 }
 

@@ -14,6 +14,7 @@
 
 #include "VirtualPhonePro/HardwareFingerprintSpoofer.hpp"
 #include "VirtualPhonePro/ADBManager.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/Logger.hpp"
 #include <string>
 
@@ -53,33 +54,28 @@ HardwareFingerprintSpoofer::~HardwareFingerprintSpoofer() {
 // ===========================================================================
 
 QString HardwareFingerprintSpoofer::adbShellOutput(const QString& instanceId, const QString& cmd) {
-    // Get the ADB serial for this instance
-    QString serial = instanceId;
-    if (!serial.contains(":")) {
-        serial = QString("%1:5555").arg(serial);
-    }
-    
-    ADBManager& adb = ADBManager::getInstance();
+    // Per-instance ADB context: resolve the adb serial registered for this
+    // instance and run through its per-serial ADBManager, so concurrent
+    // realism pipelines never leak sysfs/property writes onto another
+    // container. Falls back to the global manager only when the instance has
+    // no registered serial (e.g. unit tests).
+    const QString serial = ReDroidController::instance().adbSerialFor(instanceId);
+    ADBManager& adb = serial.isEmpty()
+        ? ADBManager::getInstance()
+        : ADBManager::getInstanceFor(serial.toStdString());
     std::string output = adb.executeShellCommand(cmd.toStdString());
-    
-    Q_UNUSED(serial);
-    
+
     return QString::fromStdString(output);
 }
 
 void HardwareFingerprintSpoofer::adbShell(const QString& instanceId, const QString& command) {
-    // Get the ADB serial for this instance
-    QString serial = instanceId;
-    if (!serial.contains(":")) {
-        serial = QString("%1:5555").arg(serial);
-    }
-    
-    ADBManager& adb = ADBManager::getInstance();
+    const QString serial = ReDroidController::instance().adbSerialFor(instanceId);
+    ADBManager& adb = serial.isEmpty()
+        ? ADBManager::getInstance()
+        : ADBManager::getInstanceFor(serial.toStdString());
     std::string output = adb.executeShellCommand(command.toStdString());
-    
-    Q_UNUSED(serial);
-    
-    qDebug() << "[HardwareFingerprintSpoofer] ADB exec:" << command 
+
+    qDebug() << "[HardwareFingerprintSpoofer] ADB exec:" << command
              << "->" << QString::fromStdString(output).trimmed().left(100);
 }
 
