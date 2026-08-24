@@ -6,6 +6,7 @@
 #include "VirtualPhonePro/DeviceProfile.hpp"
 #include "VirtualPhonePro/AndroidRealismEngine.hpp"
 #include "VirtualPhonePro/TimingAttackPrevention.hpp"
+#include "Android/LocaleTimezoneManager.h"
 
 #include <QObject>
 #include <QString>
@@ -50,6 +51,12 @@ struct InstanceInfo {
     // Network configuration
     NetworkIsolationConfig networkConfig;
     QString networkName;
+
+    // Access-network kind this instance presents (GUI proxy mode 1 = WiFi,
+    // mode 2 = Cellular). Drives whether applyCompleteRealism() applies the
+    // cellular/carrier stack or a WiFi identity. Default Cellular keeps
+    // every existing (mode-2 / non-proxy) instance behavior unchanged.
+    VirtualPhonePro::SyncNetworkKind networkKind = VirtualPhonePro::SyncNetworkKind::Cellular;
 };
 
 /**
@@ -473,7 +480,8 @@ public:
      * @param proxy Proxy configuration
      * @return true if assigned successfully
      */
-    bool assignProxy(const QString& instanceId, const ProxyConfig& proxy);
+    bool assignProxy(const QString& instanceId, const ProxyConfig& proxy,
+                     VirtualPhonePro::SyncNetworkKind kind = VirtualPhonePro::SyncNetworkKind::Cellular);
     
     /**
      * @brief Remove proxy from instance

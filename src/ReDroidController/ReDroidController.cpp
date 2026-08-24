@@ -1123,6 +1123,21 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "[Realism] Instance:" << instanceId;
     qDebug() << "[Realism] Target: 98%+ Detection Avoidance for Banking Apps";
 
+    // Access-network kind this instance presents (GUI proxy mode 1 = WiFi,
+    // mode 2 = Cellular), recorded by assignProxy(). Resolved once up front
+    // because both the early cellular transport script (~line 1389) and the
+    // late carrier-simulator stack branch on it. Default Cellular keeps the
+    // existing mode-2 / non-proxy behavior untouched.
+    using LTM = VirtualPhonePro::LocaleTimezoneManager;
+    using VirtualPhonePro::SyncNetworkKind;
+    SyncNetworkKind netKind;
+    {
+        QMutexLocker locker(&m_instancesMutex);
+        netKind = m_instances.contains(instanceId)
+                ? m_instances[instanceId].networkKind
+                : SyncNetworkKind::Cellular;
+    }
+
     // =========================================================================
     // Boot guard — same protection as applyProfile().
     //
@@ -1377,13 +1392,21 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     }
 
     // ── Cellular interface init (docker/init_cellular_network.sh) ───────────
-    // The script was shipped in docker/ but never executed (grep-verified: no
-    // caller in entrypoint.sh / Dockerfile.custom / compose / C++). Run it
-    // now, post-boot, with the profile-derived deterministic CELLULAR_IP /
-    // GATEWAY / carrier env so the in-container telephony surface matches the
-    // boot-time environment and the WebRTC-pinned local IP. Non-fatal by
-    // design: missing script or failed push only skips this step.
-    applyCellularNetworkScript(instanceId, profile);
+    // Cellular-only: an ISP/WiFi (GUI mode 1) instance must not expose any
+    // cellular/GSM transport — skip the script entirely for WiFi kind.
+    // For Cellular kind: the script was shipped in docker/ but never executed
+    // (grep-verified: no caller in entrypoint.sh / Dockerfile.custom /
+    // compose / C++). Run it now, post-boot, with the profile-derived
+    // deterministic CELLULAR_IP / GATEWAY / carrier env so the in-container
+    // telephony surface matches the boot-time environment and the
+    // WebRTC-pinned local IP. Non-fatal by design: missing script or failed
+    // push only skips this step.
+    if (netKind == SyncNetworkKind::Cellular) {
+        applyCellularNetworkScript(instanceId, profile);
+    } else {
+        qDebug() << "  ✓ Cellular transport script skipped (WiFi kind — no"
+                    " GSM story on an ISP-proxy phone)";
+    }
 
     // ── HttpClient: verify proxy connectivity from inside the container ───────
     // HttpClient is instance-based (not a singleton). We create one per call,
@@ -1851,6 +1874,19 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     // silently overrode the Phase 6 values with hardcoded ones.
     qDebug() << "  ✓ Simulation Systems Configured";
 
+    // ── Access network: cellular (mode-2 mobile proxy) vs WiFi (mode-1 ISP) ──
+    // netKind was resolved at the top of this function.
+    if (netKind == SyncNetworkKind::WiFi) {
+        // ISP/residential (GUI mode 1): present a no-SIM phone on home WiFi.
+        // The hardcoded carrier simulator and the cellular transport script
+        // (init_cellular_network.sh / rmnet0, guarded below) are all skipped;
+        // the deterministic WiFi identity is applied instead.
+        LTM& ltm = LTM::instance();
+        VirtualPhonePro::WifiNetworkConfig w =
+            ltm.generateWifiNetworkConfig(instanceId, QString());
+        ltm.applyWifiNetwork(instanceId, w);
+        qDebug() << "  ✓ WiFi access network applied (no SIM/carrier):" << w.ssid;
+    } else {
     // ── Carrier Network Simulator ─────────────────────────────────────────────
     {
         CarrierNetworkSimulator& carrier = CarrierNetworkSimulator::instance();
@@ -1867,7 +1903,9 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     }
 
     // ── System App Simulator (carrier bloatware) ──────────────────────────────
-    {
+    // Cellular-only: SIM/carrier pre-installed apps are a "real cellular
+    // device" signal; an ISP/WiFi phone with no SIM must not ship them.
+    if (netKind == SyncNetworkKind::Cellular) {
         SystemAppSimulator& sysApps = SystemAppSimulator::instance();
         // Install realistic T-Mobile carrier bloatware that every real
         // T-Mobile Samsung device ships with. Apps that check for
@@ -1893,7 +1931,9 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     }
 
     // ── Network Realism Enhancer (SIM bands, VoLTE, WiFi calling) ────────────
-    {
+    // Cellular-only: SIM bands / VoLTE are cellular-modem signals; a WiFi
+    // (ISP-proxy) phone has no SIM modem story to report.
+    if (netKind == SyncNetworkKind::Cellular) {
         NetworkRealismEnhancer& netReal = NetworkRealismEnhancer::instance();
         // T-Mobile US bands: B2, B4, B12, B66, n41 (5G)
         NetworkBandConfig bands;
@@ -2027,6 +2067,7 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "[Realism] ════════════════════════════════════════════════════════════";
     
     return true;
+    } // end Cellular (non-WiFi) access-network branch
 }
 
 bool ReDroidController::setProperty(const QString& instanceId, const QString& prop, const QString& value) {
@@ -2772,7 +2813,8 @@ bool ReDroidController::deleteIsolatedNetwork(const QString& instanceId) {
     return result.success;
 }
 
-bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig& proxy) {
+bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig& proxy,
+                                    VirtualPhonePro::SyncNetworkKind kind) {
     if (!proxy.isValid()) {
         qWarning() << "Invalid proxy configuration";
         return false;
@@ -2890,17 +2932,27 @@ bool ReDroidController::assignProxy(const QString& instanceId, const ProxyConfig
 
         ltm.setProxy(instanceId, proxyInfo);
 
+        // Persist the access-network kind on the instance record so
+        // applyCompleteRealism() (which runs earlier in startInstance) and
+        // any later rotation-driven re-sync both see the same kind. GUI
+        // mode 1 (ISP/residential) = WiFi, mode 2 (mobile) = Cellular.
+        {
+            QMutexLocker locker(&m_instancesMutex);
+            if (m_instances.contains(instanceId))
+                m_instances[instanceId].networkKind = kind;
+        }
+
         // syncFromProxy() tunnels the ip-api.com lookup THROUGH the proxy
         // (empty target IP → true exit IP), then applies timezone + locale +
-        // carrier + MCC/MNC. On failure it falls back internally to a direct
-        // gateway-IP lookup; both paths emit explicit logs.
+        // (carrier for Cellular kind, WiFi identity for WiFi kind). On
+        // failure it falls back internally to a direct gateway-IP lookup.
         // resyncFromProxy() runs the full sync when the exit IP is new or the
         // instance was never synced (both true right after a fresh
         // assign/change), and is a logged no-op when the exit IP is unchanged.
         // Using it here (instead of syncFromProxy()) means the SAME entry point
         // also serves proxy ROTATION: re-calling assignProxy() on an already-
         // proxied instance re-checks the exit IP and re-syncs only on change.
-        if (ltm.resyncFromProxy(instanceId)) {
+        if (ltm.resyncFromProxy(instanceId, kind)) {
             qDebug() << "[Proxy] Timezone + locale + carrier auto-synced from proxy exit IP";
         } else {
             // Requirement: never fail silently — the warning below plus the

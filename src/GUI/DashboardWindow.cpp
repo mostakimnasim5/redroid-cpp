@@ -86,7 +86,7 @@ void NewPhoneDialog::setupUI() {
     
     m_proxyModeCombo = new QComboBox(this);
     m_proxyModeCombo->addItem("Without Proxy (Random IP)",  0);
-    m_proxyModeCombo->addItem("With Proxy (Custom IP)", 1);
+    m_proxyModeCombo->addItem("With ISP/Residential Proxy (WiFi)", 1);
     m_proxyModeCombo->addItem("With Mobile Proxy (Same Device IP)", 2);
     proxyLayout->addRow("Network Mode:", m_proxyModeCombo);
     
@@ -939,8 +939,16 @@ void DashboardWindow::onNewPhoneClicked() {
                 proxyConfig.type = "http"; // Default to HTTP proxy
                 
                 if (proxyConfig.isValid()) {
-                    qDebug() << "[Dashboard] Applying proxy:" << proxyConfig.host << ":" << proxyConfig.port;
-                    controller.assignProxy(instanceId, proxyConfig);
+                    // Map the GUI network mode to the access-network kind:
+                    // mode 1 (ISP/residential) = WiFi (no SIM/carrier story),
+                    // mode 2 (mobile) = Cellular (existing behavior).
+                    int mode = dialog.getProxyMode();
+                    VirtualPhonePro::SyncNetworkKind kind =
+                        (mode == 1) ? VirtualPhonePro::SyncNetworkKind::WiFi
+                                    : VirtualPhonePro::SyncNetworkKind::Cellular;
+                    qDebug() << "[Dashboard] Applying proxy:" << proxyConfig.host << ":" << proxyConfig.port
+                             << "(kind:" << (mode == 1 ? "WiFi" : "Cellular") << ")";
+                    controller.assignProxy(instanceId, proxyConfig, kind);
                     
                     // Show proxy info in success message
                     QMessageBox::information(this, "Success",

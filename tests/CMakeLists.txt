@@ -352,6 +352,32 @@ endif()
 add_test(NAME WebRTCIPConsistency COMMAND Test_WebRTCIPConsistency)
 
 # =========================================================
+# Test 7: WiFi Network Identity (ISP/residential proxy mode)
+# Same LTM_NO_CONTROLLER isolation as Test_CarrierSelection — only the pure
+# generateWifiNetworkConfig() is exercised; no network, no proxy, no ADB.
+# =========================================================
+add_executable(Test_WifiNetworkIdentity
+    Test_WifiNetworkIdentity.cpp
+    ${CMAKE_SOURCE_DIR}/src/Android/LocaleTimezoneManager.cpp
+)
+
+target_compile_definitions(Test_WifiNetworkIdentity PRIVATE LTM_NO_CONTROLLER)
+
+target_link_libraries(Test_WifiNetworkIdentity PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+    Threads::Threads
+)
+
+target_include_directories(Test_WifiNetworkIdentity PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME WifiNetworkIdentity COMMAND Test_WifiNetworkIdentity)
+
+# =========================================================
 # Copy test profiles
 # =========================================================
 if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")

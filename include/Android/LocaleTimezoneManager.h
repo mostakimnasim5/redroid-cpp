@@ -70,6 +70,26 @@ struct CarrierConfig {
     QString networkType;       // 4G, 5G, LTE, etc.
 };
 
+// What kind of access network the synced instance presents. ISP/residential
+// proxies (GUI mode 1) look like a phone on home/office WiFi — no SIM/carrier
+// story at all. Mobile proxies (GUI mode 2) look like cellular. Default
+// Cellular keeps the existing mode-2 behavior untouched.
+enum class SyncNetworkKind { Cellular, WiFi };
+
+// Deterministic WiFi network identity for ISP-proxy (WiFi) instances.
+// Derived from the profile-anchored seed — same profile -> same SSID/BSSID
+// across reboots; two profiles never share an identity.
+struct WifiNetworkConfig {
+    QString ssid;
+    QString bssid;            // AP MAC, locally administered
+    QString gateway;
+    QString dns1;
+    QString dns2;
+    QString frequency;        // "2.4 GHz" or "5 GHz"
+    int linkSpeedMbps = 0;
+    int signalDbm = 0;
+};
+
 class LocaleTimezoneManager : public QObject {
     Q_OBJECT
 
@@ -131,7 +151,25 @@ public:
      * @brief Apply carrier configuration
      */
     bool applyCarrier(const QString& instanceId, const CarrierConfig& carrier);
+
+    /**
+     * @brief Apply a WiFi network identity (ISP/residential proxy mode).
+     *
+     * Presents the instance as a no-SIM phone on home/office WiFi: mobile
+     * data off, WiFi on, SIM-operator props absent, deterministic
+     * SSID/BSSID/gateway/frequency applied. Never touches carrier props.
+     */
+    bool applyWifiNetwork(const QString& instanceId, const WifiNetworkConfig& wifi);
 #endif // LTM_NO_CONTROLLER
+
+    /**
+     * @brief Derive the deterministic WiFi identity for a profile-anchored
+     *        seed (e.g. instanceId). Pure logic — no instance access — so it
+     *        is unit-testable in isolation. Same seed -> same config; two
+     *        seeds -> two configs.
+     */
+    WifiNetworkConfig generateWifiNetworkConfig(const QString& seed,
+                                                const QString& countryCode) const;
     
     // =========================================================================
     // Auto Sync (Proxy -> Locale)
@@ -139,9 +177,13 @@ public:
     
     /**
      * @brief Sync everything based on proxy
+     * @param kind  Cellular (mobile proxy, mode 2 — SIM/carrier applied) or
+     *              WiFi (ISP/residential proxy, mode 1 — WiFi identity
+     *              applied, no SIM/carrier at all).
      * @return true if successful
      */
-    bool syncFromProxy(const QString& instanceId);
+    bool syncFromProxy(const QString& instanceId,
+                       SyncNetworkKind kind = SyncNetworkKind::Cellular);
 
     /**
      * @brief Re-check the proxy's exit IP and re-sync if it changed.
@@ -152,10 +194,15 @@ public:
      * stored geolocation (or the instance was never synced), re-runs the full
      * syncFromProxy() so carrier/timezone/locale track the new egress.
      *
+     * The kind used for the re-sync is the one recorded by the last
+     * syncFromProxy() call (stored per instance); pass @p kind only for the
+     * first sync of an instance that has no recorded kind yet.
+     *
      * @return true if a re-sync was performed and succeeded; false when the
      *         exit IP is unchanged (no-op) or the re-sync failed.
      */
-    bool resyncFromProxy(const QString& instanceId);
+    bool resyncFromProxy(const QString& instanceId,
+                         SyncNetworkKind kind = SyncNetworkKind::Cellular);
     
     /**
      * @brief Sync using manual coordinates
@@ -224,6 +271,7 @@ private:
         GeoLocation geoLocation;
         LocaleConfig locale;
         CarrierConfig carrier;
+        SyncNetworkKind networkKind = SyncNetworkKind::Cellular;
         bool isSynced;
         qint64 lastSyncTime;
     };
