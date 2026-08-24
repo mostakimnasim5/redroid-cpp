@@ -382,6 +382,36 @@ target_include_directories(Test_WifiNetworkIdentity PRIVATE
 add_test(NAME WifiNetworkIdentity COMMAND Test_WifiNetworkIdentity)
 
 # =========================================================
+# Test 8: Proxy-type + network-kind propagation
+# Same LTM_NO_CONTROLLER isolation: only LocaleTimezoneManager.cpp. Asserts
+# the GUI combo's proxy-type string round-trips through setProxy/state-JSON
+# (the value QNetworkProxy + redsocks branch on) and that the WiFi-vs-Cellular
+# kind mapping mirrors the controller. No network, no proxy, no ADB.
+# =========================================================
+add_executable(Test_ProxyTypeKindPropagation
+    Test_ProxyTypeKindPropagation.cpp
+    ${CMAKE_SOURCE_DIR}/src/Android/LocaleTimezoneManager.cpp
+    # Q_OBJECT header must be listed so AUTOMOC generates moc_LocaleTimezoneManager.cpp
+    ${CMAKE_SOURCE_DIR}/include/Android/LocaleTimezoneManager.h
+)
+
+target_compile_definitions(Test_ProxyTypeKindPropagation PRIVATE LTM_NO_CONTROLLER)
+
+target_link_libraries(Test_ProxyTypeKindPropagation PRIVATE
+    Qt6::Test
+    Qt6::Core
+    Qt6::Network
+    Threads::Threads
+)
+
+target_include_directories(Test_ProxyTypeKindPropagation PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+add_test(NAME ProxyTypeKindPropagation COMMAND Test_ProxyTypeKindPropagation)
+
+# =========================================================
 # Copy test profiles
 # =========================================================
 if(EXISTS "${CMAKE_SOURCE_DIR}/profiles")
