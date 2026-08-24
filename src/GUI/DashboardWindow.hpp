@@ -56,6 +56,7 @@ public:
     // Proxy configuration
     bool useProxy() const { return m_useProxy; }
     int getProxyMode() const { return m_proxyModeCombo->itemData(m_proxyModeCombo->currentIndex()).toInt(); }
+    QString getProxyType() const { return m_proxyTypeCombo->itemData(m_proxyTypeCombo->currentIndex()).toString(); }
     QString getProxyHost() const { return m_proxyHost; }
     int getProxyPort() const { return m_proxyPort; }
     QString getProxyUsername() const { return m_proxyUsername; }
@@ -94,6 +95,7 @@ private:
     
     // Proxy configuration
     QComboBox* m_proxyModeCombo;
+    QComboBox* m_proxyTypeCombo;
     QLineEdit* m_proxyHostEdit;
     QSpinBox* m_proxyPortSpin;
     QLineEdit* m_proxyUsernameEdit;
