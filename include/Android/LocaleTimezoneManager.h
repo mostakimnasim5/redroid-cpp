@@ -165,8 +165,11 @@ public:
     
     /**
      * @brief Get carrier for location
+     * @param seed  Profile-anchored seed (e.g. instanceId) that deterministically
+     *              selects one of the country's carriers. Same seed -> same carrier.
      */
-    CarrierConfig getCarrierForLocation(const QString& country, const QString& region) const;
+    CarrierConfig getCarrierForLocation(const QString& country, const QString& region,
+                                        const QString& seed = QString()) const;
     
     /**
      * @brief Get current state as JSON

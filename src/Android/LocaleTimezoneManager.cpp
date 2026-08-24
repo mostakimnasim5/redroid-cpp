@@ -510,7 +510,7 @@ bool LocaleTimezoneManager::syncFromProxy(const QString& instanceId) {
     locale.region = geo.countryCode;
     locale.localeString = locale.language + "_" + geo.countryCode;
 
-    CarrierConfig carrier = getCarrierForLocation(geo.countryCode, geo.region);
+    CarrierConfig carrier = getCarrierForLocation(geo.countryCode, geo.region, instanceId);
     carrier.country = geo.country;
     carrier.countryCode = geo.countryCode;
 
@@ -553,7 +553,7 @@ bool LocaleTimezoneManager::syncFromCoordinates(const QString& instanceId, doubl
     locale.region = countryCode;
     locale.localeString = locale.language + "_" + countryCode;
     
-    CarrierConfig carrier = getCarrierForLocation("", "");
+    CarrierConfig carrier = getCarrierForLocation("", "", instanceId);
     carrier.countryCode = countryCode;
     
     applyLocale(instanceId, locale);
@@ -680,11 +680,14 @@ LocaleConfig LocaleTimezoneManager::getLocaleForCountry(const QString& countryCo
     return locale;
 }
 
-CarrierConfig LocaleTimezoneManager::getCarrierForLocation(const QString& country, const QString& region) const {
+CarrierConfig LocaleTimezoneManager::getCarrierForLocation(const QString& country, const QString& region, const QString& seed) const {
     (void)region; // region intentionally unused — lookup is by country code
 
-    // Data-driven carrier table: one row per country with a realistic carrier
-    // and a documented MCC/MNC pair. Wrong combinations raise detection risk.
+    // Multi-carrier table: several realistic carriers per country, each with a
+    // documented MCC/MNC pair (wrong combinations raise detection risk). The
+    // caller passes a profile-anchored seed (instanceId) so the SAME profile
+    // always gets the SAME carrier while different profiles in the same
+    // country see different operators — never process-random.
     struct CarrierEntry {
         const char* name;
         const char* shortName;
@@ -693,49 +696,143 @@ CarrierConfig LocaleTimezoneManager::getCarrierForLocation(const QString& countr
         const char* networkType;
     };
 
-    static const QMap<QString, CarrierEntry> COUNTRY_CARRIERS = {
-        {"US", {"T-Mobile",          "TMO",      "310", "260", "LTE"}},
-        {"GB", {"EE",                "EE",       "234", "33",  "LTE"}},
-        {"DE", {"Deutsche Telekom",  "DT",       "262", "01",  "LTE"}},
-        {"FR", {"Orange",            "Orange",   "208", "01",  "LTE"}},
-        {"JP", {"SoftBank",          "SBT",      "440", "20",  "5G"}},
-        {"KR", {"SK Telecom",        "SKT",      "450", "05",  "5G"}},
-        {"IN", {"Jio",               "JIO",      "405", "874", "4G"}},
-        {"BD", {"Banglalink",        "BL",       "470", "02",  "4G"}},
-        {"CN", {"China Mobile",      "CMCC",     "460", "00",  "5G"}},
-        {"AU", {"Telstra",           "Telstra",  "505", "01",  "5G"}},
-        {"CA", {"Rogers",            "Rogers",   "302", "720", "LTE"}},
-        {"BR", {"Vivo",              "Vivo",     "724", "06",  "4G"}},
-        {"RU", {"MTS",               "MTS",      "250", "01",  "LTE"}},
-        {"AE", {"Etisalat",          "Etisalat", "424", "02",  "5G"}},
-        {"SG", {"Singtel",           "Singtel",  "525", "01",  "5G"}},
-        {"PK", {"Jazz",              "Jazz",     "410", "01",  "4G"}},
-        {"SA", {"STC",               "STC",      "420", "01",  "5G"}},
-        {"MX", {"Telcel",            "Telcel",   "334", "20",  "4G"}},
-        {"IT", {"TIM",               "TIM",      "222", "01",  "LTE"}},
-        {"ES", {"Movistar",          "Movistar", "214", "07",  "LTE"}},
-        {"NL", {"KPN",               "KPN",      "204", "08",  "LTE"}},
-        {"SE", {"Telia",             "Telia",    "240", "01",  "LTE"}},
-        {"NO", {"Telenor",           "Telenor",  "242", "01",  "LTE"}},
-        {"DK", {"TDC",               "TDC",      "238", "01",  "LTE"}},
-        {"FI", {"Elisa",             "Elisa",    "244", "05",  "LTE"}},
-        {"PL", {"Play",              "Play",     "260", "06",  "4G"}},
-        {"TH", {"AIS",               "AIS",      "520", "01",  "4G"}},
-        {"VN", {"Viettel",           "Viettel",  "452", "04",  "4G"}},
-        {"MY", {"Maxis",             "Maxis",    "502", "12",  "4G"}},
-        {"ID", {"Telkomsel",         "Telkomsel","510", "10",  "4G"}},
-        {"PH", {"Globe",             "Globe",    "515", "02",  "4G"}},
-        {"TW", {"Chunghwa",          "CHT",      "466", "92",  "4G"}},
-        {"HK", {"SmarTone",          "SmarTone", "454", "06",  "4G"}},
-        {"NZ", {"Spark",             "Spark",    "530", "01",  "4G"}},
-        {"ZA", {"Vodacom",           "Vodacom",  "655", "01",  "4G"}},
-        {"EG", {"Orange Egypt",      "Orange",   "602", "01",  "4G"}},
-        {"NG", {"MTN Nigeria",       "MTN",      "621", "20",  "4G"}},
-        {"KE", {"Safaricom",         "Safaricom","639", "02",  "4G"}},
-        {"AR", {"Movistar Argentina","Movistar", "722", "070", "4G"}},
-        {"CL", {"Movistar Chile",    "Movistar", "730", "02",  "4G"}},
-        {"CO", {"Claro Colombia",    "Claro",    "732", "101", "4G"}},
-        {"PE", {"Movistar Peru",     "Movistar", "716", "06",  "4G"}},
+    static const QMap<QString, QVector<CarrierEntry>> COUNTRY_CARRIERS = {
+        {"US", {{"T-Mobile", "TMO", "310", "260", "LTE"},
+                {"AT&T", "ATT", "310", "410", "LTE"},
+                {"Verizon", "VZ", "311", "480", "5G"},
+                {"US Cellular", "USC", "311", "580", "LTE"}}},
+        {"GB", {{"EE", "EE", "234", "33", "5G"},
+                {"O2", "O2", "234", "10", "LTE"},
+                {"Vodafone UK", "VOD", "234", "15", "LTE"},
+                {"Three UK", "THREE", "234", "20", "LTE"}}},
+        {"DE", {{"Deutsche Telekom", "DT", "262", "01", "5G"},
+                {"Vodafone DE", "VFD", "262", "02", "LTE"},
+                {"O2 DE", "O2D", "262", "07", "LTE"}}},
+        {"FR", {{"Orange", "ORA", "208", "01", "LTE"},
+                {"Bouygues", "BYG", "208", "20", "LTE"},
+                {"SFR", "SFR", "208", "10", "LTE"},
+                {"Free Mobile", "FREE", "208", "15", "LTE"}}},
+        {"JP", {{"SoftBank", "SBT", "440", "20", "5G"},
+                {"NTT DOCOMO", "DCM", "440", "10", "5G"},
+                {"au KDDI", "AU", "440", "50", "5G"},
+                {"Rakuten Mobile", "RAK", "440", "11", "5G"}}},
+        {"KR", {{"SK Telecom", "SKT", "450", "05", "5G"},
+                {"KT", "KT", "450", "08", "5G"},
+                {"LG U+", "LGU", "450", "06", "5G"}}},
+        {"IN", {{"Jio", "JIO", "405", "874", "4G"},
+                {"Airtel", "AIR", "404", "10", "4G"},
+                {"Vi", "VI", "405", "66", "4G"}}},
+        {"BD", {{"Grameenphone", "GP", "470", "01", "4G"},
+                {"Robi", "ROBI", "470", "02", "4G"},
+                {"Banglalink", "BL", "470", "03", "4G"},
+                {"Teletalk", "TT", "470", "04", "4G"}}},
+        {"CN", {{"China Mobile", "CMCC", "460", "00", "5G"},
+                {"China Unicom", "CUC", "460", "01", "LTE"},
+                {"China Telecom", "CT", "460", "03", "LTE"}}},
+        {"AU", {{"Telstra", "Telstra", "505", "01", "5G"},
+                {"Optus", "Optus", "505", "02", "LTE"},
+                {"Vodafone AU", "VFA", "505", "03", "LTE"}}},
+        {"CA", {{"Rogers", "Rogers", "302", "720", "5G"},
+                {"Bell", "Bell", "302", "610", "LTE"},
+                {"Telus", "Telus", "302", "220", "LTE"}}},
+        {"BR", {{"Vivo", "Vivo", "724", "06", "4G"},
+                {"Claro BR", "Claro", "724", "05", "4G"},
+                {"TIM BR", "TIM", "724", "02", "4G"}}},
+        {"RU", {{"MTS", "MTS", "250", "01", "LTE"},
+                {"MegaFon", "MGF", "250", "02", "LTE"},
+                {"Beeline", "BEE", "250", "99", "LTE"},
+                {"Tele2 RU", "T2", "250", "20", "LTE"}}},
+        {"AE", {{"Etisalat", "etisalat", "424", "02", "5G"},
+                {"du", "du", "424", "03", "LTE"}}},
+        {"SG", {{"Singtel", "Singtel", "525", "01", "5G"},
+                {"StarHub", "StarHub", "525", "05", "LTE"},
+                {"M1", "M1", "525", "03", "LTE"}}},
+        {"PK", {{"Jazz", "Jazz", "410", "01", "4G"},
+                {"Telenor PK", "Telenor", "410", "06", "4G"},
+                {"Zong", "Zong", "410", "04", "4G"},
+                {"Ufone", "Ufone", "410", "03", "4G"}}},
+        {"SA", {{"STC", "STC", "420", "01", "5G"},
+                {"Mobily", "Mobily", "420", "03", "LTE"},
+                {"Zain SA", "Zain", "420", "04", "LTE"}}},
+        {"MX", {{"Telcel", "Telcel", "334", "20", "4G"},
+                {"Movistar MX", "Movistar", "334", "03", "4G"},
+                {"AT&T MX", "ATT", "334", "50", "4G"}}},
+        {"IT", {{"TIM", "TIM", "222", "01", "LTE"},
+                {"Vodafone IT", "VOD", "222", "10", "LTE"},
+                {"Wind Tre", "WIND", "222", "88", "LTE"},
+                {"Iliad IT", "ILIAD", "222", "50", "LTE"}}},
+        {"ES", {{"Movistar", "Movistar", "214", "07", "LTE"},
+                {"Vodafone ES", "VFE", "214", "01", "LTE"},
+                {"Orange ES", "ORA", "214", "03", "LTE"}}},
+        {"NL", {{"KPN", "KPN", "204", "08", "LTE"},
+                {"Vodafone NL", "VOD", "204", "04", "LTE"},
+                {"T-Mobile NL", "TMO", "204", "16", "LTE"}}},
+        {"SE", {{"Telia", "Telia", "240", "01", "LTE"},
+                {"Tele2 SE", "Tele2", "240", "07", "LTE"},
+                {"Telenor SE", "Telenor", "240", "08", "LTE"},
+                {"Tre SE", "3", "240", "02", "LTE"}}},
+        {"NO", {{"Telenor", "Telenor", "242", "01", "LTE"},
+                {"Telia NO", "Telia", "242", "02", "LTE"},
+                {"Ice", "Ice", "242", "14", "LTE"}}},
+        {"DK", {{"TDC", "TDC", "238", "01", "LTE"},
+                {"Telenor DK", "Telenor", "238", "02", "LTE"},
+                {"3 DK", "3", "238", "06", "LTE"}}},
+        {"FI", {{"Elisa", "Elisa", "244", "05", "LTE"},
+                {"DNA", "DNA", "244", "03", "LTE"},
+                {"Telia FI", "Telia", "244", "91", "LTE"}}},
+        {"PL", {{"Play", "Play", "260", "06", "4G"},
+                {"Orange PL", "ORA", "260", "03", "LTE"},
+                {"Plus", "Plus", "260", "01", "LTE"},
+                {"T-Mobile PL", "TMO", "260", "02", "LTE"}}},
+        {"TH", {{"AIS", "AIS", "520", "01", "4G"},
+                {"dtac", "dtac", "520", "05", "4G"},
+                {"TrueMove H", "TRUE", "520", "04", "4G"}}},
+        {"VN", {{"Viettel", "Viettel", "452", "04", "4G"},
+                {"Vinaphone", "VNA", "452", "02", "4G"},
+                {"Mobifone", "MBF", "452", "01", "4G"}}},
+        {"MY", {{"Maxis", "Maxis", "502", "12", "4G"},
+                {"Digi", "Digi", "502", "16", "4G"},
+                {"Celcom", "Celcom", "502", "19", "4G"}}},
+        {"ID", {{"Telkomsel", "Telkomsel", "510", "10", "4G"},
+                {"Indosat", "ISAT", "510", "01", "4G"},
+                {"XL Axiata", "XL", "510", "11", "4G"}}},
+        {"PH", {{"Globe", "Globe", "515", "02", "4G"},
+                {"Smart", "Smart", "515", "03", "4G"},
+                {"DITO", "DITO", "515", "66", "4G"}}},
+        {"TW", {{"Chunghwa", "CHT", "466", "92", "4G"},
+                {"Taiwan Mobile", "TWM", "466", "97", "4G"},
+                {"FarEasTone", "FET", "466", "01", "4G"}}},
+        {"HK", {{"SmarTone", "SmarTone", "454", "06", "4G"},
+                {"CSL", "CSL", "454", "00", "4G"},
+                {"3 HK", "3", "454", "03", "4G"}}},
+        {"NZ", {{"Vodafone NZ", "VF", "530", "01", "4G"},
+                {"Spark", "Spark", "530", "05", "4G"},
+                {"2degrees", "2DEG", "530", "24", "4G"}}},
+        {"ZA", {{"Vodacom", "Vodacom", "655", "01", "4G"},
+                {"MTN ZA", "MTN", "655", "10", "4G"},
+                {"Cell C", "CellC", "655", "07", "4G"},
+                {"Telkom ZA", "Telkom", "655", "02", "4G"}}},
+        {"EG", {{"Orange Egypt", "Orange", "602", "01", "4G"},
+                {"Vodafone EG", "VF", "602", "02", "4G"},
+                {"Etisalat EG", "ETI", "602", "03", "4G"}}},
+        {"NG", {{"MTN Nigeria", "MTN", "621", "30", "4G"},
+                {"Airtel NG", "Airtel", "621", "20", "4G"},
+                {"Glo", "Glo", "621", "50", "4G"}}},
+        {"KE", {{"Safaricom", "Safaricom", "639", "02", "4G"},
+                {"Airtel KE", "Airtel", "639", "03", "4G"},
+                {"Telkom KE", "Telkom", "639", "07", "4G"}}},
+        {"AR", {{"Movistar Argentina", "Movistar", "722", "070", "4G"},
+                {"Claro AR", "Claro", "722", "310", "4G"},
+                {"Personal", "Personal", "722", "341", "4G"}}},
+        {"CL", {{"Movistar Chile", "Movistar", "730", "02", "4G"},
+                {"Entel", "Entel", "730", "01", "4G"},
+                {"Claro CL", "Claro", "730", "03", "4G"}}},
+        {"CO", {{"Claro Colombia", "Claro", "732", "101", "4G"},
+                {"Movistar CO", "Movistar", "732", "123", "4G"},
+                {"Tigo", "Tigo", "732", "111", "4G"}}},
+        {"PE", {{"Movistar Peru", "Movistar", "716", "06", "4G"},
+                {"Claro PE", "Claro", "716", "10", "4G"},
+                {"Entel PE", "Entel", "716", "17", "4G"}}},
     };
 
     // Full country names (as returned by ip-api) -> ISO code, so legacy
@@ -784,7 +881,19 @@ CarrierConfig LocaleTimezoneManager::getCarrierForLocation(const QString& countr
         return carrier;
     }
 
-    const CarrierEntry& e = it.value();
+    const QVector<CarrierEntry>& carriers = it.value();
+
+    // Profile-anchored deterministic selection: FNV-1a of the seed (instanceId)
+    // picks the carrier index. Same profile -> same carrier every time;
+    // different profiles in the same country spread across operators.
+    const QString selSeed = !seed.isEmpty() ? seed : code;
+    quint32 h = 2166136261u;  // FNV-1a offset basis
+    for (const QChar c : selSeed) {
+        h ^= c.unicode();
+        h *= 16777619u;       // FNV prime
+    }
+    const CarrierEntry& e = carriers.at(static_cast<int>(h % carriers.size()));
+
     CarrierConfig carrier;
     carrier.name = QString::fromLatin1(e.name);
     carrier.shortName = QString::fromLatin1(e.shortName);
@@ -793,6 +902,8 @@ CarrierConfig LocaleTimezoneManager::getCarrierForLocation(const QString& countr
     carrier.networkType = QString::fromLatin1(e.networkType);
     return carrier;
 }
+
+
 
 
 
