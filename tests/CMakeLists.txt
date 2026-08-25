@@ -379,6 +379,15 @@ target_include_directories(Test_WifiNetworkIdentity PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
+# Windows: QTEST_MAIN generates a plain main() — need the console entry point,
+# not WinMain (LNK2001 unresolved WinMain otherwise). Same fix the other
+# isolated tests already carry.
+if(WIN32)
+    set_target_properties(Test_WifiNetworkIdentity PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
+
 add_test(NAME WifiNetworkIdentity COMMAND Test_WifiNetworkIdentity)
 
 # =========================================================
@@ -408,6 +417,13 @@ target_include_directories(Test_ProxyTypeKindPropagation PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
 )
+
+# Windows: console subsystem for QTEST_MAIN's main() (prevents LNK2001 WinMain).
+if(WIN32)
+    set_target_properties(Test_ProxyTypeKindPropagation PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
 
 add_test(NAME ProxyTypeKindPropagation COMMAND Test_ProxyTypeKindPropagation)
 
