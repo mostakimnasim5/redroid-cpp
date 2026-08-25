@@ -306,7 +306,7 @@ SystemCheckReport ReDroidController::checkSystemRequirements() {
                  "WSL2 kernel does not have Android binder support",
                  "Install a custom WSL2 kernel with CONFIG_ANDROID_BINDERFS=y.\n"
                  "See docs/WSL2_KERNEL_SETUP.md for step-by-step instructions.\n"
-                 "Quick install: https://github.com/kdrag0n/proton-wine/releases",
+                 "Quick install: https://github.com/nathanchance/WSL2-Linux-Kernel/releases/latest/download/bzImage",
                  /*required=*/true);
 #else
         bool binderfs = QFileInfo::exists("/dev/binderfs") ||
