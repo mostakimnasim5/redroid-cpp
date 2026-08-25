@@ -1932,9 +1932,13 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
             ltm.generateWifiNetworkConfig(instanceId, QString());
         ltm.applyWifiNetwork(instanceId, w);
         qDebug() << "  ✓ WiFi access network applied (no SIM/carrier):" << w.ssid;
-    } else {
+    }
+
     // ── Carrier Network Simulator ─────────────────────────────────────────────
-    {
+    // Cellular-only: a WiFi (ISP-proxy) phone presents as a no-SIM device, so
+    // simulating a carrier would contradict its identity. Same guard pattern
+    // as the System App and Network Realism blocks below.
+    if (netKind == SyncNetworkKind::Cellular) {
         CarrierNetworkSimulator& carrier = CarrierNetworkSimulator::instance();
         // Default T-Mobile US; matches the device profile's locale from proxy IP.
         carrier.configureCarrier(instanceId, "T-Mobile", "US");
@@ -2113,7 +2117,6 @@ bool ReDroidController::applyCompleteRealism(const QString& instanceId, const QS
     qDebug() << "[Realism] ════════════════════════════════════════════════════════════";
     
     return true;
-    } // end Cellular (non-WiFi) access-network branch
 }
 
 bool ReDroidController::setProperty(const QString& instanceId, const QString& prop, const QString& value) {
