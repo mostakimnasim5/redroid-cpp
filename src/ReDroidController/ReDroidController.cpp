@@ -126,10 +126,33 @@ DockerConfig::DockerConfig()
     , memoryLimit("1536M")
     , cpuQuota(200000)
     , shmSize(256)
+#ifdef Q_OS_WIN
+    // Default runtime on Windows: the self-contained 'redroid-engine' WSL
+    // distro provisioned by the Install button (docker-ce inside WSL2).
+    , useWSL2(true)
+    , wslDistro("redroid-engine")
+#else
     , useWSL2(false)
-    , wslDistro("Ubuntu-22.04")
-    , wslMountPrefix("/mnt/c")
+    , wslDistro("")
+#endif
+    , wslMountPrefix("/mnt")
 {
+}
+
+// Routes a docker CLI invocation through the in-WSL Docker Engine when
+// useWSL2 is enabled (Windows), otherwise calls dockerPath directly.
+// Returns {program, fullArgs}.
+static QPair<QString, QStringList> dockerInvocation(const DockerConfig& cfg,
+                                                    const QStringList& args) {
+#ifdef Q_OS_WIN
+    if (cfg.useWSL2 && !cfg.wslDistro.isEmpty()) {
+        QStringList wslArgs;
+        wslArgs << "-d" << cfg.wslDistro << "--" << "docker";
+        wslArgs << args;
+        return {QStringLiteral("wsl.exe"), wslArgs};
+    }
+#endif
+    return {cfg.dockerPath, args};
 }
 
 // ============================================================================
@@ -214,22 +237,33 @@ OperationResult ReDroidController::validateDocker() {
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
     
-    QString dockerExe = m_config.dockerPath;
-    
+    QString program;
+    QStringList versionArgs{"version", "--format", "{{.Server.Version}}"};
+
 #ifdef Q_OS_WIN32
-    // Try to find docker.exe in PATH
-    if (dockerExe == "docker") {
-        process.start("where", {"docker.exe"});
-        if (process.waitForFinished(5000)) {
-            QString output = process.readAll().trimmed();
-            if (!output.isEmpty()) {
-                dockerExe = output.split('\n').first();
+    if (m_config.useWSL2 && !m_config.wslDistro.isEmpty()) {
+        const auto inv = dockerInvocation(m_config, versionArgs);
+        program = inv.first;
+        versionArgs = inv.second;
+    } else {
+        QString dockerExe = m_config.dockerPath;
+        // Try to find docker.exe in PATH
+        if (dockerExe == "docker") {
+            process.start("where", {"docker.exe"});
+            if (process.waitForFinished(5000)) {
+                QString output = process.readAll().trimmed();
+                if (!output.isEmpty()) {
+                    dockerExe = output.split('\n').first();
+                }
             }
         }
+        program = dockerExe;
     }
+#else
+    program = m_config.dockerPath;
 #endif
-    
-    process.start(dockerExe, {"version", "--format", "{{.Server.Version}}"});
+
+    process.start(program, versionArgs);
     
     if (!process.waitForFinished(10000)) {
         result.errorMessage = "Docker is not running or not installed";
@@ -272,41 +306,45 @@ SystemCheckReport ReDroidController::checkSystemRequirements() {
     {
         QProcess p;
         p.setProcessChannelMode(QProcess::MergedChannels);
-        p.start(m_config.dockerPath, {"info", "--format", "{{.ServerVersion}}"});
+        const auto inv = dockerInvocation(m_config,
+                                          {"info", "--format", "{{.ServerVersion}}"});
+        p.start(inv.first, inv.second);
         bool ok = p.waitForFinished(8000) && p.exitCode() == 0;
         QString ver = p.readAll().trimmed();
         addCheck("Docker",
                  ok,
                  QString("Running (v%1)").arg(ver),
-                 "Docker Desktop is not running or not installed",
-                 "Install Docker Desktop from https://www.docker.com/products/docker-desktop "
-                 "and ensure it is started before launching the app.",
+                 "Docker Engine is not running inside the 'redroid-engine' WSL distro",
+                 "Click the \"Install\" button on the dashboard — it provisions WSL2, "
+                 "the custom binder kernel, and the in-WSL Docker Engine automatically "
+                 "(no Docker Desktop required).",
                  /*required=*/true);
     }
 
     // ── 2. Binder kernel support (REQUIRED on Linux/WSL2) ────────────────────
     {
 #ifdef Q_OS_WIN
-        // On Windows, binder lives inside the WSL2 VM — check via `wsl` command.
+        // Binder lives inside the WSL2 VM — check in the engine distro when
+        // the in-WSL bridge is active, else in the default distro.
         QProcess p;
         p.setProcessChannelMode(QProcess::MergedChannels);
-        p.start("wsl", {"--", "test", "-e", "/dev/binderfs", "||",
-                        "test", "-e", "/sys/fs/binder"});
+        QStringList binderArgs;
+        if (m_config.useWSL2 && !m_config.wslDistro.isEmpty())
+            binderArgs << "-d" << m_config.wslDistro;
+        binderArgs << "--" << "bash" << "-c"
+                   << "test -e /dev/binderfs || test -e /sys/fs/binder || test -e /dev/binder";
+        p.start("wsl", binderArgs);
         bool binderfs = p.waitForFinished(8000) && p.exitCode() == 0;
-
-        // Fallback: check /dev/binder directly
-        if (!binderfs) {
-            p.start("wsl", {"--", "test", "-e", "/dev/binder"});
-            binderfs = p.waitForFinished(5000) && p.exitCode() == 0;
-        }
 
         addCheck("WSL2 Binder Kernel",
                  binderfs,
                  "binderfs / /dev/binder present",
                  "WSL2 kernel does not have Android binder support",
-                 "Install a custom WSL2 kernel with CONFIG_ANDROID_BINDERFS=y.\n"
-                 "See docs/WSL2_KERNEL_SETUP.md for step-by-step instructions.\n"
-                 "Quick install: https://github.com/kdrag0n/proton-wine/releases",
+                 "Click the \"Install\" button on the dashboard — it downloads the "
+                 "binder-enabled WSL2 kernel from "
+                 "github.com/mostakimnasim5/WSL2-Linux-Kernel-Rolling and points "
+                 "%USERPROFILE%\\.wslconfig at it.\n"
+                 "Manual steps: docs/WSL2_KERNEL_SETUP.md.",
                  /*required=*/true);
 #else
         bool binderfs = QFileInfo::exists("/dev/binderfs") ||
@@ -348,7 +386,11 @@ SystemCheckReport ReDroidController::checkSystemRequirements() {
 #ifdef Q_OS_WIN
         QProcess p;
         p.setProcessChannelMode(QProcess::MergedChannels);
-        p.start("wsl", {"--", "test", "-e", "/dev/kvm"});
+        QStringList kvmArgs;
+        if (m_config.useWSL2 && !m_config.wslDistro.isEmpty())
+            kvmArgs << "-d" << m_config.wslDistro;
+        kvmArgs << "--" << "test" << "-e" << "/dev/kvm";
+        p.start("wsl", kvmArgs);
         bool kvm = p.waitForFinished(5000) && p.exitCode() == 0;
 #else
         bool kvm = QFileInfo::exists("/dev/kvm");
@@ -726,8 +768,12 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // Ports — ADB only; ReDroid does not use VNC
     args << "-p" << QString("%1:5555").arg(adbPort);
     
-    // Device passthrough
-    args << "-v" << QString("%1:/opt/vpp/config/device.properties:ro").arg(propertyFile);
+    // Device passthrough. When the in-WSL docker bridge is active the path
+    // must resolve inside the WSL VM, so translate it (C:\\... -> /mnt/c/...).
+    const QString hostPropertyFile =
+        (m_config.useWSL2 && !m_config.wslDistro.isEmpty())
+            ? convertToWSL2Path(propertyFile) : propertyFile;
+    args << "-v" << QString("%1:/opt/vpp/config/device.properties:ro").arg(hostPropertyFile);
     
     // Labels
     args << "-l" << QString("vpp.instance=%1").arg(instanceId);
@@ -2610,11 +2656,11 @@ QString ReDroidController::convertToWSL2Path(const QString& windowsPath) const {
     // Convert backslashes to forward slashes
     path.replace('\\', '/');
     
-    // Remove drive letter (e.g., C:)
+    // Replace drive letter: C:/x -> <wslMountPrefix>/c/x (default "/mnt/c/x").
     if (path.length() >= 3 && path[1] == ':') {
-        QString drive = path[0].toUpper();
-        path = path.mid(3);
-        path = m_config.wslMountPrefix + "/" + drive + "/" + path;
+        QString drive = path.left(1).toLower();
+        path = path.mid(2);  // keeps the leading '/'
+        path = m_config.wslMountPrefix + "/" + drive + path;
     }
     
     return path;
@@ -2644,9 +2690,10 @@ OperationResult ReDroidController::executeDocker(const QStringList& args, int ti
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
     
-    qDebug() << "Docker:" << args.join(' ');
-    
-    process.start(m_config.dockerPath, args);
+    const auto inv = dockerInvocation(m_config, args);
+    qDebug() << "Docker:" << inv.first << inv.second.join(' ');
+
+    process.start(inv.first, inv.second);
     
     if (!process.waitForFinished(timeoutMs)) {
         process.kill();

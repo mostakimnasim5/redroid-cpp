@@ -90,7 +90,7 @@ struct SensorData {
  * @brief Docker Configuration
  */
 struct DockerConfig {
-    QString dockerPath;            // Path to docker.exe
+    QString dockerPath;            // Docker CLI path — used only when useWSL2 is false
     QString adbPath;               // Path to adb.exe
     QString imageName;             // ReDroid image
     QString networkDriver;         // Network driver (bridge, host)
@@ -101,11 +101,12 @@ struct DockerConfig {
     int cpuQuota;                  // CPU quota (e.g., 200000 = 2 cores)
     int shmSize;                   // Shared memory size (e.g., 256m)
     
-    bool useWSL2;                  // Use WSL2 for Docker
+    bool useWSL2;                  // Route docker through the in-WSL engine
+                                   // (default true on Windows: 'redroid-engine')
     
     // WSL2 specific
-    QString wslDistro;             // WSL2 distribution name
-    QString wslMountPrefix;        // WSL2 mount prefix (e.g., "/mnt/c")
+    QString wslDistro;             // WSL distro hosting docker-ce ("redroid-engine")
+    QString wslMountPrefix;        // WSL2 automount prefix ("/mnt" → C:\ = /mnt/c)
     
     DockerConfig();
 };
