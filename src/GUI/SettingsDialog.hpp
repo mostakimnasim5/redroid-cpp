@@ -95,6 +95,8 @@ private slots:
     QTabWidget* m_tabWidget;
     
     // Docker Tab
+    QComboBox* m_dockerRuntimeCombo;
+    QLineEdit* m_wslDistroEdit;
     QLineEdit* m_dockerPathEdit;
     QLineEdit* m_dockerHostEdit;
     QSpinBox* m_dockerTimeoutSpin;

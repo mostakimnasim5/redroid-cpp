@@ -715,8 +715,8 @@ void DashboardWindow::setupUI() {
     connect(m_refreshButton, &QPushButton::clicked, this, &DashboardWindow::onRefreshClicked);
     toolbarLayout->addWidget(m_refreshButton);
 
-    // Install Requirements button — sits immediately to the right of Refresh.
-    m_installRequirementsButton = new QPushButton("⬇ Install Requirements", this);
+    // Install button — one-click self-contained environment setup.
+    m_installRequirementsButton = new QPushButton("⬇ Install", this);
     m_installRequirementsButton->setStyleSheet(
         "QPushButton {"
         "    background-color: #8e44ad;"
@@ -1268,7 +1268,7 @@ void DashboardWindow::onRefreshScreenshots() {
 }
 
 // ============================================================================
-// Requirements (WSL2 + Docker Desktop) install / uninstall
+// Requirements (self-contained WSL2 + kernel + in-WSL docker-ce) install / uninstall
 // ============================================================================
 
 void DashboardWindow::refreshRequirementsState()
@@ -1283,12 +1283,12 @@ void DashboardWindow::refreshRequirementsState()
     }
 
     if (installed) {
-        m_installRequirementsButton->setText("✓ Installed Requirements");
+        m_installRequirementsButton->setText("✓ Installed");
         m_installRequirementsButton->setEnabled(false);
         m_uninstallRequirementsButton->show();
         m_uninstallRequirementsButton->setEnabled(true);
     } else {
-        m_installRequirementsButton->setText("⬇ Install Requirements");
+        m_installRequirementsButton->setText("⬇ Install");
         m_installRequirementsButton->setEnabled(true);
         m_uninstallRequirementsButton->hide();
     }
@@ -1298,19 +1298,26 @@ void DashboardWindow::onInstallRequirementsClicked()
 {
     if (m_requirementsManager->isBusy()) return;
 
-    // Confirm: WSL2 install needs elevation + a reboot.
+    // Confirm: the one-shot setup enables WSL2, downloads the custom binder
+    // kernel, and provisions the in-WSL Docker Engine. No Docker Desktop.
     auto confirm = QMessageBox::question(
-        this, "Install Requirements",
-        "This will install WSL2 and Docker Desktop.\n\n"
+        this, "Install",
+        "One-click self-contained setup. This will:\n\n"
+        "• Enable WSL2 + Virtual Machine Platform\n"
+        "• Download the binder-enabled kernel "
+        "(mostakimnasim5/WSL2-Linux-Kernel-Rolling) and set it in .wslconfig\n"
+        "• Import the 'redroid-engine' WSL distro and install Docker Engine "
+        "(docker-ce) inside it\n\n"
+        "Docker Desktop is NOT required.\n"
         "Notes:\n"
         "• Windows may show a UAC (admin) prompt — please accept.\n"
-        "• Enabling WSL2 requires a system reboot afterwards.\n\n"
+        "• Enabling WSL2 may require a system reboot; click Install again after rebooting.\n\n"
         "Continue?",
         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (confirm != QMessageBox::Yes) return;
 
     // UI → "Installing Requirements" state.
-    m_installRequirementsButton->setText("⏳ Installing Requirements...");
+    m_installRequirementsButton->setText("⏳ Installing...");
     m_installRequirementsButton->setEnabled(false);
     m_uninstallRequirementsButton->hide();
 
@@ -1326,9 +1333,11 @@ void DashboardWindow::onUninstallRequirementsClicked()
     if (m_requirementsManager->isBusy()) return;
 
     auto confirm = QMessageBox::question(
-        this, "Uninstall Requirements",
-        "This will uninstall Docker Desktop and remove WSL2 components.\n\n"
-        "Any running containers will be stopped.\n\nContinue?",
+        this, "Uninstall",
+        "This will remove the 'redroid-engine' WSL distro (with its in-WSL "
+        "Docker Engine and all containers/images) plus the custom kernel "
+        "configuration.\n\n"
+        "WSL2 itself and any other distros are left untouched.\n\nContinue?",
         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (confirm != QMessageBox::Yes) return;
 

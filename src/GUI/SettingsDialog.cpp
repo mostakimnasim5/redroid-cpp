@@ -80,9 +80,32 @@ void SettingsDialog::setupUI() {
 QWidget* SettingsDialog::createDockerTab() {
     QWidget* page = new QWidget();
     QVBoxLayout* layout = new QVBoxLayout(page);
-    
-    // Docker Path
-    QGroupBox* pathGroup = new QGroupBox("Docker Executable", page);
+
+    // Runtime mode: self-contained in-WSL engine vs external Docker
+    QGroupBox* runtimeGroup = new QGroupBox("Docker Runtime Mode", page);
+    QFormLayout* runtimeLayout = new QFormLayout(runtimeGroup);
+
+    m_dockerRuntimeCombo = new QComboBox(page);
+    m_dockerRuntimeCombo->addItem("In-WSL Docker Engine (self-contained, recommended)");
+    m_dockerRuntimeCombo->addItem("External Docker (Docker Desktop / native docker)");
+    runtimeLayout->addRow("Mode:", m_dockerRuntimeCombo);
+
+    m_wslDistroEdit = new QLineEdit(page);
+    m_wslDistroEdit->setPlaceholderText("redroid-engine");
+    runtimeLayout->addRow("WSL Distro Name:", m_wslDistroEdit);
+
+    QLabel* runtimeNote = new QLabel(
+        "Self-contained mode runs every docker command as "
+        "'wsl -d <distro> -- docker ...' — provisioned by the Install button. "
+        "Pick External only if you already run Docker Desktop yourself.", page);
+    runtimeNote->setStyleSheet("color: #888; font-size: 11px;");
+    runtimeNote->setWordWrap(true);
+    runtimeLayout->addRow(runtimeNote);
+
+    layout->addWidget(runtimeGroup);
+
+    // Docker Path (used in External mode only)
+    QGroupBox* pathGroup = new QGroupBox("Docker Executable (External mode only)", page);
     QHBoxLayout* pathLayout = new QHBoxLayout(pathGroup);
     
     m_dockerPathEdit = new QLineEdit(page);
@@ -435,6 +458,8 @@ void SettingsDialog::loadSettings() {
     
     if (!file.open(QIODevice::ReadOnly)) {
         // Load defaults
+        m_dockerRuntimeCombo->setCurrentIndex(0);
+        m_wslDistroEdit->setText("redroid-engine");
         m_dockerPathEdit->setText("docker");
         m_adbPathEdit->setText("adb");
         m_autoStartCheck->setChecked(true);
@@ -449,6 +474,8 @@ void SettingsDialog::loadSettings() {
     QJsonObject json = doc.object();
     
     // Docker
+    m_dockerRuntimeCombo->setCurrentIndex(json["useWSL2"].toBool(true) ? 0 : 1);
+    m_wslDistroEdit->setText(json["wslDistro"].toString("redroid-engine"));
     m_dockerPathEdit->setText(json["dockerPath"].toString("docker"));
     m_dockerHostEdit->setText(json["dockerHost"].toString(""));
     m_dockerTimeoutSpin->setValue(json["dockerTimeout"].toInt(30));
@@ -495,6 +522,10 @@ void SettingsDialog::saveSettings() {
     QJsonObject json;
     
     // Docker
+    json["useWSL2"] = (m_dockerRuntimeCombo->currentIndex() == 0);
+    json["wslDistro"] = m_wslDistroEdit->text().trimmed().isEmpty()
+                            ? QStringLiteral("redroid-engine")
+                            : m_wslDistroEdit->text().trimmed();
     json["dockerPath"] = m_dockerPathEdit->text();
     json["dockerHost"] = m_dockerHostEdit->text();
     json["dockerTimeout"] = m_dockerTimeoutSpin->value();
@@ -526,7 +557,24 @@ void SettingsDialog::saveSettings() {
     
     file.write(QJsonDocument(json).toJson());
     file.close();
-    
+
+    // Apply docker runtime settings to the live controller (setConfig also
+    // persists them to config.ini).
+    {
+        DockerConfig cfg = ReDroidController::instance().config();
+        cfg.useWSL2 = json["useWSL2"].toBool(true);
+        cfg.wslDistro = json["wslDistro"].toString();
+        cfg.dockerPath = m_dockerPathEdit->text();
+        ReDroidController::instance().setConfig(cfg);
+    }
+
+    // Reflect runtime mode on the field states
+    {
+        const bool inWsl = m_dockerRuntimeCombo->currentIndex() == 0;
+        m_wslDistroEdit->setEnabled(inWsl);
+        m_dockerPathEdit->setEnabled(!inWsl);
+    }
+
     // Apply logging settings immediately
     FileLogger::instance().setLogLevel((LogLevel)m_logLevelCombo->currentIndex());
     FileLogger::instance().setLogToFile(m_logToFileCheck->isChecked());
