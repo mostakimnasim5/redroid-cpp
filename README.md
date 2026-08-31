@@ -18,8 +18,10 @@
 ## ⚡ Quick Start (3 Steps)
 
 ```batch
-1. Install Docker Desktop → https://docker.com
-2. Double-click start.bat
+1. Double-click start.bat
+2. Click the "⬇ Install" button once — it sets up EVERYTHING automatically:
+   WSL2 + the custom binder kernel + the in-WSL Docker Engine (docker-ce).
+   Docker Desktop is NOT required.
 3. Wait 2-3 minutes → Android screen appears!
 ```
 
@@ -30,7 +32,7 @@
 | Required | Version |
 |----------|---------|
 | Windows | 10/11 (64-bit) |
-| Docker Desktop | Latest |
+| Docker Desktop | ❌ Not needed — the Install button provisions docker-ce inside WSL2 |
 | Visual Studio | 2022 (C++ Desktop) |
 | Qt6 | 6.5+ MSVC 2022 64-bit |
 | CMake | 3.20+ |
@@ -120,7 +122,7 @@ ReDroidCPP/
 
 | Error | Fix |
 |-------|-----|
-| Docker not running | Start Docker Desktop first |
+| Docker not running | Click "⬇ Install" (provisions the in-WSL Docker Engine), or run `wsl -d redroid-engine -- sudo systemctl start docker` |
 | ADB not connecting | Run `adb connect localhost:5555` |
 | Emulator slow boot | Enable Hyper-V in Windows Features |
 | No screen | Install VcXsrv, run XLaunch |

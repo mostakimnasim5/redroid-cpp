@@ -2,26 +2,38 @@
 
 ReDroid requires Android binder IPC support in the WSL2 Linux kernel.
 The default Microsoft kernel (`5.15.x`) does **not** include this.
-This guide walks you through building and installing a custom kernel.
+
+> **You usually do not need this guide.** The app's **"⬇ Install"** button
+> does all of it automatically: enables WSL2, downloads the binder-enabled
+> kernel from our fork
+> ([mostakimnasim5/WSL2-Linux-Kernel-Rolling](https://github.com/mostakimnasim5/WSL2-Linux-Kernel-Rolling)),
+> merges it into `%USERPROFILE%\.wslconfig`, imports the `redroid-engine`
+> distro and installs Docker Engine (docker-ce) inside it.
+> **Docker Desktop is not required.**
+>
+> This document remains for manual setup / troubleshooting.
+
+---
 
 ---
 
 ## Prerequisites
 
 - Windows 10 (Build 19041+) or Windows 11
-- WSL2 installed (`wsl --install`)
-- Docker Desktop with WSL2 backend enabled
-- ~30 minutes for kernel compilation
+- WSL2 installed (`wsl --install --no-distribution`)
+- ~30 minutes for kernel compilation (Method 2 only)
 
 ---
 
-## Method 1 — Pre-built Kernel (Fastest, Recommended)
+## Method 1 — Pre-built Kernel from our Fork (Fastest, Recommended)
 
-Download a pre-built kernel with binder support:
+The Install button downloads the kernel from
+[mostakimnasim5/WSL2-Linux-Kernel-Rolling](https://github.com/mostakimnasim5/WSL2-Linux-Kernel-Rolling),
+a WSL2 kernel fork with Android binder support. Manually:
 
 ```powershell
 # 1. Download the kernel binary
-$kernelUrl = "https://github.com/nathanchance/WSL2-Linux-Kernel/releases/latest/download/bzImage"
+$kernelUrl = "https://github.com/mostakimnasim5/WSL2-Linux-Kernel-Rolling/releases/latest/download/bzImage"
 $kernelPath = "$env:USERPROFILE\wsl-kernel\bzImage"
 New-Item -ItemType Directory -Force "$env:USERPROFILE\wsl-kernel"
 Invoke-WebRequest -Uri $kernelUrl -OutFile $kernelPath
@@ -80,6 +92,11 @@ cp arch/x86/boot/bzImage /mnt/c/Users/$USER/wsl-kernel/bzImage
 
 Then follow steps 2–3 from Method 1 to point WSL2 to the new kernel.
 
+> **Note:** the fork's CI builds on `linux-wsl-stable-*` tags. If the
+> `releases/latest/download/bzImage` link 404s, no pre-built release has been
+> published yet — use Method 2 (build from source) and the Install button
+> will pick up `%USERPROFILE%\wsl-kernel\bzImage` on its next run.
+
 ---
 
 ## Verify Kernel Is Correct
@@ -125,7 +142,7 @@ ls /dev/kvm    # Should exist
 | `no binder device` in container logs | Default Microsoft kernel | Follow Method 1 or 2 above |
 | Container exits immediately | `/dev/binder` not mounted | Verify kernel with `grep binder /proc/filesystems` |
 | Very slow boot (~90s) | KVM not available | Enable nested virtualisation (see above) |
-| `docker: error response from daemon` | Docker Desktop not running | Start Docker Desktop |
+| `docker: error response from daemon` | in-WSL dockerd not running | `wsl -d redroid-engine -- sudo systemctl start docker` |
 | `port already allocated` | Previous container not removed | Run `docker rm -f $(docker ps -aq)` |
 
 ---
@@ -133,5 +150,6 @@ ls /dev/kvm    # Should exist
 ## References
 
 - [ReDroid GitHub](https://github.com/remote-android/redroid-doc)
+- [Binder kernel fork](https://github.com/mostakimnasim5/WSL2-Linux-Kernel-Rolling)
 - [WSL2 Custom Kernel](https://learn.microsoft.com/en-us/windows/wsl/kernel)
 - [Microsoft WSL2 Kernel Source](https://github.com/microsoft/WSL2-Linux-Kernel)

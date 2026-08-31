@@ -35,7 +35,7 @@
 | **C++ Compiler** | C++17 compatible | MSVC 2022 / GCC 11+ |
 | **CMake** | 3.20+ | বিল্ড সিস্টেম |
 | **Qt6** | 6.5+ | GUI ফ্রেমওয়ার্ক |
-| **Docker Desktop** | 20.10+ | Android কন্টেইনার |
+| **Docker Engine (in-WSL)** | 20.10+ | Android কন্টেইনার — অ্যাপের "Install" বাটন অটো-সেটআপ করে (Docker Desktop লাগবে না) |
 | **Git** | 2.30+ | ভার্সন কন্ট্রোল |
 
 ---
@@ -94,7 +94,9 @@ sudo usermod -aG docker $USER
 # 2. প্রয়োজনীয় প্যাকেজ ইনস্টল করুন
 brew install cmake qt6 nlohmann-json fmt
 
-# 3. Docker Desktop ইনস্টল করুন
+# 3. Docker Engine সেটআপ — অ্যাপ চালিয়ে "⬇ Install" বাটনে ক্লিক করুন
+#    (WSL2 + binder kernel + in-WSL docker-ce সব অটোমেটিক; Docker Desktop দরকার নেই)
+# পুরনো (ম্যানুয়াল) উপায়: Docker Desktop ইনস্টল করুন
 brew install --cask docker
 ```
 
@@ -265,9 +267,9 @@ Error: Docker is not running
 
 **সমাধান:**
 ```bash
-# Windows: Docker Desktop চালু করুন
+# Windows: in-WSL Docker Engine চালু করুন (Install বাটন এটাই সেটআপ করে)
 # Linux: sudo systemctl start docker
-# macOS: Docker Desktop চালু করুন
+# macOS: Docker Desktop / colima চালু করুন
 ```
 
 ### সমস্যা ৪: Permission Denied (Linux)

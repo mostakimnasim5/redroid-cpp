@@ -9,7 +9,9 @@ This guide explains how to run the Android emulator in a **native desktop window
 ## Prerequisites
 
 - Windows 10/11 (64-bit)
-- Docker Desktop for Windows
+- Docker Engine inside WSL2 — click the "⬇ Install" button in the app once
+  (provisions WSL2 + custom binder kernel + docker-ce automatically;
+  Docker Desktop is NOT required)
 - Git Bash or PowerShell
 
 ---
@@ -63,19 +65,26 @@ This guide explains how to run the Android emulator in a **native desktop window
 
 ---
 
-## Step 3: Configure Docker Desktop
+## Step 3: Docker Engine (in-WSL, no Docker Desktop)
 
-1. **Enable WSL 2 Backend** (recommended):
-   ```
-   Docker Desktop → Settings → General → ✅ Use WSL 2 instead of Hyper-V
-   ```
+Docker runs inside the `redroid-engine` WSL2 distro that the app's
+"⬇ Install" button provisions. All `docker` commands route through it:
 
-2. **Enable Host Gateway** (required for X11 forwarding):
-   Docker Compose already includes `extra_hosts` configuration:
-   ```yaml
-   extra_hosts:
-     - "host.docker.internal:host-gateway"
-   ```
+```powershell
+# The app does this automatically for every docker call:
+wsl -d redroid-engine -- docker info
+
+# To run the manual docker/compose commands below from Windows, either
+# prefix them with `wsl -d redroid-engine -- ` or open a shell in the distro:
+wsl -d redroid-engine
+```
+
+**Host gateway** (required for X11 forwarding) is already configured in
+Docker Compose:
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
 
 ---
 
@@ -163,7 +172,7 @@ adb -s localhost:15555 shell getprop ro.build.display.id
 **Solutions**:
 
 1. Ensure VcXsrv is running with **"Disable access control"** checked
-2. Try restarting Docker Desktop
+2. Restart the in-WSL Docker Engine: `wsl -d redroid-engine -- sudo systemctl restart docker`
 3. Check if Windows Defender is blocking connections
 
 ### Issue: Slow Display Performance
@@ -227,7 +236,8 @@ For production environments, consider:
 |----------|------|
 | VcXsrv Download | https://sourceforge.net/projects/vcxsrv/ |
 | GWSL | https://apps.microsoft.com/store/detail/gwsl/9NL6KD1H6V3T |
-| Docker Desktop | https://www.docker.com/products/docker-desktop/ |
+| In-WSL Docker Engine (docker-ce) | https://docs.docker.com/engine/install/ |
+| Binder kernel fork | https://github.com/mostakimnasim5/WSL2-Linux-Kernel-Rolling |
 
 ---
 

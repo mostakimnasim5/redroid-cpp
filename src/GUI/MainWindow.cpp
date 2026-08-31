@@ -1,4 +1,5 @@
 #include "MainWindow.hpp"
+#include "VirtualPhonePro/ReDroidController.hpp"
 #include <QApplication>
 #include <QMessageBox>
 #include <QFileDialog>
@@ -9,6 +10,20 @@
 #include <QThread>
 #include <QDebug>
 #include <QProcess>
+
+namespace {
+// Routes docker CLI calls through the in-WSL engine ('wsl -d <distro> -- docker ...')
+// when the self-contained bridge is enabled; otherwise plain docker on PATH.
+QString dockerShell(const QString& dockerArgs) {
+#ifdef Q_OS_WIN
+    const VirtualPhonePro::DockerConfig& cfg =
+        VirtualPhonePro::ReDroidController::instance().config();
+    if (cfg.useWSL2 && !cfg.wslDistro.isEmpty())
+        return QString("wsl -d %1 -- docker %2").arg(cfg.wslDistro, dockerArgs);
+#endif
+    return "docker " + dockerArgs;
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -496,7 +511,7 @@ void MainWindow::onStartEmulator() {
     appendLog("Starting emulator...");
     
     if (!isDockerRunning()) {
-        QMessageBox::warning(this, "Error", "Docker is not running!\nPlease start Docker Desktop first.");
+        QMessageBox::warning(this, "Error", "Docker is not running!\nClick the \"Install\" button to provision the in-WSL Docker Engine (no Docker Desktop needed).");
         return;
     }
     
@@ -509,16 +524,16 @@ void MainWindow::onStartEmulator() {
             this, &MainWindow::onProcessFinished);
     
     process->setWorkingDirectory(QCoreApplication::applicationDirPath() + "/docker");
-    process->start("docker compose up -d");
+    process->start(dockerShell("compose up -d"));
     
-    appendLog("Running: docker compose up -d");
+    appendLog("Running: " + dockerShell("compose up -d"));
 }
 
 void MainWindow::onStopEmulator() {
     appendLog("Stopping emulator...");
     
     QProcess process;
-    process.start("docker compose -f docker/docker-compose.yml down");
+    process.start(dockerShell("compose -f docker/docker-compose.yml down"));
     process.waitForFinished();
     
     emulatorRunning = false;
@@ -744,7 +759,7 @@ void MainWindow::updateStatus() {
 
 void MainWindow::checkDockerStatus() {
     QProcess process;
-    process.start("docker info");
+    process.start(dockerShell("info"));
     process.waitForFinished();
     
     if (process.exitCode() == 0) {
@@ -804,14 +819,14 @@ QString MainWindow::getDeviceProperty(const QString &property) {
 
 bool MainWindow::isDockerRunning() {
     QProcess process;
-    process.start("docker info");
+    process.start(dockerShell("info"));
     process.waitForFinished();
     return process.exitCode() == 0;
 }
 
 bool MainWindow::isEmulatorRunning() {
     QProcess process;
-    process.start("docker ps --filter name=android-emulator --format '{{.Names}}'");
+    process.start(dockerShell("ps --filter name=android-emulator --format '{{.Names}}'"));
     process.waitForFinished();
     return QString(process.readAllStandardOutput()).contains("android-emulator");
 }
