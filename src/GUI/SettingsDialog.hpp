@@ -81,6 +81,7 @@ private slots:
 	private:
     void setupUI();
     QWidget* createDockerTab();
+    QWidget* createFirebaseTab();
     QWidget* createAdbTab();
     QWidget* createGeneralTab();
     QWidget* createLoggingTab();
@@ -98,6 +99,10 @@ private slots:
     QComboBox* m_dockerRuntimeCombo;
     QLineEdit* m_wslDistroEdit;
     QLineEdit* m_dockerPathEdit;
+
+    // Firebase Tab
+    QLineEdit* m_firebaseProjectIdEdit;
+    QLineEdit* m_firebaseApiKeyEdit;
     QLineEdit* m_dockerHostEdit;
     QSpinBox* m_dockerTimeoutSpin;
     QPushButton* m_testDockerBtn;

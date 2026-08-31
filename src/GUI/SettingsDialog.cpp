@@ -4,6 +4,7 @@
  */
 
 #include "SettingsDialog.hpp"
+#include "VirtualPhonePro/ConfigManager.hpp"
 #include "VirtualPhonePro/FileLogger.hpp"
 #include <QHostInfo>
 #include <QProcess>
@@ -38,6 +39,7 @@ void SettingsDialog::setupUI() {
     // Tab Widget
     m_tabWidget = new QTabWidget(this);
     m_tabWidget->addTab(createDockerTab(), "🐳 Docker");
+    m_tabWidget->addTab(createFirebaseTab(), "🔥 Firebase");
     m_tabWidget->addTab(createAdbTab(), "📱 ADB");
     m_tabWidget->addTab(createGeneralTab(), "🖥️ General");
     m_tabWidget->addTab(createLoggingTab(), "📝 Logging");
@@ -156,6 +158,40 @@ QWidget* SettingsDialog::createDockerTab() {
     layout->addWidget(testGroup);
     layout->addStretch();
     
+    return page;
+}
+
+QWidget* SettingsDialog::createFirebaseTab() {
+    QWidget* page = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(page);
+
+    // Credentials
+    QGroupBox* credGroup = new QGroupBox("Firebase Credentials", page);
+    QFormLayout* credLayout = new QFormLayout(credGroup);
+
+    m_firebaseProjectIdEdit = new QLineEdit(page);
+    m_firebaseProjectIdEdit->setPlaceholderText("e.g. redroid-d8110");
+    credLayout->addRow("Project ID:", m_firebaseProjectIdEdit);
+
+    m_firebaseApiKeyEdit = new QLineEdit(page);
+    m_firebaseApiKeyEdit->setPlaceholderText("Web API key (Firebase Console → Project Settings)");
+    credLayout->addRow("API Key:", m_firebaseApiKeyEdit);
+
+    layout->addWidget(credGroup);
+
+    // Prefill from ConfigManager (env vars take precedence over the file).
+    m_firebaseProjectIdEdit->setText(ConfigManager::instance().getFirebaseProjectId());
+    m_firebaseApiKeyEdit->setText(ConfigManager::instance().getFirebaseApiKey());
+
+    QLabel* note = new QLabel(
+        "Stored in %APPDATA%/RedroidCPP/config.json. The REDROID_FB_PROJECT_ID / "
+        "REDROID_FB_API_KEY environment variables, when set, override these values. "
+        "Firestore rules must be published too — see docs/FIREBASE_SETUP.md.", page);
+    note->setStyleSheet("color: #888; font-size: 11px;");
+    note->setWordWrap(true);
+    layout->addWidget(note);
+
+    layout->addStretch();
     return page;
 }
 
@@ -557,6 +593,18 @@ void SettingsDialog::saveSettings() {
     
     file.write(QJsonDocument(json).toJson());
     file.close();
+
+    // Persist Firebase credentials to config.json
+    {
+        const QString fbProjectId = m_firebaseProjectIdEdit->text().trimmed();
+        const QString fbApiKey = m_firebaseApiKeyEdit->text().trimmed();
+        if (!fbProjectId.isEmpty() && !fbApiKey.isEmpty()) {
+            if (!ConfigManager::instance().setFirebaseConfig(fbProjectId, fbApiKey)) {
+                showMessage("Error", "Failed to save Firebase credentials", true);
+                return;
+            }
+        }
+    }
 
     // Apply docker runtime settings to the live controller (setConfig also
     // persists them to config.ini).
