@@ -37,6 +37,14 @@ QString ConfigManager::getFirebaseBaseUrl() const {
         .arg(getFirebaseProjectId());
 }
 
+bool ConfigManager::setFirebaseConfig(const QString& projectId, const QString& apiKey) {
+    QJsonObject firebase = m_config["firebase"].toObject();
+    firebase["projectId"] = projectId;
+    firebase["apiKey"] = apiKey;
+    m_config["firebase"] = firebase;
+    return saveConfig();
+}
+
 bool ConfigManager::loadConfig() {
     QString configPath = getConfigFilePath();
     QFile file(configPath);

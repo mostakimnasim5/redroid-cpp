@@ -55,7 +55,12 @@ public:
         return env.isEmpty() ? m_config["firebase"]["apiKey"].toString() : env;
     }
     QString getFirebaseBaseUrl() const;
-    
+
+    // Writes firebase.projectId/apiKey to the config file and returns the
+    // result of saveConfig(). Environment variables still take precedence
+    // over these values at read time.
+    bool setFirebaseConfig(const QString& projectId, const QString& apiKey);
+
     // API config
     int getServerPort() const { return m_config["api"]["serverPort"].toInt(8080); }
     QString getApiKey() const { return m_config["api"]["apiKey"].toString(); }
