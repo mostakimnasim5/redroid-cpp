@@ -10,13 +10,24 @@
 namespace VirtualPhonePro {
 
 /**
- * @brief RequirementsManager — installs/uninstalls WSL2 + Docker Desktop.
+ * @brief RequirementsManager — self-contained one-click environment setup.
  *
- * Drives winget / the Docker Desktop silent installer as child processes
- * and streams their stdout/stderr line-by-line via signals so the UI can
- * show a live log. Emits progress in coarse steps (0–100) and a final
- * finished(success) signal. All work happens in the same GUI thread via
- * QProcess signals — no blocking, no extra worker thread needed.
+ * The single "Install" button provisions EVERYTHING without Docker Desktop:
+ *   1. wsl --install --no-distribution   (WSL2 + VM platform)
+ *   2. Download the binder-enabled kernel bzImage published by
+ *      github.com/mostakimnasim5/WSL2-Linux-Kernel-Rolling and merge
+ *      kernel=/nestedVirtualization= into %USERPROFILE%\.wslconfig
+ *   3. wsl --shutdown                    (reload the custom kernel)
+ *   4. Import the 'redroid-engine' distro (Ubuntu rootfs) and install
+ *      docker-ce (Docker Engine + containerd + CLI) inside it via the
+ *      official get.docker.com script; systemd is enabled so dockerd
+ *      starts automatically.
+ *   5. Verify binder + `docker info` inside the distro.
+ *
+ * Windows-side work is done with embedded PowerShell scripts written to
+ * %TEMP% at runtime, so the app binary stays fully self-contained.
+ * stdout/stderr stream line-by-line via signals so the UI shows a live log.
+ * All work happens in the GUI thread via QProcess signals — no blocking.
  */
 class RequirementsManager : public QObject {
     Q_OBJECT
@@ -24,8 +35,12 @@ public:
     explicit RequirementsManager(QObject* parent = nullptr);
     ~RequirementsManager();
 
-    // True if WSL2 + Docker appear to be installed on this machine.
+    // True if WSL2 is present, the 'redroid-engine' distro exists, and its
+    // in-WSL Docker Engine answers `docker info`. No Docker Desktop check.
     static bool areRequirementsInstalled();
+
+    // Name of the dedicated WSL distro that hosts the Docker Engine.
+    static QString engineDistroName() { return QStringLiteral("redroid-engine"); }
 
     void install();
     void uninstall();
@@ -44,6 +59,10 @@ private slots:
 private:
     void runStep(const QString& program, const QStringList& args, int stepPercent, const QString& label);
     void finishSequence(bool success, const QString& summary);
+
+    // Writes an embedded PowerShell script to %TEMP% so it can be run with
+    // `powershell -File`. Returns the path, or empty string on failure.
+    static QString writeTempScript(const QString& name, const QString& content);
 
     QProcess* m_process = nullptr;
     bool m_busy = false;
