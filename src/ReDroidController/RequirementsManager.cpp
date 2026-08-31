@@ -258,8 +258,11 @@ void RequirementsManager::install()
     m_steps.append({"powershell.exe",
                     {"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", engineScript}, 80,
                     "Provisioning 'redroid-engine' distro with in-WSL Docker Engine..."});
+    // binderfs registers in /proc/filesystems at boot without any mount;
+    // /dev/binderfs and /dev/binder only appear after a binderfs mount,
+    // so checking those would falsely fail on a fresh distro.
     m_steps.append({"wsl.exe", {"-d", engineDistroName(), "--", "bash", "-c",
-                                "ls /dev/binderfs >/dev/null 2>&1 || ls /dev/binder >/dev/null 2>&1"}, 92,
+                                "grep -qw binder /proc/filesystems || ls /dev/binderfs >/dev/null 2>&1 || ls /dev/binder >/dev/null 2>&1"}, 92,
                     "Verifying binder kernel support inside 'redroid-engine'..."});
     m_steps.append({"wsl.exe", {"-d", engineDistroName(), "--", "docker", "info",
                                 "--format", "{{.ServerVersion}}"}, 96,

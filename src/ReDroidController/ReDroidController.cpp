@@ -332,7 +332,7 @@ SystemCheckReport ReDroidController::checkSystemRequirements() {
         if (m_config.useWSL2 && !m_config.wslDistro.isEmpty())
             binderArgs << "-d" << m_config.wslDistro;
         binderArgs << "--" << "bash" << "-c"
-                   << "test -e /dev/binderfs || test -e /sys/fs/binder || test -e /dev/binder";
+                   << "grep -qw binder /proc/filesystems || test -e /dev/binderfs || test -e /dev/binder";
         p.start("wsl", binderArgs);
         bool binderfs = p.waitForFinished(8000) && p.exitCode() == 0;
 
@@ -642,10 +642,28 @@ bool ReDroidController::startInstance(const QString& instanceId, const DevicePro
     // binder device.  We only fall back to host --device passthrough when the
     // host kernel does NOT have binderfs (older WSL2 kernels).
     // =========================================================================
-    auto hostHasBinderfs = []() -> bool {
-        // Check if the host kernel has binderfs compiled in
-        return QFileInfo::exists("/dev/binderfs") ||
-               QFileInfo::exists("/sys/fs/binder");
+    auto hostHasBinderfs = [this]() -> bool {
+        // binderfs registers in /proc/filesystems at boot without any
+        // mount; /dev/binderfs and /dev/binder only exist after a mount,
+        // so check the filesystem registry instead. On Windows the check
+        // must run inside the WSL distro — the local /dev never exists.
+#ifdef Q_OS_WIN
+        if (m_config.useWSL2) {
+            QProcess p;
+            QStringList a;
+            if (!m_config.wslDistro.isEmpty())
+                a << "-d" << m_config.wslDistro;
+            a << "--" << "grep" << "-qw" << "binder" << "/proc/filesystems";
+            p.start("wsl", a);
+            return p.waitForFinished(8000) && p.exitCode() == 0;
+        }
+#endif
+        QFile f("/proc/filesystems");
+        if (f.open(QIODevice::ReadOnly)) {
+            const QString content = QString::fromUtf8(f.readAll());
+            return content.simplified().split(' ').contains("binder");
+        }
+        return QFileInfo::exists("/dev/binderfs") || QFileInfo::exists("/sys/fs/binder");
     };
 
     if (hostHasBinderfs()) {
