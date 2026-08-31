@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Firestore Security Rules for ReDroidCPP (project: redroid-d8110)
+//
+// The desktop app talks to Firestore over the REST API with only a web API
+// key (no Firebase Auth). These rules therefore grant the minimum access
+// the app needs, per collection:
+//
+//   accessRequests : create  — users submit a new access/login request
+//   activeUsers    : read    — app verifies login codes (get + runQuery/list)
+//   admins         : read    — app verifies admin credentials (runQuery/list)
+//
+// Everything else is denied.
+//
+// WARNING: anyone holding the (public, client-side) web API key can read
+// activeUsers/admins and create accessRequests. Acceptable for development;
+// for production add Firebase Authentication and scope access per-user.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /accessRequests/{doc} {
+      allow create: if true;
+      allow get, list, update, delete: if false;
+    }
+
+    match /activeUsers/{doc} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    match /admins/{doc} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
