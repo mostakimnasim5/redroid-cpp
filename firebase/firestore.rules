@@ -3,15 +3,18 @@ rules_version = '2';
 // Firestore Security Rules for ReDroidCPP (project: redroid-d8110)
 //
 // ⚠️  WARNING — DEVELOPMENT MODE, OPEN ACCESS ⚠️
-// The desktop app and the Mainadmin web panel call the Firestore REST API
-// with ONLY a web API key — there is no Firebase Authentication. Any
-// rule checking request.auth would therefore reject every call. Until
-// Firebase Auth is integrated (both codebases), these rules must stay
-// `if true` based. Anyone holding the public client-side web API key can
-// perform the operations below. Before going to production: add Firebase
-// Authentication and replace these with auth-scoped rules.
+// The desktop app (redroid-cpp) calls Firestore REST with only a web API
+// key, and the Mainadmin web panel signs in with Firebase Auth email/
+// password but its Rules-evaluation context is still not role-scoped in
+// code. Neither side enforces request.auth, so these rules must stay
+// `if true` based until role-scoped access is implemented in BOTH
+// codebases; otherwise calls would be rejected. Anyone holding the public
+// client-side web API key can perform the operations below. Before going
+// to production: implement role checks and replace these with auth-scoped
+// rules.
 //
-// Permission matrix derived from FirestoreClient (src/GUI/FirebaseHelper.*):
+// Permission matrix derived from FirestoreClient (src/GUI/FirebaseHelper.*)
+// and Mainadmin admin.html:
 //
 //   accessRequests : create — LoginWindow submits a new login request
 //                    get, list — admin panel fetches pending requests
@@ -22,7 +25,9 @@ rules_version = '2';
 //                    update — block/unblock, extend duration (PATCH)
 //                    delete — admin panel removes a user (DELETE)
 //
-//   admins         : get, list — login verification only (read-only)
+//   admins         : get, list — login/admin verification
+//                    create, update, delete — Mainpanel sub-admin CRUD,
+//                    needed because Auth email/password alone grants it
 //
 // Everything else is denied.
 
@@ -39,8 +44,7 @@ service cloud.firestore {
     }
 
     match /admins/{doc} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+      allow get, list, create, update, delete: if true;
     }
 
     match /{document=**} {
