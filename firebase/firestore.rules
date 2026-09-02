@@ -2,30 +2,40 @@ rules_version = '2';
 
 // Firestore Security Rules for ReDroidCPP (project: redroid-d8110)
 //
-// The desktop app talks to Firestore over the REST API with only a web API
-// key (no Firebase Auth). These rules therefore grant the minimum access
-// the app needs, per collection:
+// ⚠️  WARNING — DEVELOPMENT MODE, OPEN ACCESS ⚠️
+// The desktop app and the Mainadmin web panel call the Firestore REST API
+// with ONLY a web API key — there is no Firebase Authentication. Any
+// rule checking request.auth would therefore reject every call. Until
+// Firebase Auth is integrated (both codebases), these rules must stay
+// `if true` based. Anyone holding the public client-side web API key can
+// perform the operations below. Before going to production: add Firebase
+// Authentication and replace these with auth-scoped rules.
 //
-//   accessRequests : create  — users submit a new access/login request
-//   activeUsers    : read    — app verifies login codes (get + runQuery/list)
-//   admins         : read    — app verifies admin credentials (runQuery/list)
+// Permission matrix derived from FirestoreClient (src/GUI/FirebaseHelper.*):
+//
+//   accessRequests : create — LoginWindow submits a new login request
+//                    get, list — admin panel fetches pending requests
+//                    update — approve/reject (PATCH status/processedAt)
+//
+//   activeUsers    : create — admin panel creates a user (POST)
+//                    get, list — app verifies login codes, panel lists users
+//                    update — block/unblock, extend duration (PATCH)
+//                    delete — admin panel removes a user (DELETE)
+//
+//   admins         : get, list — login verification only (read-only)
 //
 // Everything else is denied.
-//
-// WARNING: anyone holding the (public, client-side) web API key can read
-// activeUsers/admins and create accessRequests. Acceptable for development;
-// for production add Firebase Authentication and scope access per-user.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
     match /accessRequests/{doc} {
-      allow create: if true;
-      allow get, list, update, delete: if false;
+      allow create, get, list, update: if true;
+      allow delete: if false;
     }
 
     match /activeUsers/{doc} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create, get, list, update, delete: if true;
     }
 
     match /admins/{doc} {
