@@ -62,13 +62,14 @@ public:
 
     // Access Requests Operations
     void fetchAccessRequests();
-    void approveAccessRequest(const QString& documentId, const QString& adminNotes);
+    void approveAccessRequest(const QString& documentId, const QString& adminNotes,
+                             const QString& accessCode);
     void rejectAccessRequest(const QString& documentId, const QString& reason);
 
     // Active Users Operations
     void fetchActiveUsers();
     void createActiveUser(const QString& userName, const QString& phoneNumber,
-                         int totalProfiles, int durationDays);
+                         int totalProfiles, int durationDays, const QString& accessCode);
     void updateUserStatus(const QString& documentId, bool isBlocked);
     void deleteUser(const QString& documentId);
     void extendUserDuration(const QString& documentId, int additionalDays);

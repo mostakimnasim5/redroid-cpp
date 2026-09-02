@@ -13,30 +13,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
-#include <QCryptographicHash>
 #include <QDebug>
-
-namespace {
-
-// Constant-time comparison so password checks do not leak match length
-// through timing side channels.
-bool constantTimeEqual(const QByteArray& a, const QByteArray& b) {
-    if (a.size() != b.size()) return false;
-    unsigned char diff = 0;
-    for (int i = 0; i < a.size(); ++i) {
-        diff |= static_cast<unsigned char>(a.at(i) ^ b.at(i));
-    }
-    return diff == 0;
-}
-
-// Salted SHA-256 of (salt || password), hex-encoded. The salt is stored
-// per-admin in Firestore ("passwordSalt" field) alongside "passwordHash".
-QByteArray hashPassword(const QString& salt, const QString& password) {
-    QByteArray data = salt.toUtf8() + password.toUtf8();
-    return QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex();
-}
-
-} // namespace
 
 AdminLoginWindow::AdminLoginWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -138,13 +115,13 @@ void AdminLoginWindow::setupUI() {
     // Spacer
     mainLayout->addSpacing(20);
 
-    // Admin ID
-    QLabel* adminIdLabel = new QLabel("Admin ID:", loginPage);
+    // Admin Email
+    QLabel* adminIdLabel = new QLabel("Admin Email:", loginPage);
     adminIdLabel->setStyleSheet("color: #cbd5e1; font-size: 14px; font-weight: 500;");
     mainLayout->addWidget(adminIdLabel);
 
     m_adminIdInput = new QLineEdit(loginPage);
-    m_adminIdInput->setPlaceholderText("Enter your admin ID");
+    m_adminIdInput->setPlaceholderText("Enter your admin email");
     m_adminIdInput->setMinimumHeight(45);
     mainLayout->addWidget(m_adminIdInput);
 
@@ -186,12 +163,12 @@ void AdminLoginWindow::setupUI() {
 void AdminLoginWindow::onLoginClicked() {
     if (m_isLoggingIn) return;
 
-    QString adminId = m_adminIdInput->text().trimmed();
+    QString email = m_adminIdInput->text().trimmed();
     QString password = m_passwordInput->text();
 
     // Validation
-    if (adminId.isEmpty()) {
-        showError("Please enter your admin ID");
+    if (email.isEmpty()) {
+        showError("Please enter your admin email");
         m_adminIdInput->setFocus();
         return;
     }
@@ -202,124 +179,129 @@ void AdminLoginWindow::onLoginClicked() {
         return;
     }
 
+    // Credentials come from REDROID_FB_PROJECT_ID / REDROID_FB_API_KEY
+    // environment variables or the user config file — never hardcoded.
+    auto& config = VirtualPhonePro::ConfigManager::instance();
+    if (!config.hasFirebaseConfig()) {
+        showError("Firebase is not configured. Set REDROID_FB_PROJECT_ID and "
+                  "REDROID_FB_API_KEY environment variables.");
+        return;
+    }
+
     m_isLoggingIn = true;
     m_loginButton->setEnabled(false);
     m_loginButton->setText("Authenticating...");
     m_statusLabel->setVisible(false);
 
-    // Use Firebase REST API for admin authentication.
-    // Credentials come from REDROID_FB_PROJECT_ID / REDROID_FB_API_KEY
-    // environment variables or the user config file — never hardcoded.
-    auto& config = VirtualPhonePro::ConfigManager::instance();
-    if (!config.hasFirebaseConfig()) {
-        m_isLoggingIn = false;
-        m_loginButton->setEnabled(true);
-        m_loginButton->setText("LOGIN");
-        showError("Firebase is not configured. Set REDROID_FB_PROJECT_ID and "
-                  "REDROID_FB_API_KEY environment variables.");
-        return;
-    }
-    QString baseUrl = config.getFirebaseBaseUrl() + "/admins";
-    QString apiKey = config.getFirebaseApiKey();
-
-    // Build query to find admin by ID
-    QUrl url(baseUrl + ":runQuery?key=" + apiKey);
+    // Sign in with the same Firebase Auth email/password credentials that
+    // the Mainadmin web panel uses (Identity Toolkit REST API).
+    QUrl url("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key="
+             + config.getFirebaseApiKey());
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::KnownHeaders::ContentTypeHeader, "application/json");
 
-    QJsonObject structuredQuery;
-    QJsonObject fromObj;
-    fromObj["collectionId"] = "admins";
-    structuredQuery["from"] = QJsonArray{fromObj};
+    QJsonObject payload;
+    payload["email"] = email;
+    payload["password"] = password;
+    payload["returnSecureToken"] = true;
 
-    // Where clause: adminId == input
-    QJsonObject whereClause;
-    QJsonObject fieldFilter;
-    QJsonObject field;
-    field["fieldPath"] = "adminId";
-    fieldFilter["field"] = field;
-    fieldFilter["op"] = "EQUAL";
-    fieldFilter["value"] = QJsonObject{{"stringValue", adminId}};
-    whereClause["fieldFilter"] = fieldFilter;
-    structuredQuery["where"] = whereClause;
+    QNetworkReply* reply = m_networkManager->post(request, QJsonDocument(payload).toJson());
+    reply->setProperty("phase", QStringLiteral("auth"));
 
-    QJsonObject queryObj;
-    queryObj["structuredQuery"] = structuredQuery;
-
-    QNetworkReply* reply = m_networkManager->post(request, QJsonDocument(queryObj).toJson());
-    
-    // Store credentials for later verification
-    reply->setProperty("adminPassword", password);
-    
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         this->onLoginReply(reply);
     });
 }
 
 void AdminLoginWindow::onLoginReply(QNetworkReply* reply) {
-    m_isLoggingIn = false;
-    m_loginButton->setEnabled(true);
-    m_loginButton->setText("LOGIN");
+    const QString phase = reply->property("phase").toString();
 
-    QString password = reply->property("adminPassword").toString();
-    reply->deleteLater();
+    if (phase == QLatin1String("verify")) {
+        m_isLoggingIn = false;
+        m_loginButton->setEnabled(true);
+        m_loginButton->setText("LOGIN");
 
-    if (reply->error() != QNetworkReply::NoError) {
-        // Network or Firebase error - do NOT grant access
-        int httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        showError(QString("Connection failed (code %1). Check internet and try again.").arg(httpCode));
+        if (reply->error() != QNetworkReply::NoError) {
+            reply->deleteLater();
+            showError("Could not verify admin account. Please try again.");
+            return;
+        }
+
+        QJsonObject doc = QJsonDocument::fromJson(reply->readAll()).object();
+        reply->deleteLater();
+
+        if (!doc.contains("fields")) {
+            showError("This account is not registered as an admin.");
+            return;
+        }
+
+        QJsonObject fields = doc["fields"].toObject();
+        if (fields["isBlocked"].toObject()["booleanValue"].toBool()) {
+            showError("This admin account has been blocked. Contact super admin.");
+            return;
+        }
+
+        showSuccess("Login successful!");
+
+        // The Firebase Auth idToken doubles as the Bearer token for the
+        // Firestore REST calls made from the dashboard.
+        AdminDashboardWindow* dashboard = new AdminDashboardWindow(this, m_uid, m_idToken);
+        dashboard->show();
+        hide();
         return;
     }
 
+    // phase == "auth"
     QByteArray response = reply->readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(response);
+    QJsonObject obj = QJsonDocument::fromJson(response).object();
 
-    if (!doc.isArray()) {
+    if (reply->error() != QNetworkReply::NoError) {
+        m_isLoggingIn = false;
+        m_loginButton->setEnabled(true);
+        m_loginButton->setText("LOGIN");
+
+        QString code = obj["error"].toObject()["message"].toString();
+        int httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        reply->deleteLater();
+
+        if (code.contains("INVALID_LOGIN_CREDENTIALS") || code.contains("EMAIL_NOT_FOUND") ||
+            code.contains("INVALID_EMAIL")) {
+            showError("Invalid admin email or password");
+        } else if (code.contains("INVALID_PASSWORD")) {
+            showError("Invalid password");
+        } else if (code.contains("USER_DISABLED")) {
+            showError("This account has been disabled. Contact super admin.");
+        } else if (code.contains("TOO_MANY_ATTEMPTS")) {
+            showError("Too many failed attempts. Please try again later.");
+        } else {
+            showError(QString("Connection failed (code %1). Check internet and try again.").arg(httpCode));
+        }
+        return;
+    }
+    reply->deleteLater();
+
+    m_idToken = obj["idToken"].toString();
+    m_uid = obj["localId"].toString();
+    if (m_idToken.isEmpty() || m_uid.isEmpty()) {
+        m_isLoggingIn = false;
+        m_loginButton->setEnabled(true);
+        m_loginButton->setText("LOGIN");
         showError("Authentication error. Please try again.");
         return;
     }
 
-    QJsonArray results = doc.array();
-    
-    if (results.isEmpty() || !results[0].toObject().contains("document")) {
-        showError("Invalid admin credentials");
-        return;
-    }
+    // Auth succeeded — verify the user is a registered, unblocked admin.
+    // The Mainadmin panel keys admins/{uid} by the Firebase Auth UID.
+    auto& config = VirtualPhonePro::ConfigManager::instance();
+    QUrl url(config.getFirebaseBaseUrl() + "/admins/" + m_uid + "?key=" + config.getFirebaseApiKey());
+    QNetworkRequest request(url);
 
-    // Admin found - verify password against its salted hash.
-    // Firestore must store "passwordSalt" (hex) and "passwordHash"
-    // (hex SHA-256 of salt||password); plaintext is never stored or compared.
-    QJsonObject document = results[0].toObject()["document"].toObject();
-    QJsonObject fields = document["fields"].toObject();
-    QString storedHash = fields["passwordHash"].toObject()["stringValue"].toString();
-    QString salt = fields["passwordSalt"].toObject()["stringValue"].toString();
+    QNetworkReply* verifyReply = m_networkManager->get(request);
+    verifyReply->setProperty("phase", QStringLiteral("verify"));
 
-    if (storedHash.isEmpty() || salt.isEmpty()) {
-        // Fail closed: legacy documents with a plaintext "password" field
-        // are never honored — the account must be migrated to hashed storage.
-        qWarning() << "[AdminLogin] Admin document lacks passwordHash/passwordSalt;"
-                   << "legacy plaintext credentials are not accepted.";
-        showError("This account uses legacy password storage. "
-                  "Please reset the password to a hashed credential.");
-        return;
-    }
-
-    if (!constantTimeEqual(hashPassword(salt, password), storedHash.toUtf8())) {
-        showError("Invalid password");
-        return;
-    }
-
-    // Login successful
-    QString adminDocId = document["name"].toString().split("/").last();
-    QString adminName = fields["name"].toString();
-    QString token = fields["token"].toString();
-
-    showSuccess("Login successful!");
-    
-    // Open dashboard
-    AdminDashboardWindow* dashboard = new AdminDashboardWindow(this, adminDocId, token);
-    dashboard->show();
-    hide();
+    connect(verifyReply, &QNetworkReply::finished, this, [this, verifyReply]() {
+        this->onLoginReply(verifyReply);
+    });
 }
 
 void AdminLoginWindow::showError(const QString& message) {

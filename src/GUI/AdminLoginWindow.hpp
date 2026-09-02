@@ -50,6 +50,8 @@ private:
     
     QNetworkAccessManager* m_networkManager;
     bool m_isLoggingIn;
+    QString m_idToken;
+    QString m_uid;
 };
 
 #endif // ADMINLOGINWINDOW_HPP

@@ -18,6 +18,21 @@
 #define getFirebaseApiKey() VirtualPhonePro::ConfigManager::instance().getFirebaseApiKey()
 #define getFirebaseBaseUrl() VirtualPhonePro::ConfigManager::instance().getFirebaseBaseUrl()
 
+namespace {
+
+// Canonicalize BD phone numbers so login matching is format-independent:
+// "+8801XXXXXXXXX", "8801XXXXXXXXX" and "01XXXXXXXXX" all become "01XXXXXXXXX".
+QString normalizePhone(const QString &phone) {
+    QString digits = phone;
+    digits.replace(QRegularExpression("[^0-9]"), "");
+    if (digits.startsWith("880") && digits.length() > 11) {
+        digits = "0" + digits.mid(3);
+    }
+    return digits;
+}
+
+} // namespace
+
 LoginWindow::LoginWindow(QWidget *parent)
     : QMainWindow(parent)
     , networkManager(new QNetworkAccessManager(this))
@@ -356,6 +371,15 @@ void LoginWindow::onLoginClicked() {
     QString phone = phoneLoginInput->text().trimmed();
     QString code = codeInput->text().trimmed().toUpper();
 
+    if (!VirtualPhonePro::ConfigManager::instance().hasFirebaseConfig()) {
+        showError("⚠️ Firebase কনফিগ সেট করা নেই! REDROID_FB_PROJECT_ID ও "
+                  "REDROID_FB_API_KEY environment variable সেট করুন, অথবা config "
+                  "ফাইলে (" +
+                  VirtualPhonePro::ConfigManager::instance().getConfigFilePath() +
+                  ") firebase.projectId ও firebase.apiKey দিন।");
+        return;
+    }
+
     if (phone.isEmpty()) {
         showError("Phone Number দিন");
         phoneLoginInput->setFocus();
@@ -405,12 +429,19 @@ void LoginWindow::verifyCode(const QString &code, const QString &phone) {
         {"value", QJsonObject{{"stringValue", code}}}
     };
 
-    // Filter 2: contactNumber == phone (matches what admin panel stores)
+    // Filter 2: contactNumber IN (accepted phone formats). New documents are
+    // stored normalized, but older ones may hold the raw "+880..." form.
+    QStringList phoneVariants{normalizePhone(phone), phone};
+    phoneVariants.removeDuplicates();
+    QJsonArray phoneValues;
+    for (const QString &variant : phoneVariants) {
+        phoneValues.append(QJsonObject{{"stringValue", variant}});
+    }
     QJsonObject phoneFilter;
     phoneFilter["fieldFilter"] = QJsonObject{
         {"field", QJsonObject{{"fieldPath", "contactNumber"}}},
-        {"op", "EQUAL"},
-        {"value", QJsonObject{{"stringValue", phone}}}
+        {"op", "IN"},
+        {"value", QJsonObject{{"arrayValue", QJsonObject{{"values", phoneValues}}}}}
     };
 
     // Composite AND filter
@@ -504,7 +535,27 @@ void LoginWindow::handleLoginResponse(QNetworkReply *reply) {
         reply->deleteLater();
         return;
     }
-    
+
+    // Check expiry. The C++ admin app writes "expiresAt" (timestamp) while the
+    // Mainadmin web panel writes "expiryDate" (ISO string) — accept both.
+    QString expiryStr;
+    if (fields.contains("expiresAt")) {
+        expiryStr = fields["expiresAt"].toObject()["timestampValue"].toString();
+    }
+    if (expiryStr.isEmpty() && fields.contains("expiryDate")) {
+        expiryStr = fields["expiryDate"].toObject()["stringValue"].toString();
+    }
+    if (!expiryStr.isEmpty()) {
+        QDateTime expiry = QDateTime::fromString(expiryStr, Qt::ISODate);
+        if (expiry.isValid() && expiry < QDateTime::currentDateTimeUtc()) {
+            showError("আপনার অ্যাকাউন্টের মেয়াদ শেষ হয়েছে। Admin এর সাথে যোগাযোগ করুন।");
+            btnLogin->setEnabled(true);
+            btnLogin->setText("LOGIN");
+            reply->deleteLater();
+            return;
+        }
+    }
+
     // Get user data
     QString userId = document["name"].toString().split("/").last();
     QString uniqueKey = fields.contains("uniqueKey") ? fields["uniqueKey"].toObject()["stringValue"].toString() : "";
@@ -536,7 +587,11 @@ void LoginWindow::onSendRequestClicked() {
 
     // Validate Firebase config first
     if (!VirtualPhonePro::ConfigManager::instance().hasFirebaseConfig()) {
-        showRequestError("⚠️ Firebase কনফিগ সঠিক নয়! অ্যাপ সেটিংসে Firebase credentials যাচাই করুন।");
+        showRequestError("⚠️ Firebase কনফিগ সেট করা নেই! REDROID_FB_PROJECT_ID ও "
+                         "REDROID_FB_API_KEY environment variable সেট করুন, অথবা config "
+                         "ফাইলে (" +
+                         VirtualPhonePro::ConfigManager::instance().getConfigFilePath() +
+                         ") firebase.projectId ও firebase.apiKey দিন।");
         return;
     }
 
@@ -602,7 +657,7 @@ void LoginWindow::sendAccessRequest(const QString &name, const QString &phone, i
     fields["userName"] = userNameObj;
     
     QJsonObject contactObj;
-    contactObj["stringValue"] = phone;
+    contactObj["stringValue"] = normalizePhone(phone);
     fields["contactNumber"] = contactObj;
     
     QJsonObject profileCountObj;
