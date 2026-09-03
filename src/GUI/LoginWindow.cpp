@@ -372,11 +372,7 @@ void LoginWindow::onLoginClicked() {
     QString code = codeInput->text().trimmed().toUpper();
 
     if (!VirtualPhonePro::ConfigManager::instance().hasFirebaseConfig()) {
-        showError("⚠️ Firebase কনফিগ সেট করা নেই! REDROID_FB_PROJECT_ID ও "
-                  "REDROID_FB_API_KEY environment variable সেট করুন, অথবা config "
-                  "ফাইলে (" +
-                  VirtualPhonePro::ConfigManager::instance().getConfigFilePath() +
-                  ") firebase.projectId ও firebase.apiKey দিন।");
+        showError("⚠️ অ্যাপের Firebase কনফিগে সমস্যা আছে। Admin-এর সাথে যোগাযোগ করুন।");
         return;
     }
 
@@ -587,11 +583,7 @@ void LoginWindow::onSendRequestClicked() {
 
     // Validate Firebase config first
     if (!VirtualPhonePro::ConfigManager::instance().hasFirebaseConfig()) {
-        showRequestError("⚠️ Firebase কনফিগ সেট করা নেই! REDROID_FB_PROJECT_ID ও "
-                         "REDROID_FB_API_KEY environment variable সেট করুন, অথবা config "
-                         "ফাইলে (" +
-                         VirtualPhonePro::ConfigManager::instance().getConfigFilePath() +
-                         ") firebase.projectId ও firebase.apiKey দিন।");
+        showRequestError("⚠️ অ্যাপের Firebase কনফিগে সমস্যা আছে। Admin-এর সাথে যোগাযোগ করুন।");
         return;
     }
 

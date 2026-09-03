@@ -44,15 +44,24 @@ public:
     QString getConfigDir() const;
     
     // Firebase config
-    // Environment variables take precedence over the config file so that
-    // credentials never need to be stored on disk or in source control.
+    // The web API key is public by design (it only identifies the project;
+    // access is controlled by Firestore rules), so it ships compiled-in like
+    // in the Mainadmin web panel. End users never configure anything.
+    // Environment variables, then the config file, override these defaults.
+    static QString defaultFirebaseProjectId() { return QStringLiteral("redroid-d8110"); }
+    static QString defaultFirebaseApiKey() { return QStringLiteral("AIzaSyAItRrMoZyrDtA58aNKt7mTKprBy-4_4gA"); }
+
     QString getFirebaseProjectId() const {
         const QString env = qEnvironmentVariable("REDROID_FB_PROJECT_ID");
-        return env.isEmpty() ? m_config["firebase"]["projectId"].toString() : env;
+        if (!env.isEmpty()) return env;
+        const QString cfg = m_config["firebase"]["projectId"].toString();
+        return cfg.isEmpty() ? defaultFirebaseProjectId() : cfg;
     }
     QString getFirebaseApiKey() const {
         const QString env = qEnvironmentVariable("REDROID_FB_API_KEY");
-        return env.isEmpty() ? m_config["firebase"]["apiKey"].toString() : env;
+        if (!env.isEmpty()) return env;
+        const QString cfg = m_config["firebase"]["apiKey"].toString();
+        return cfg.isEmpty() ? defaultFirebaseApiKey() : cfg;
     }
     QString getFirebaseBaseUrl() const;
 

@@ -106,8 +106,8 @@ bool ConfigManager::createDefaultConfig() {
 
     m_config = QJsonObject{
         {"firebase", QJsonObject{
-            {"projectId", projectId.isEmpty() ? QStringLiteral("YOUR_PROJECT_ID") : projectId},
-            {"apiKey", apiKey.isEmpty() ? QStringLiteral("your-firebase-api-key") : apiKey}
+            {"projectId", projectId.isEmpty() ? defaultFirebaseProjectId() : projectId},
+            {"apiKey", apiKey.isEmpty() ? defaultFirebaseApiKey() : apiKey}
         }},
         {"api", QJsonObject{
             {"serverPort", 8080},

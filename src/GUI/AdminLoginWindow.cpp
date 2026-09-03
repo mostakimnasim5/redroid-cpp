@@ -179,12 +179,12 @@ void AdminLoginWindow::onLoginClicked() {
         return;
     }
 
-    // Credentials come from REDROID_FB_PROJECT_ID / REDROID_FB_API_KEY
-    // environment variables or the user config file — never hardcoded.
+    // Firebase project ID and web API key are compiled into the app
+    // (public-by-design values, same as the Mainadmin web panel); env vars
+    // or the config file can override them for development.
     auto& config = VirtualPhonePro::ConfigManager::instance();
     if (!config.hasFirebaseConfig()) {
-        showError("Firebase is not configured. Set REDROID_FB_PROJECT_ID and "
-                  "REDROID_FB_API_KEY environment variables.");
+        showError("App Firebase configuration is invalid. Please contact support.");
         return;
     }
 
