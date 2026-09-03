@@ -77,6 +77,14 @@ private:
     QString m_authToken;
     FirebaseHelper::FirestoreClient* m_firebaseClient;
 
+    // Pending approve operation (request is approved first, then the user is
+    // created with the same access code once approval succeeds)
+    QString m_pendingApproveName;
+    QString m_pendingApprovePhone;
+    int m_pendingApproveProfiles = 0;
+    int m_pendingApproveDays = 0;
+    QString m_pendingApproveCode;
+
     // UI Elements
     QTabWidget* m_tabWidget;
     

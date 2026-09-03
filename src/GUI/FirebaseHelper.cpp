@@ -214,23 +214,26 @@ void FirestoreClient::fetchAccessRequests() {
     makeRequest("/accessRequests", "GET");
 }
 
-void FirestoreClient::approveAccessRequest(const QString& documentId, const QString& adminNotes) {
+void FirestoreClient::approveAccessRequest(const QString& documentId, const QString& adminNotes,
+                                           const QString& accessCode) {
     Q_UNUSED(adminNotes);
-    
+
     m_pendingRequestType = "approve_request";
     m_pendingDocumentId = documentId;
-    m_pendingAccessCode = generateAccessCode();
-    
-    // Update accessRequests document status to "approved"
+    m_pendingAccessCode = accessCode;
+
+    // Update accessRequests document status to "approved" and record the
+    // issued key on the request, matching the Mainadmin web panel.
     QJsonObject fields;
     fields["status"] = QJsonObject{{"stringValue", "approved"}};
+    fields["uniqueKey"] = QJsonObject{{"stringValue", accessCode}};
     fields["processedAt"] = QJsonObject{{"timestampValue", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};
-    
+
     QJsonObject data;
     data["fields"] = fields;
-    
+
     makeRequest(
-        QString("/accessRequests/%1?updateMask.fieldPaths=status&updateMask.fieldPaths=processedAt")
+        QString("/accessRequests/%1?updateMask.fieldPaths=status&updateMask.fieldPaths=uniqueKey&updateMask.fieldPaths=processedAt")
             .arg(documentId),
         "PATCH", data
     );
@@ -260,9 +263,9 @@ void FirestoreClient::fetchActiveUsers() {
 }
 
 void FirestoreClient::createActiveUser(const QString& userName, const QString& phoneNumber,
-                                       int totalProfiles, int durationDays) {
+                                       int totalProfiles, int durationDays, const QString& accessCode) {
     m_pendingRequestType = "create_user";
-    m_pendingAccessCode = generateAccessCode();
+    m_pendingAccessCode = accessCode;
     
     // Calculate expiration date
     QDateTime now = QDateTime::currentDateTimeUtc();

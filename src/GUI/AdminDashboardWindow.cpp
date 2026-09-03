@@ -493,13 +493,18 @@ void AdminDashboardWindow::onApproveRequest(int row) {
     int days = m_requestsTable->item(row, 4)->text().replace(" days", "").toInt();
     if (days == 0) days = 1;
 
-    // Step 1: Mark request as approved in Firestore
-    // approveAccessRequest generates and stores the access code internally
-    m_firebaseClient->approveAccessRequest(docId, QString());
+    // Generate the access code ONCE and share it between the approval and the
+    // new user — previously each call generated its own code, so the code
+    // shown to the admin did not exist in activeUsers and login always failed.
+    m_pendingApproveName = userName;
+    m_pendingApprovePhone = phone;
+    m_pendingApproveProfiles = profiles;
+    m_pendingApproveDays = days;
+    m_pendingApproveCode = FirebaseHelper::FirestoreClient::generateAccessCode();
 
-    // Step 2: Create active user with same code
-    // The code will be shown via onUserCreated signal after createActiveUser succeeds
-    m_firebaseClient->createActiveUser(userName, phone, profiles, days);
+    // FirestoreClient tracks a single pending request, so the calls must be
+    // chained: approve first, create the user in onApproveResponse().
+    m_firebaseClient->approveAccessRequest(docId, QString(), m_pendingApproveCode);
 
     m_requestsStatusLabel->setText(QString("Approving %1...").arg(userName));
     m_requestsStatusLabel->setStyleSheet("color: #60a5fa;");
@@ -526,8 +531,13 @@ void AdminDashboardWindow::onAccessRequestsResponse(const QList<FirebaseHelper::
 
 void AdminDashboardWindow::onApproveResponse(const QString& docId, const QString& accessCode) {
     Q_UNUSED(docId);
-    m_requestsStatusLabel->setText("Request approved! Access code: " + accessCode);
-    m_requestsStatusLabel->setStyleSheet("color: #22c55e;");
+    Q_UNUSED(accessCode);
+    // Step 2: create the active user with the SAME code; onUserCreated shows it
+    m_requestsStatusLabel->setText("Request approved. Creating user account...");
+    m_requestsStatusLabel->setStyleSheet("color: #60a5fa;");
+    m_firebaseClient->createActiveUser(m_pendingApproveName, m_pendingApprovePhone,
+                                       m_pendingApproveProfiles, m_pendingApproveDays,
+                                       m_pendingApproveCode);
 }
 
 void AdminDashboardWindow::onRejectResponse(const QString& docId) {
@@ -683,7 +693,8 @@ void AdminDashboardWindow::onCreateUser() {
             return;
         }
 
-        m_firebaseClient->createActiveUser(userName, phone, profiles, days);
+        m_firebaseClient->createActiveUser(userName, phone, profiles, days,
+                                           FirebaseHelper::FirestoreClient::generateAccessCode());
     }
 }
 
