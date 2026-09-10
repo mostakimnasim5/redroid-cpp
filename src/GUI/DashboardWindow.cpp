@@ -22,6 +22,11 @@
 #include <QJsonObject>
 #include <QStandardPaths>
 #include <QtConcurrent>
+#include <QClipboard>
+#include <QDateTime>
+#include <QFile>
+#include <QDir>
+#include <QTextStream>
 
 #include "VirtualPhonePro/MultiInstanceManager.hpp"
 #include "VirtualPhonePro/AppCloner.hpp"
@@ -777,7 +782,44 @@ void DashboardWindow::setupUI() {
     m_requirementsProgressBar->hide();
     mainLayout->addWidget(m_requirementsProgressBar);
 
-    // Requirements manager (lives for the lifetime of the window).
+    // Persistent install/uninstall log — scrollable, copyable, cleared by hand.
+    // The same lines also go to %TEMP%\redroid-requirements.log for support.
+    m_requirementsLogView = new QPlainTextEdit(this);
+    m_requirementsLogView->setReadOnly(true);
+    m_requirementsLogView->setMaximumHeight(160);
+    m_requirementsLogView->setPlaceholderText("Install / Uninstall log appears here.");
+    m_requirementsLogView->setStyleSheet(
+        "QPlainTextEdit {"
+        "    background-color: #12121f;"
+        "    color: #9fdc9a;"
+        "    font-family: Consolas, monospace;"
+        "    font-size: 12px;"
+        "    border: 1px solid #2a2a3f;"
+        "    border-radius: 4px;"
+        "}"
+    );
+    m_requirementsLogView->hide();
+
+    QHBoxLayout* reqLogHeaderLayout = new QHBoxLayout();
+    QLabel* reqLogTitleLabel = new QLabel("Requirements Log", this);
+    reqLogTitleLabel->setStyleSheet("color: #888888; font-weight: bold;");
+    reqLogHeaderLayout->addWidget(reqLogTitleLabel);
+    reqLogHeaderLayout->addStretch();
+    m_requirementsLogCopyButton = new QPushButton("Copy Log", this);
+    m_requirementsLogClearButton = new QPushButton("Clear", this);
+    connect(m_requirementsLogCopyButton, &QPushButton::clicked,
+            this, &DashboardWindow::onRequirementsLogCopy);
+    connect(m_requirementsLogClearButton, &QPushButton::clicked,
+            this, &DashboardWindow::onRequirementsLogClear);
+    reqLogHeaderLayout->addWidget(m_requirementsLogCopyButton);
+    reqLogHeaderLayout->addWidget(m_requirementsLogClearButton);
+    m_requirementsLogHeaderWidget = new QWidget(this);
+    m_requirementsLogHeaderWidget->setLayout(reqLogHeaderLayout);
+    m_requirementsLogHeaderWidget->hide();
+    mainLayout->addWidget(m_requirementsLogHeaderWidget);
+    mainLayout->addWidget(m_requirementsLogView);
+
+    // Requirements manager(lives for the lifetime of the window).
     m_requirementsManager = new RequirementsManager(this);
     connect(m_requirementsManager, &RequirementsManager::logMessage,
             this, &DashboardWindow::onRequirementsLog);
@@ -1356,6 +1398,31 @@ void DashboardWindow::onRequirementsLog(const QString& line)
 {
     qDebug() << "[Requirements]" << line;
     m_statusLabel->setText(line);
+
+    // Scrollable on-screen log.
+    m_requirementsLogView->appendPlainText(line);
+    m_requirementsLogView->show();
+    m_requirementsLogHeaderWidget->show();
+
+    // Mirrored to %TEMP%\redroid-requirements.log so the full install chat
+    // survives the session for bug reports pattern append-only,best-effort.
+    QFile logFile(QDir::temp().filePath("redroid-requirements.log"));
+    if (logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        QTextStream ts(&logFile);
+        ts << QDateTime::currentDateTime().toString(Qt::ISODate) << "  " << line << "\n";
+    }
+}
+
+void DashboardWindow::onRequirementsLogCopy()
+{
+    if (m_requirementsLogView) {
+        QGuiApplication::clipboard()->setText(m_requirementsLogView->toPlainText());
+    }
+}
+
+void DashboardWindow::onRequirementsLogClear()
+{
+    if (m_requirementsLogView) m_requirementsLogView->clear();
 }
 
 void DashboardWindow::onRequirementsProgress(int percent)

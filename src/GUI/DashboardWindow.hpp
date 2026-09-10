@@ -24,6 +24,7 @@
 #include <QMenu>
 
 #include <QProgressBar>
+#include <QPlainTextEdit>
 
 #include "VirtualPhonePro/ReDroidController.hpp"
 #include "VirtualPhonePro/DeviceProfile.hpp"
@@ -198,6 +199,8 @@ private slots:
     void onRequirementsLog(const QString& line);
     void onRequirementsProgress(int percent);
     void onRequirementsFinished(bool success, const QString& summary);
+    void onRequirementsLogCopy();
+    void onRequirementsLogClear();
     void refreshRequirementsState();
 
 private:
@@ -219,6 +222,10 @@ private:
     QPushButton* m_batchLaunchButton;
     QPushButton* m_uninstallRequirementsButton;
     QProgressBar* m_requirementsProgressBar;
+    QPlainTextEdit* m_requirementsLogView;
+    QWidget* m_requirementsLogHeaderWidget;
+    QPushButton* m_requirementsLogCopyButton;
+    QPushButton* m_requirementsLogClearButton;
     RequirementsManager* m_requirementsManager;
     QLabel* m_statusLabel;
     

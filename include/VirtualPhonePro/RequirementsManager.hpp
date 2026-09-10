@@ -6,6 +6,7 @@
 #include <QStringList>
 #include <QList>
 #include <QProcess>
+#include <QByteArray>
 
 namespace VirtualPhonePro {
 
@@ -60,6 +61,12 @@ private:
     void runStep(const QString& program, const QStringList& args, int stepPercent, const QString& label);
     void finishSequence(bool success, const QString& summary);
 
+    // Windows-only checks backing the reboot gate and the narrowed step-0
+    // swallow. Both use wsl.exe output already captured in m_lastStepOutput.
+
+    bool confirmWslAvailable();      // wsl -l -v exits 0 (WSL layer usable)
+    bool confirmWsl2UpgradePending();  // wsl --status mentions the upgrade
+
     // Writes an embedded PowerShell script to %TEMP% so it can be run with
     // `powershell -File`. Returns the path, or empty string on failure.
     static QString writeTempScript(const QString& name, const QString& content);
@@ -78,6 +85,15 @@ private:
     QList<Step> m_steps;
     int m_stepIndex = 0;
     int m_percentPerStep = 0;  // derived from step count
+
+    // Captured tail of the most recent step's merged output (last, trimmed,
+    // non-empty lines). Used for the reboot gate, the narrowed step-0
+    // swallow, and fail-fast summaries.
+
+    QStringList m_recentOutput;
+    bool m_rebootRequired = false;
+    QString m_failedStepLabel;
+    int m_failedExitCode =  -1;
 };
 
 } // namespace VirtualPhonePro

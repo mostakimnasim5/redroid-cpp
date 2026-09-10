@@ -5,6 +5,14 @@
 #include <QSettings>
 #include <QCoreApplication>
 
+#ifdef Q_OS_WIN
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <shellapi.h>
+#endif
+
 namespace VirtualPhonePro {
 
 // ---------------------------------------------------------------------------
@@ -232,9 +240,46 @@ bool RequirementsManager::areRequirementsInstalled()
 // Install / Uninstall orchestration
 // ---------------------------------------------------------------------------
 
+#ifdef Q_OS_WIN
+namespace {
+// True when the current process token has the elevation flag set (i.e. UAC
+// was answered "Yes"). IsUserAnAdmin() alone is not enough — it reports the
+// group membership, not whether this process actually runs elevated.
+bool isProcessElevated()
+{
+    HANDLE token = nullptr;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) return false;
+    TOKEN_ELEVATION elev = {};
+    DWORD size = sizeof(elev);
+    const BOOL ok = GetTokenInformation(token, TokenElevation, &elev, size, &size);
+    CloseHandle(token);
+    return ok && elev.TokenIsElevated;
+}
+} // namespace
+#endif
+
 void RequirementsManager::install()
 {
     if (m_busy) return;
+
+#ifdef Q_OS_WIN
+    // The whole chain provisions system-level WSL2 features/distros and writes
+    // %USERPROFILE%\.wslconfig — all require an elevated token. Failing fast
+    // here beats silently starting the chain half-elevated and swallowing errors.
+
+    // NOTE: we deliberately do NOT ShellExecuteW/runas self-relaunch here —
+    // that would spawn a second instance detached from this window's state;
+    // a clear message is the deterministic, verifiable contract.
+    if (!isProcessElevated()) {
+        emit logMessage("[ERROR] Install requires Administrator privileges.");
+        finishSequence(false,
+                      QStringLiteral("Install needs an elevated (Administrator) process.\n\n"
+                                     "Please close ReDroidCPP, right-click it and choose "
+                                     "\"Run as administrator\", theo click Install again. "
+                                     "Nothing was changed."));
+        return;
+    }
+#endif
 
     // Self-contained chain: WSL2 + custom binder kernel + a dedicated
     // 'redroid-engine' WSL distro running docker-ce. No Docker Desktop.
@@ -343,6 +388,7 @@ void RequirementsManager::runStep(const QString& program, const QStringList& arg
         m_process = nullptr;
     }
 
+    m_recentOutput.clear();
     m_process = new QProcess(this);
     m_process->setProcessChannelMode(QProcess::MergedChannels);
 
@@ -368,42 +414,161 @@ void RequirementsManager::onReadyRead()
 {
     if (!m_process) return;
     QByteArray out = m_process->readAllStandardOutput();
-    for (const QByteArray& line : out.split('\n')) {
+    // Keep a small tail (16 trimmed, non-empty lines) so failure summaries
+    // and the reboot gate can quote real wsl.exe output without unbounded growth.
+
+    const QList<QByteArray> outLines = out.split('\n');
+    for (const QByteArray& line : outLines) {
         QString s = QString::fromUtf8(line).trimmed();
-        if (!s.isEmpty()) emit logMessage(s);
+        if (!s.isEmpty()) {
+            m_recentOutput.append(s);
+            while (m_recentOutput.size() > 16) m_recentOutput.removeFirst();
+            emit logMessage(s);
+        }
     }
 }
 
 void RequirementsManager::onProcessFinished(int exitCode, QProcess::ExitStatus status)
 {
-    // Tolerate non-zero exit on the first wsl.exe step in both directions:
-    // `wsl --install` exits 1 when WSL is already present, and
-    // `wsl --unregister` fails when the distro was never imported.
-    const bool ok = (exitCode == 0) ||
-                    (m_stepIndex == 0 && m_steps.first().program == "wsl.exe");
+    // Narrowed step-0 swallow: only `wsl --install --no-distribution` (step 0,
+    // Windows) may exit non-zero when WSL2 is already present. We verify the
+    // exit-then-state instead of blanket-tolerating, so a genuine failure (e.g.
+    // elevation denied, component install failed) can no longer be silently
+    // swallowed - the reboot gate below also catches a dead WSL layer after step 0.
+
+    bool ok = (exitCode ==  0);
+#ifdef Q_OS_WIN
+    if (m_stepIndex ==  0 && m_steps.first().program == "wsl.exe" && m_steps.first().args.value(0) == "--install") {
+        if (exitCode !=  0) {
+            ok = confirmWslAvailable();
+            bool behind = false;
+            if (ok) {
+                // wsl respires; check whether it still wants a version-2 upgrade..
+                behind = confirmWsl2UpgradePending();
+                ok = !behind;   // clean state; no pending upgrade -> fine
+            }
+            if (!ok) {
+                // Kick back before anything else mutates the system; note whether the
+                // upgrade is merely pending (reboot needed)..
+                m_lastExitOk = false;
+                m_failedStepLabel = m_steps[0].label;
+                m_failedExitCode = exitCode;
+                m_rebootRequired = behind;
+                emit logMessage(QString("[ERROR] Step %1 failed (exit %2) - WSL2 is not functional yet.")
+                                    .arg(m_stepIndex + 1).arg(exitCode));
+                if (behind) {
+                    emit logMessage("[ERROR] WSL2 upgrade is pending - please reboot Windows, "
+                                   "then click Install again; next run will resume from the kernel step.");
+                    m_failedStepLabel.clear();
+                    m_failedExitCode =  -1;
+                    // Reboot gate: don't run kernel/distro provisioning until the
+                    // platform is actually on WSL2. The pending-upgrade state is
+                    // reported as a distinct, recognizable summary..
+                }
+                finishSequence(false, QString());
+                return;
+            }
+        }
+    }
+
+    // `wsl --unregister` exits non-zero when the distro was never imported,
+    // which during an uninstall is normal (nothing left to remove).) Only
+    // tolerate that when wsl itself still answers; anything else is reported.
+    if (m_stepIndex ==  0 && m_steps.first().program == "wsl.exe"
+            && m_steps.first().args.value(0) == "--unregister"
+            && exitCode !=  0) {
+        ok = confirmWslAvailable();
+    }
+#endif
+
     if (!ok) {
         m_lastExitOk = false;
-        emit logMessage(QString("[ERROR] Step %1 failed (exit %2).")
-                            .arg(m_stepIndex + 1).arg(exitCode));
+        m_failedStepLabel = m_steps[m_stepIndex].label;
+        m_failedExitCode = exitCode;
+        emit logMessage(QString("[ERROR] Step %1 failed (exit %2;)")
+                            .arg(m_stepIndex +  1).arg(exitCode));
     }
 
     ++m_stepIndex;
+
     if (m_stepIndex < m_steps.size() && m_lastExitOk) {
+
         const Step& next = m_steps[m_stepIndex];
         runStep(next.program, next.args, next.percent, next.label);
     } else {
+
         finishSequence(m_lastExitOk,
-                       m_lastExitOk ? "Environment installed successfully — no Docker Desktop needed."
-                                    : "Installation failed — see log above.");
+                       m_lastExitOk ? "Environment installed successfully - no Docker Desktop needed."
+                                    : m_recentOutput.isEmpty()
+                                          ? QString("Installation failed at step \"%1\".")
+                                                .arg(m_failedStepLabel)
+                                          : QString("Installation failed at step \"%1\" - see the last output above.")
+                                                .arg(m_failedStepLabel));
     }
+}
+
+bool RequirementsManager::confirmWslAvailable()
+{
+#ifdef Q_OS_WIN
+    QProcess p;
+    p.setProcessChannelMode(QProcess::MergedChannels);
+    p.start("wsl.exe", {"-l", "-v"}, QIODevice::ReadOnly);
+    if (!p.waitForFinished(8000)) {
+        p.kill();
+        return false;
+    }
+    return p.exitCode() == 0;
+#else
+    Q_UNUSED(this);
+    return true;
+#endif
+}
+
+bool RequirementsManager::confirmWsl2UpgradePending()
+{
+#ifdef Q_OS_WIN
+    QProcess p;
+    p.setProcessChannelMode(QProcess::MergedChannels);
+    p.start("wsl.exe", {"--status"}, QIODevice::ReadOnly);
+    if (!p.waitForFinished(8000)) {
+        p.kill();
+        return false;
+    }
+    const QByteArray out = p.readAllStandardOutput() + p.readAllStandardError();
+    const QString text = QString::fromUtf8(out).trimmed().toLower();
+    // WSL 1.x (or a version-1 distro abort run) prints this request when an
+    // upgrade is pending; WSL2 is active once this disappears..
+    return text.contains("wsl 2") || text.contains("version 2");
+#else
+    Q_UNUSED(this);
+    return false;
+#endif
 }
 
 void RequirementsManager::finishSequence(bool success, const QString& summary)
 {
     m_busy = false;
-    emit progress(success ? 100 : (m_stepIndex > 0 ? (m_stepIndex * m_percentPerStep) : 0));
-    emit logMessage(summary);
-    emit finished(success, summary);
+
+    if (success) {
+        emit progress(100);
+        emit logMessage(summary);
+        emit finished(success, summary);
+    } else {
+        // Fail-fast: fold the failing step + exit code + the last captured
+        // output lines into ane summary so the user/the log see exactly where
+        // the chain broke — no more generic "see log above"..
+
+        QString detail = m_failedStepLabel;
+        if (!m_failedStepLabel.isEmpty() && m_failedExitCode >= 0) detail += QString(" (exit %1)").arg(m_failedExitCode);
+        else if (!m_failedStepLabel.isEmpty()) detail += QString(" (failed to start)");
+        if (detail.isEmpty() && m_rebootRequired) detail = "Windows reboot required before install can continue";
+        else if (detail.isEmpty()) detail = "Unknown step";
+        QString tail = m_recentOutput.join("\n");
+        if (!tail.isEmpty()) detail += "\n\nOutput:\n" + (tail.size() > 800 ? tail.left(800) + "…" : tail);
+        emit logMessage("[ERROR] Failed: " + detail);
+        emit progress(m_stepIndex > 0 ? (m_stepIndex * m_percentPerStep) : 0);
+        emit finished(false, detail);
+    }
 }
 
 } // namespace VirtualPhonePro
