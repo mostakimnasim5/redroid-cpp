@@ -274,8 +274,8 @@ void RequirementsManager::install()
         emit logMessage("[ERROR] Install requires Administrator privileges.");
         finishSequence(false,
                       QStringLiteral("Install needs an elevated (Administrator) process.\n\n"
-                                     "Please close ReDroidCPP, right-click it and choose "
-                                     "\"Run as administrator\", theo click Install again. "
+                                     "Please close ReDroidCPP, right-click it, then choose "
+                                     "\"Run as administrator\", then click Install again. "
                                      "Nothing was changed."));
         return;
     }
@@ -485,7 +485,7 @@ void RequirementsManager::onProcessFinished(int exitCode, QProcess::ExitStatus s
         m_lastExitOk = false;
         m_failedStepLabel = m_steps[m_stepIndex].label;
         m_failedExitCode = exitCode;
-        emit logMessage(QString("[ERROR] Step %1 failed (exit %2;)")
+        emit logMessage(QString("[ERROR] Step %1 failed (exit %2)")
                             .arg(m_stepIndex +  1).arg(exitCode));
     }
 
@@ -536,9 +536,13 @@ bool RequirementsManager::confirmWsl2UpgradePending()
     }
     const QByteArray out = p.readAllStandardOutput() + p.readAllStandardError();
     const QString text = QString::fromUtf8(out).trimmed().toLower();
-    // WSL 1.x (or a version-1 distro abort run) prints this request when an
-    // upgrade is pending; WSL2 is active once this disappears..
-    return text.contains("wsl 2") || text.contains("version 2");
+    // A healthy WSL2 host prints "Default Version: 2" -- that line must NOT
+    // count as pending. Only explicit upgrade prompts count: kernel-update
+    // requests ("WSL 2 requires an update", "requires an update to its kernel
+    // component", "wsl --update").
+    return text.contains("requires an update to its kernel component")
+        || text.contains("wsl 2 requires an update")
+        || text.contains("wsl --update");
 #else
     Q_UNUSED(this);
     return false;
@@ -555,7 +559,7 @@ void RequirementsManager::finishSequence(bool success, const QString& summary)
         emit finished(success, summary);
     } else {
         // Fail-fast: fold the failing step + exit code + the last captured
-        // output lines into ane summary so the user/the log see exactly where
+        // output lines into a summary so the user/the log see exactly where
         // the chain broke — no more generic "see log above"..
 
         QString detail = m_failedStepLabel;
